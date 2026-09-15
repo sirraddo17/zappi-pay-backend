@@ -4,6 +4,7 @@ const cors = require('cors');
 
 const authRouter = require('./routes/auth.routes');
 const walletRouter = require('./routes/wallet.routes');
+const vtpassRouter = require('./routes/vtpass.routes');
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-ba
 
 app.use('/api', authRouter);
 app.use('/api', walletRouter);
+app.use('/api', vtpassRouter);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
