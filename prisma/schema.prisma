@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+// A customer's wallet balance lives directly on this record — there's
+// only ever one wallet per customer, so a separate Wallet model would
+// just be an extra join for no real benefit. WalletTransaction is the
+// ledger; this balance is the running total it produces.
+model Customer {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String   @unique
+  email         String?  @unique
+  passwordHash  String
+  walletBalance Decimal  @default(0) @db.Decimal(14, 2)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  walletTransactions WalletTransaction[]
+  orders             Order[]
+}
+
+enum WalletTxType {
+  FUND
+  DEBIT
+  REFUND
+}
+
+enum WalletTxStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// V1 funding is manual: a customer submits a transfer reference, an
+// admin checks their bank alert and approves it, which is what actually
+// credits Customer.walletBalance. reference/note carry whatever proof
+// the customer supplied. When automated funding (Paystack etc.) is
+// added later, those transactions land here too, just auto-approved by
+// the payment webhook instead of an admin.
+model WalletTransaction {
+  id                 String         @id @default(cuid())
+  customerId         String
+  customer           Customer       @relation(fields: [customerId], references: [id])
+  type               WalletTxType
+  amount             Decimal        @db.Decimal(14, 2)
+  status             WalletTxStatus @default(PENDING)
+  reference          String?
+  note               String?
+  reviewedByAdminId  String?
+  reviewedAt         DateTime?
+  createdAt          DateTime       @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+enum OrderService {
+  AIRTIME
+  DATA
+  ELECTRICITY
+  CABLE
+  EDUCATION
+  OTHER
+}
+
+enum OrderStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+// One row per VTpass purchase. provider is the network/disco/cable
+// operator code VTpass expects; recipient is whichever identifier that
+// service needs (phone number, meter number, smartcard number, profile
+// ID for education pins). amount is what left the customer's wallet;
+// costAmount is what VTpass actually charged us, kept separate so
+// margin is visible per order without recomputing it from settings
+// that may have changed since.
+model Order {
+  id              String       @id @default(cuid())
+  customerId      String
+  customer        Customer     @relation(fields: [customerId], references: [id])
+  service         OrderService
+  provider        String
+  variationCode   String?
+  recipient       String
+  recipientName   String?
+  amount          Decimal      @db.Decimal(14, 2)
+  costAmount      Decimal?     @db.Decimal(14, 2)
+  vtpassRequestId String?      @unique
+  vtpassStatus    String?
+  status          OrderStatus  @default(PENDING)
+  responsePayload Json?
+  createdAt       DateTime     @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+// Single row, holds the live VTpass credentials and pricing knobs so
+// they're editable from the admin panel rather than redeploying.
+// vtpassMode gates which VTpass base URL requests use — stays on
+// "sandbox" until the live merchant agreement with VTpass is finalized.
+model Settings {
+  id              String   @id @default(cuid())
+  vtpassMode      String   @default("sandbox")
+  vtpassApiKey    String?
+  vtpassSecretKey String?
+  vtpassPublicKey String?
+  markupPercent   Decimal  @default(0) @db.Decimal(5, 2)
+  updatedAt       DateTime @updatedAt
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorAdminId String?
+  action       String
+  details      Json?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
