@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
-const { vtpassRequest } = require('../lib/vtpass');
+const { vtpassRequest, getSettings } = require('../lib/vtpass');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
@@ -85,19 +85,49 @@ router.get('/vtpass/verify', requireCustomerAuth, async (req, res) => {
 router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   const { service, serviceID, variationCode, billersCode, phone, amount } = req.body;
 
-  if (!service || !serviceID || !billersCode || !phone || !amount) {
-    return res.status(400).json({ error: 'service, serviceID, billersCode, phone, and amount are required.' });
+  if (!service || !serviceID || !billersCode || !phone) {
+    return res.status(400).json({ error: 'service, serviceID, billersCode, and phone are required.' });
   }
-  const amountNum = Number(amount);
-  if (!amountNum || amountNum <= 0) {
+
+  // Data/cable/education plans have a fixed VTpass price tied to their
+  // variation code — looked up here rather than trusted from the
+  // client, so a customer can't claim a cheaper price for a plan than
+  // VTpass actually charges. Airtime/electricity have no such fixed
+  // price (the customer picks the amount), so those still come from
+  // the request body.
+  let baseAmount;
+  if (variationCode) {
+    try {
+      const variationsData = await vtpassRequest('GET', '/service-variations', { query: { serviceID } });
+      const variations = variationsData?.content?.varations || variationsData?.content?.variations || [];
+      const match = variations.find((v) => v.variation_code === variationCode);
+      if (!match) return res.status(400).json({ error: 'Unknown variation for this service.' });
+      baseAmount = Number(match.variation_amount);
+    } catch (error) {
+      console.error('POST /vtpass/purchase (variation lookup) failed:', error);
+      return res.status(502).json({ error: 'Could not verify plan pricing with VTpass.' });
+    }
+  } else {
+    baseAmount = Number(amount);
+  }
+  if (!baseAmount || baseAmount <= 0) {
     return res.status(400).json({ error: 'A positive amount is required.' });
   }
+
+  // Markup is added on top of the verified base price to get what the
+  // customer's wallet is actually charged; VTpass itself is still paid
+  // the base amount below, since that's what determines what the
+  // customer receives (airtime credited, data allocated, etc.) — the
+  // markup is our margin, not part of what VTpass processes.
+  const settings = await getSettings();
+  const markupPercent = Number(settings.markupPercentByService?.[service] || 0);
+  const chargeAmount = Math.round(baseAmount * (1 + markupPercent / 100));
 
   let order;
   try {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     if (!customer) return res.status(404).json({ error: 'Account not found.' });
-    if (Number(customer.walletBalance) < amountNum) {
+    if (Number(customer.walletBalance) < chargeAmount) {
       return res.status(402).json({ error: 'Insufficient wallet balance.' });
     }
 
@@ -106,13 +136,13 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     const result = await prisma.$transaction([
       prisma.customer.update({
         where: { id: customer.id },
-        data: { walletBalance: { decrement: amountNum } },
+        data: { walletBalance: { decrement: chargeAmount } },
       }),
       prisma.walletTransaction.create({
         data: {
           customerId: customer.id,
           type: 'DEBIT',
-          amount: amountNum,
+          amount: chargeAmount,
           status: 'APPROVED',
           note: `${service} purchase`,
         },
@@ -124,7 +154,8 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
           provider: serviceID,
           variationCode: variationCode || undefined,
           recipient: billersCode,
-          amount: amountNum,
+          amount: chargeAmount,
+          costAmount: baseAmount,
           vtpassRequestId: requestId,
           status: 'PENDING',
         },
@@ -143,7 +174,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
         serviceID,
         billersCode,
         variation_code: variationCode || undefined,
-        amount: amountNum,
+        amount: baseAmount,
         phone,
       },
     });
@@ -162,12 +193,12 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
 
     if (!succeeded) {
       await prisma.$transaction([
-        prisma.customer.update({ where: { id: req.customer.customerId }, data: { walletBalance: { increment: amountNum } } }),
+        prisma.customer.update({ where: { id: req.customer.customerId }, data: { walletBalance: { increment: chargeAmount } } }),
         prisma.walletTransaction.create({
           data: {
             customerId: req.customer.customerId,
             type: 'REFUND',
-            amount: amountNum,
+            amount: chargeAmount,
             status: 'APPROVED',
             note: `Refund for failed ${service} purchase`,
           },
@@ -181,12 +212,12 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     console.error('POST /vtpass/purchase (VTpass call) failed:', error);
     await prisma.order.update({ where: { id: order.id }, data: { status: 'FAILED' } });
     await prisma.$transaction([
-      prisma.customer.update({ where: { id: req.customer.customerId }, data: { walletBalance: { increment: amountNum } } }),
+      prisma.customer.update({ where: { id: req.customer.customerId }, data: { walletBalance: { increment: chargeAmount } } }),
       prisma.walletTransaction.create({
         data: {
           customerId: req.customer.customerId,
           type: 'REFUND',
-          amount: amountNum,
+          amount: chargeAmount,
           status: 'APPROVED',
           note: `Refund for failed ${service} purchase`,
         },
