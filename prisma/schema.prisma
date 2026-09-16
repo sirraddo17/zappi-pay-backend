@@ -120,8 +120,13 @@ model Settings {
   vtpassApiKey    String?
   vtpassSecretKey String?
   vtpassPublicKey String?
-  markupPercent   Decimal  @default(0) @db.Decimal(5, 2)
-  updatedAt       DateTime @updatedAt
+  // Per-service markup, e.g. { "AIRTIME": 2, "DATA": 3 } — percent
+  // added on top of VTpass's own price for that service. A service
+  // missing from the map (or the whole map being empty) falls back to
+  // 0% for that service, computed in the purchase route in
+  // vtpass.routes.js rather than stored redundantly here.
+  markupPercentByService Json    @default("{}")
+  updatedAt              DateTime @updatedAt
 }
 
 model AuditLog {
