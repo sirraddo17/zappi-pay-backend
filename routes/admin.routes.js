@@ -21,7 +21,7 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 // to sandbox or back).
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
-    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercent } = req.body;
+    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -32,7 +32,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (vtpassApiKey !== undefined) data.vtpassApiKey = vtpassApiKey;
     if (vtpassSecretKey !== undefined) data.vtpassSecretKey = vtpassSecretKey;
     if (vtpassPublicKey !== undefined) data.vtpassPublicKey = vtpassPublicKey;
-    if (markupPercent !== undefined) data.markupPercent = markupPercent;
+    if (markupPercentByService !== undefined) data.markupPercentByService = markupPercentByService;
 
     const settings = await prisma.settings.update({ where: { id: existing.id }, data });
 
