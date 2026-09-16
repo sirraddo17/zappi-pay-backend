@@ -64,6 +64,31 @@ router.get('/admin/customers', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Everything about one customer in a single call — their profile,
+// every order, and every wallet transaction — rather than making the
+// frontend stitch together three separate fetches for what's really
+// one detail view.
+router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+      select: { id: true, name: true, phone: true, email: true, walletBalance: true, active: true, createdAt: true },
+    });
+    if (!customer) return res.status(404).json({ error: 'Customer not found.' });
+
+    const [orders, walletTransactions] = await Promise.all([
+      prisma.order.findMany({ where: { customerId: id }, orderBy: { createdAt: 'desc' } }),
+      prisma.walletTransaction.findMany({ where: { customerId: id }, orderBy: { createdAt: 'desc' } }),
+    ]);
+
+    res.json({ customer, orders, walletTransactions });
+  } catch (error) {
+    console.error('GET /admin/customers/:id failed:', error);
+    res.status(500).json({ error: 'Could not load customer.' });
+  }
+});
+
 router.patch('/admin/customers/:id', requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
