@@ -41,6 +41,7 @@ model Customer {
 
   walletTransactions WalletTransaction[]
   orders             Order[]
+  supportTickets     SupportTicket[]
 }
 
 enum WalletTxType {
@@ -116,6 +117,32 @@ model Order {
   status          OrderStatus  @default(PENDING)
   responsePayload Json?
   createdAt       DateTime     @default(now())
+
+  supportTickets SupportTicket[]
+
+  @@index([customerId, createdAt])
+}
+
+enum TicketStatus {
+  OPEN
+  RESOLVED
+}
+
+// A customer complaint, either general or tied to a specific order
+// (via the "Report Issue" button on that order's receipt — orderId
+// stays optional so a customer can also raise something with no
+// order attached, like a wallet funding problem). Admin resolution
+// is tracked here too so both sides see the same status.
+model SupportTicket {
+  id         String       @id @default(cuid())
+  customerId String
+  customer   Customer     @relation(fields: [customerId], references: [id])
+  orderId    String?
+  order      Order?       @relation(fields: [orderId], references: [id])
+  message    String
+  status     TicketStatus @default(OPEN)
+  resolvedAt DateTime?
+  createdAt  DateTime     @default(now())
 
   @@index([customerId, createdAt])
 }
