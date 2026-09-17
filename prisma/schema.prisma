@@ -12,6 +12,11 @@ model AdminUser {
   name         String
   email        String   @unique
   passwordHash String
+  // Every admin except the very first one (the account created while
+  // setting up the app) can be deactivated — that one is protected
+  // in code so a mistake here can never lock everyone out of the
+  // admin panel entirely.
+  active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 }
 
