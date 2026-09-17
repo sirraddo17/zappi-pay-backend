@@ -195,12 +195,82 @@ router.get('/admin/admins', requireAdminAuth, async (req, res) => {
   try {
     const admins = await prisma.adminUser.findMany({
       orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, email: true, createdAt: true },
+      select: { id: true, name: true, email: true, active: true, createdAt: true },
     });
     res.json({ admins });
   } catch (error) {
     console.error('GET /admin/admins failed:', error);
     res.status(500).json({ error: 'Could not load admins.' });
+  }
+});
+
+// The very first admin (earliest createdAt) is protected from
+// deactivation in code — there's no separate super-admin role, so
+// without this, the last person to deactivate everyone else could
+// lock the whole team out of the panel with no way back in.
+router.patch('/admin/admins/:id/active', requireAdminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { active } = req.body;
+    if (typeof active !== 'boolean') {
+      return res.status(400).json({ error: 'active must be true or false.' });
+    }
+
+    const firstAdmin = await prisma.adminUser.findFirst({ orderBy: { createdAt: 'asc' } });
+    if (!active && firstAdmin?.id === id) {
+      return res.status(400).json({ error: 'The original admin account cannot be deactivated.' });
+    }
+
+    const admin = await prisma.adminUser.update({
+      where: { id },
+      data: { active },
+      select: { id: true, name: true, email: true, active: true, createdAt: true },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorAdminId: req.admin.adminId,
+        action: active ? 'ADMIN_REACTIVATED' : 'ADMIN_DEACTIVATED',
+        details: { targetAdminId: id },
+      },
+    });
+
+    res.json({ admin });
+  } catch (error) {
+    console.error('PATCH /admin/admins/:id/active failed:', error);
+    res.status(500).json({ error: 'Could not update admin.' });
+  }
+});
+
+// Lets one admin reset another's password directly — useful when a
+// staff member is locked out and forgot-password isn't set up yet.
+router.post('/admin/admins/:id/reset-password', requireAdminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'A new password of at least 6 characters is required.' });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    const admin = await prisma.adminUser.update({
+      where: { id },
+      data: { passwordHash },
+      select: { id: true, name: true, email: true },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actorAdminId: req.admin.adminId,
+        action: 'ADMIN_PASSWORD_RESET_BY_ADMIN',
+        details: { targetAdminId: id },
+      },
+    });
+
+    res.json({ admin });
+  } catch (error) {
+    console.error('POST /admin/admins/:id/reset-password failed:', error);
+    res.status(500).json({ error: 'Could not reset password.' });
   }
 });
 
