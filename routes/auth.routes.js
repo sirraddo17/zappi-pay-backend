@@ -17,6 +17,7 @@ function publicCustomer(customer) {
     phone: customer.phone,
     email: customer.email,
     walletBalance: customer.walletBalance,
+    avatarUrl: customer.avatarUrl,
   };
 }
 
@@ -88,10 +89,20 @@ router.get('/auth/me', requireCustomerAuth, async (req, res) => {
 
 router.patch('/auth/me', requireCustomerAuth, async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, avatarUrl } = req.body;
     const data = {};
     if (name !== undefined) data.name = name.trim();
     if (email !== undefined) data.email = email.trim() || null;
+    if (avatarUrl !== undefined) {
+      // A generous cap on the base64 string itself (roughly a 1.5MB
+      // image once decoded) — there's no separate file storage doing
+      // resizing for this app, so this is what stops someone's phone
+      // photo from bloating a database row unreasonably.
+      if (avatarUrl && avatarUrl.length > 2_000_000) {
+        return res.status(400).json({ error: 'Image is too large. Please choose a smaller photo.' });
+      }
+      data.avatarUrl = avatarUrl || null;
+    }
 
     const customer = await prisma.customer.update({
       where: { id: req.customer.customerId },
