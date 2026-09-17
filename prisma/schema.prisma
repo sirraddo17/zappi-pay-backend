@@ -31,6 +31,11 @@ model Customer {
   email         String?  @unique
   passwordHash  String
   walletBalance Decimal  @default(0) @db.Decimal(14, 2)
+  // Stored as a data: URI (base64-encoded image) rather than a file
+  // path — there's no separate file storage set up for this app, so
+  // the picture just lives on the row itself. @db.Text since a
+  // base64 image comfortably exceeds a normal varchar limit.
+  avatarUrl     String?  @db.Text
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
 
