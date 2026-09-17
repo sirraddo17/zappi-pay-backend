@@ -101,6 +101,9 @@ router.post('/admin/login', async (req, res) => {
     if (!admin || !(await comparePassword(password, admin.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
+    if (!admin.active) {
+      return res.status(403).json({ error: 'This admin account has been deactivated.' });
+    }
 
     const token = signAdminToken(admin);
     res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email } });
