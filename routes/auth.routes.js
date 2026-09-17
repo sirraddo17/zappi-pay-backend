@@ -110,4 +110,29 @@ router.post('/admin/login', async (req, res) => {
   }
 });
 
+router.patch('/auth/password', requireCustomerAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    }
+
+    const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
+    if (!customer || !(await comparePassword(currentPassword, customer.passwordHash))) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.customer.update({ where: { id: customer.id }, data: { passwordHash } });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('PATCH /auth/password failed:', error);
+    res.status(500).json({ error: 'Could not change password.' });
+  }
+});
+
 module.exports = router;
