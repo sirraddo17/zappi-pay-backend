@@ -10,7 +10,11 @@ const adminRouter = require('./routes/admin.routes');
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+// Default is 100kb, far too small for a base64-encoded profile
+// photo — raised to cover that (matched by the 2MB cap on the
+// avatar field itself in auth.routes.js) without leaving the limit
+// unbounded.
+app.use(express.json({ limit: '3mb' }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-backend' }));
 
