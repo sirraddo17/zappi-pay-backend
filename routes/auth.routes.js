@@ -86,6 +86,24 @@ router.get('/auth/me', requireCustomerAuth, async (req, res) => {
   }
 });
 
+router.patch('/auth/me', requireCustomerAuth, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const data = {};
+    if (name !== undefined) data.name = name.trim();
+    if (email !== undefined) data.email = email.trim() || null;
+
+    const customer = await prisma.customer.update({
+      where: { id: req.customer.customerId },
+      data,
+    });
+    res.json({ customer: publicCustomer(customer) });
+  } catch (error) {
+    console.error('PATCH /auth/me failed:', error);
+    res.status(500).json({ error: 'Could not update account.' });
+  }
+});
+
 // --- Admin auth ---
 // No self-service signup on purpose — admin accounts are seeded
 // directly, same pattern used across the other apps in this ecosystem.
