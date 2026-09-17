@@ -192,6 +192,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     });
 
     if (!succeeded) {
+      console.error('POST /vtpass/purchase (not delivered):', { status, vtpassResponse });
       await prisma.$transaction([
         prisma.customer.update({ where: { id: req.customer.customerId }, data: { walletBalance: { increment: chargeAmount } } }),
         prisma.walletTransaction.create({
