@@ -1,7 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { getSettings } = require('../lib/vtpass');
-const { requireAdminAuth, hashPassword } = require('../lib/auth');
+const { requireAdminAuth, hashPassword, comparePassword } = require('../lib/auth');
 
 const router = express.Router();
 
@@ -236,6 +236,35 @@ router.post('/admin/admins', requireAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('POST /admin/admins failed:', error);
     res.status(500).json({ error: 'Could not create admin.' });
+  }
+});
+
+router.patch('/admin/password', requireAdminAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    }
+
+    const admin = await prisma.adminUser.findUnique({ where: { id: req.admin.adminId } });
+    if (!admin || !(await comparePassword(currentPassword, admin.passwordHash))) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.adminUser.update({ where: { id: admin.id }, data: { passwordHash } });
+
+    await prisma.auditLog.create({
+      data: { actorAdminId: admin.id, action: 'ADMIN_PASSWORD_CHANGED', details: {} },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('PATCH /admin/password failed:', error);
+    res.status(500).json({ error: 'Could not change password.' });
   }
 });
 
