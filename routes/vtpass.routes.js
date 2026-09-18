@@ -242,6 +242,22 @@ router.get('/orders', requireCustomerAuth, async (req, res) => {
   }
 });
 
+// A single order's full detail, for the receipt view — scoped to
+// the requesting customer so one person can never pull up another's
+// order by guessing an id.
+router.get('/orders/:id', requireCustomerAuth, async (req, res) => {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: req.params.id, customerId: req.customer.customerId },
+    });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    res.json({ order });
+  } catch (error) {
+    console.error('GET /orders/:id failed:', error);
+    res.status(500).json({ error: 'Could not load order.' });
+  }
+});
+
 router.get('/admin/orders', requireAdminAuth, async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
