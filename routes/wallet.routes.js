@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 const { getSettings } = require('../lib/vtpass');
+const { notify } = require('../lib/notify');
 
 const router = express.Router();
 
@@ -108,6 +109,8 @@ router.post('/admin/wallet/:id/approve', requireAdminAuth, async (req, res) => {
       }),
     ]);
 
+    notify(existing.customerId, 'Wallet Funded', `Your wallet was credited ₦${Number(existing.amount).toLocaleString()}.`);
+
     res.json({ transaction });
   } catch (error) {
     console.error('POST /admin/wallet/:id/approve failed:', error);
@@ -128,6 +131,8 @@ router.post('/admin/wallet/:id/reject', requireAdminAuth, async (req, res) => {
       where: { id },
       data: { status: 'REJECTED', reviewedByAdminId: req.admin.adminId, reviewedAt: new Date() },
     });
+
+    notify(existing.customerId, 'Funding Request Rejected', `Your ₦${Number(existing.amount).toLocaleString()} funding request was rejected. Contact support if you have questions.`);
 
     res.json({ transaction });
   } catch (error) {
