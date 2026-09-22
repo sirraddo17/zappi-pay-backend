@@ -89,6 +89,14 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     return res.status(400).json({ error: 'service, serviceID, billersCode, and phone are required.' });
   }
 
+  if (!variationCode) {
+    const settings = await getSettings();
+    const minPurchase = Number(settings.minPurchaseAmount);
+    if (!amount || Number(amount) < minPurchase) {
+      return res.status(400).json({ error: `Minimum purchase amount is ₦${minPurchase}.` });
+    }
+  }
+
   // Data/cable/education plans have a fixed VTpass price tied to their
   // variation code — looked up here rather than trusted from the
   // client, so a customer can't claim a cheaper price for a plan than
