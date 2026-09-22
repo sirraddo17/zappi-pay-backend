@@ -58,7 +58,7 @@ router.get('/admin/support/tickets', requireAdminAuth, async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         customer: { select: { id: true, name: true, phone: true } },
-        order: { select: { id: true, service: true, recipient: true, amount: true, status: true } },
+        order: { select: { id: true, service: true, recipient: true, amount: true, status: true, createdAt: true } },
       },
     });
     res.json({ tickets });
