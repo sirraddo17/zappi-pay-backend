@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
+const { getSettings } = require('../lib/vtpass');
 
 const router = express.Router();
 
@@ -42,6 +43,11 @@ router.post('/wallet/fund-request', requireCustomerAuth, async (req, res) => {
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
       return res.status(400).json({ error: 'A positive amount is required.' });
+    }
+    const settings = await getSettings();
+    const minFunding = Number(settings.minFundingAmount);
+    if (amountNum < minFunding) {
+      return res.status(400).json({ error: `Minimum funding amount is ₦${minFunding}.` });
     }
 
     const transaction = await prisma.walletTransaction.create({
