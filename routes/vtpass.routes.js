@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { vtpassRequest, getSettings } = require('../lib/vtpass');
+const { notify } = require('../lib/notify');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
@@ -213,8 +214,11 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
           },
         }),
       ]);
+      notify(req.customer.customerId, 'Purchase Failed', `Your ${service} purchase failed and ₦${Number(chargeAmount).toLocaleString()} was refunded to your wallet.`);
       return res.status(502).json({ error: 'Purchase was not successful. You have been refunded.', order: updated });
     }
+
+    notify(req.customer.customerId, 'Purchase Successful', `Your ${service} purchase of ₦${Number(chargeAmount).toLocaleString()} was successful.`);
 
     res.status(201).json({ order: updated });
   } catch (error) {
@@ -232,6 +236,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
         },
       }),
     ]);
+    notify(req.customer.customerId, 'Purchase Failed', `Your ${service} purchase couldn't be completed and ₦${Number(chargeAmount).toLocaleString()} was refunded to your wallet.`);
     res.status(502).json({ error: 'Could not reach VTpass. You have been refunded.' });
   }
 });
