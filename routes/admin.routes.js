@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { getSettings } = require('../lib/vtpass');
+const { notify } = require('../lib/notify');
 const { requireAdminAuth, hashPassword, comparePassword } = require('../lib/auth');
 
 const router = express.Router();
@@ -180,6 +181,12 @@ router.post('/admin/customers/:id/adjust-wallet', requireAdminAuth, async (req, 
         details: { customerId: id, amount: amountNum, note },
       },
     });
+
+    notify(
+      id,
+      type === 'CREDIT' ? 'Wallet Credited' : 'Wallet Debited',
+      note || `An admin ${type === 'CREDIT' ? 'credited' : 'debited'} ₦${amountNum.toLocaleString()} to your wallet.`
+    );
 
     res.json({ transaction });
   } catch (error) {
