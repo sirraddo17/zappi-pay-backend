@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
+const { notify } = require('../lib/notify');
 
 const router = express.Router();
 
@@ -74,6 +75,9 @@ router.patch('/admin/support/tickets/:id/resolve', requireAdminAuth, async (req,
       where: { id: req.params.id },
       data: { status: 'RESOLVED', resolvedAt: new Date() },
     });
+
+    notify(ticket.customerId, 'Support Ticket Resolved', 'An admin has replied and marked your support ticket as resolved.');
+
     res.json({ ticket });
   } catch (error) {
     console.error('PATCH /admin/support/tickets/:id/resolve failed:', error);
