@@ -7,6 +7,7 @@ const walletRouter = require('./routes/wallet.routes');
 const vtpassRouter = require('./routes/vtpass.routes');
 const adminRouter = require('./routes/admin.routes');
 const supportRouter = require('./routes/support.routes');
+const notificationRouter = require('./routes/notification.routes');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api', walletRouter);
 app.use('/api', vtpassRouter);
 app.use('/api', adminRouter);
 app.use('/api', supportRouter);
+app.use('/api', notificationRouter);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
