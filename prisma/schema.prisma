@@ -42,6 +42,7 @@ model Customer {
   walletTransactions WalletTransaction[]
   orders             Order[]
   supportTickets     SupportTicket[]
+  notifications      Notification[]
 }
 
 enum WalletTxType {
@@ -145,6 +146,23 @@ model SupportTicket {
   status     TicketStatus @default(OPEN)
   resolvedAt DateTime?
   createdAt  DateTime     @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+// A single event surfaced to a customer via the notification bell —
+// funding approved/rejected, a purchase succeeding or failing, an
+// admin wallet adjustment, or a support ticket being resolved. Kept
+// deliberately generic (title + message) rather than one model per
+// event type, since every trigger just needs to say what happened.
+model Notification {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  title      String
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   @@index([customerId, createdAt])
 }
