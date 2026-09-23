@@ -46,6 +46,7 @@ model Customer {
   notifications      Notification[]
   transfersSent      Transfer[]      @relation("TransferSender")
   transfersReceived  Transfer[]      @relation("TransferReceiver")
+  airtimeCashRequests AirtimeCashRequest[]
 }
 
 enum WalletTxType {
@@ -54,6 +55,7 @@ enum WalletTxType {
   REFUND
   TRANSFER_OUT
   TRANSFER_IN
+  AIRTIME_CASH
 }
 
 enum WalletTxStatus {
@@ -221,6 +223,43 @@ model Broadcast {
   @@index([active, createdAt])
 }
 
+enum AirtimeCashStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A customer asking to turn airtime back into wallet cash (usually
+// airtime bought by mistake). VTpass has no reversal, so this is a
+// manual queue: the customer transfers the airtime to the business
+// line for that network (Settings.airtimeToCashNumbers), then an
+// admin confirms it arrived and approves, which credits payoutAmount
+// to the wallet. feePercent is copied from Settings at request time
+// so a later fee change never alters what this customer was quoted.
+// receivedAmount is what the admin actually saw arrive — it can be
+// less than amount, in which case payout is recomputed from it.
+model AirtimeCashRequest {
+  id                String            @id @default(cuid())
+  customerId        String
+  customer          Customer          @relation(fields: [customerId], references: [id])
+  network           String
+  senderPhone       String
+  amount            Decimal           @db.Decimal(14, 2)
+  feePercent        Decimal           @db.Decimal(5, 2)
+  payoutAmount      Decimal           @db.Decimal(14, 2)
+  receivedAmount    Decimal?          @db.Decimal(14, 2)
+  orderId           String?
+  note              String?
+  status            AirtimeCashStatus @default(PENDING)
+  adminNote         String?
+  reviewedByAdminId String?
+  reviewedAt        DateTime?
+  createdAt         DateTime          @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+}
+
 // Single row, holds the live VTpass credentials and pricing knobs so
 // they're editable from the admin panel rather than redeploying.
 // vtpassMode gates which VTpass base URL requests use — stays on
@@ -248,6 +287,14 @@ model Settings {
   // the configured floor just by calling the API directly.
   minFundingAmount  Decimal  @default(100) @db.Decimal(14, 2)
   minPurchaseAmount Decimal  @default(50) @db.Decimal(14, 2)
+  // Airtime-to-Cash: off until an admin turns it on and fills in the
+  // receiving line per network, e.g. { "mtn": "0803...", "glo": "..." }
+  // (keys are VTpass airtime serviceIDs). Fee is the percent kept
+  // from the airtime value; the rest is credited to the wallet.
+  airtimeToCashEnabled    Boolean @default(false)
+  airtimeToCashFeePercent Decimal @default(20) @db.Decimal(5, 2)
+  airtimeToCashMinAmount  Decimal @default(500) @db.Decimal(14, 2)
+  airtimeToCashNumbers    Json    @default("{}")
   updatedAt              DateTime @updatedAt
 }
 
