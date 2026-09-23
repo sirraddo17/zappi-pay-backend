@@ -22,9 +22,24 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 // to sandbox or back).
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
-    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, minFundingAmount, minPurchaseAmount } = req.body;
+    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
+    }
+
+    // Every discount must be a real percentage between 0 and 100 — a
+    // typo like 500 would otherwise make purchases free (clamped to
+    // ₦0 in lib/pricing.js) with nothing flagging it.
+    if (discountPercentByService !== undefined) {
+      if (typeof discountPercentByService !== 'object' || discountPercentByService === null || Array.isArray(discountPercentByService)) {
+        return res.status(400).json({ error: 'discountPercentByService must be an object.' });
+      }
+      for (const [svc, pct] of Object.entries(discountPercentByService)) {
+        const n = Number(pct);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          return res.status(400).json({ error: `Discount for ${svc} must be between 0 and 100.` });
+        }
+      }
     }
 
     const existing = await getSettings();
@@ -34,6 +49,11 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (vtpassSecretKey !== undefined) data.vtpassSecretKey = vtpassSecretKey;
     if (vtpassPublicKey !== undefined) data.vtpassPublicKey = vtpassPublicKey;
     if (markupPercentByService !== undefined) data.markupPercentByService = markupPercentByService;
+    if (discountPercentByService !== undefined) {
+      data.discountPercentByService = Object.fromEntries(
+        Object.entries(discountPercentByService).map(([svc, pct]) => [svc, Number(pct)])
+      );
+    }
     if (minFundingAmount !== undefined) data.minFundingAmount = Number(minFundingAmount);
     if (minPurchaseAmount !== undefined) data.minPurchaseAmount = Number(minPurchaseAmount);
 
@@ -43,7 +63,12 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data: {
         actorAdminId: req.admin.adminId,
         action: 'SETTINGS_UPDATED',
-        details: { changedFields: Object.keys(data) },
+        // Discount values are logged in full (unlike keys, they're not
+        // secret) so there's a record of who set what discount when.
+        details: {
+          changedFields: Object.keys(data),
+          ...(data.discountPercentByService ? { discountPercentByService: data.discountPercentByService } : {}),
+        },
       },
     });
 

@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { vtpassRequest, getSettings } = require('../lib/vtpass');
 const { notify } = require('../lib/notify');
+const { computePrice } = require('../lib/pricing');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
@@ -74,6 +75,25 @@ router.get('/vtpass/verify', requireCustomerAuth, async (req, res) => {
   }
 });
 
+// --- Pricing ---
+// The customer-facing half of Settings: just the markup and discount
+// percentages (never the VTpass keys), so the dashboard can badge
+// discounted services and the Buy page can show the exact total the
+// wallet will be charged before the customer taps Pay. The purchase
+// route still recomputes the price itself — this is display only.
+router.get('/pricing', requireCustomerAuth, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    res.json({
+      markupPercentByService: settings.markupPercentByService || {},
+      discountPercentByService: settings.discountPercentByService || {},
+    });
+  } catch (error) {
+    console.error('GET /pricing failed:', error);
+    res.status(500).json({ error: 'Could not load pricing.' });
+  }
+});
+
 // --- Purchase ---
 // Reserve-then-commit: the wallet is debited and the Order row created
 // as PENDING in one Prisma transaction *before* VTpass is ever called,
@@ -128,9 +148,12 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   // the base amount below, since that's what determines what the
   // customer receives (airtime credited, data allocated, etc.) — the
   // markup is our margin, not part of what VTpass processes.
+  //
+  // Any admin-set discount for this service is then taken off that
+  // marked-up price (see lib/pricing.js) — also only affects what the
+  // wallet is charged, never what VTpass is sent.
   const settings = await getSettings();
-  const markupPercent = Number(settings.markupPercentByService?.[service] || 0);
-  const chargeAmount = Math.round(baseAmount * (1 + markupPercent / 100));
+  const { chargeAmount, discountAmount } = computePrice(baseAmount, service, settings);
 
   let order;
   try {
@@ -165,6 +188,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
           recipient: billersCode,
           amount: chargeAmount,
           costAmount: baseAmount,
+          discountAmount: discountAmount > 0 ? discountAmount : undefined,
           vtpassRequestId: requestId,
           status: 'PENDING',
         },
@@ -218,7 +242,8 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
       return res.status(502).json({ error: 'Purchase was not successful. You have been refunded.', order: updated });
     }
 
-    notify(req.customer.customerId, 'Purchase Successful', `Your ${service} purchase of ₦${Number(chargeAmount).toLocaleString()} was successful.`);
+    const savedText = discountAmount > 0 ? ` You saved ₦${Number(discountAmount).toLocaleString()} with a discount.` : '';
+    notify(req.customer.customerId, 'Purchase Successful', `Your ${service} purchase of ₦${Number(chargeAmount).toLocaleString()} was successful.${savedText}`);
 
     res.status(201).json({ order: updated });
   } catch (error) {
