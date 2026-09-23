@@ -123,7 +123,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     const { id } = req.params;
     const customer = await prisma.customer.findUnique({
       where: { id },
-      select: { id: true, name: true, phone: true, email: true, walletBalance: true, active: true, createdAt: true },
+      select: { id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true },
     });
     if (!customer) return res.status(404).json({ error: 'Customer not found.' });
 
@@ -163,6 +163,49 @@ router.patch('/admin/customers/:id', requireAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('PATCH /admin/customers/:id failed:', error);
     res.status(500).json({ error: 'Could not update customer.' });
+  }
+});
+
+// Forgotten-password support: issues a random temporary password the
+// admin passes to the customer (e.g. on WhatsApp). The customer must
+// replace it on their next login, and it stops working after 24 hours
+// if unused. The password itself is only returned once, here — it is
+// never stored in plain text or written to the audit log.
+const TEMP_PASSWORD_HOURS = 24;
+function generateTempPassword() {
+  // No 0/O/1/I/l so it's easy to read out or type from a message.
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = require('crypto').randomBytes(8);
+  let out = '';
+  for (const b of bytes) out += alphabet[b % alphabet.length];
+  return `ZP-${out}`;
+}
+
+router.post('/admin/customers/:id/reset-password', requireAdminAuth, async (req, res) => {
+  try {
+    const existing = await prisma.customer.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Customer not found.' });
+
+    const temporaryPassword = generateTempPassword();
+    const expiresAt = new Date(Date.now() + TEMP_PASSWORD_HOURS * 60 * 60 * 1000);
+    await prisma.customer.update({
+      where: { id: existing.id },
+      data: {
+        passwordHash: await hashPassword(temporaryPassword),
+        mustChangePassword: true,
+        tempPasswordExpiresAt: expiresAt,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: { actorAdminId: req.admin.adminId, action: 'CUSTOMER_PASSWORD_RESET', details: { customerId: existing.id } },
+    });
+    notify(existing.id, 'Password Reset by Support', 'Your password was reset by ZappiPay support. Log in with the temporary password you were given, then choose a new one.');
+
+    res.json({ temporaryPassword, expiresAt });
+  } catch (error) {
+    console.error('POST /admin/customers/:id/reset-password failed:', error);
+    res.status(500).json({ error: 'Could not reset password.' });
   }
 });
 

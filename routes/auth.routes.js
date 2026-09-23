@@ -1,5 +1,8 @@
 const express = require('express');
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
+const { sendEmail } = require('../lib/email');
+const { notify } = require('../lib/notify');
 const {
   hashPassword,
   comparePassword,
@@ -19,7 +22,16 @@ function publicCustomer(customer) {
     email: customer.email,
     walletBalance: customer.walletBalance,
     avatarUrl: customer.avatarUrl,
+    mustChangePassword: customer.mustChangePassword,
   };
+}
+
+const APP_URL = (process.env.APP_URL || 'https://zappipay.com.ng').replace(/\/$/, '');
+const RESET_TOKEN_MINUTES = 30;
+const MAX_RESET_EMAILS_PER_HOUR = 3;
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 // --- Customer auth ---
@@ -81,6 +93,9 @@ router.post('/auth/login', async (req, res) => {
     }
     if (!customer.active) {
       return res.status(403).json({ error: 'This account has been deactivated.' });
+    }
+    if (customer.mustChangePassword && customer.tempPasswordExpiresAt && customer.tempPasswordExpiresAt < new Date()) {
+      return res.status(403).json({ error: 'Your temporary password has expired. Please contact support for a new one.' });
     }
 
     const token = signCustomerToken(customer);
@@ -167,18 +182,117 @@ router.patch('/auth/password', requireCustomerAuth, async (req, res) => {
       return res.status(400).json({ error: 'New password must be at least 6 characters.' });
     }
 
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ error: 'Choose a new password that is different from the current one.' });
+    }
+
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     if (!customer || !(await comparePassword(currentPassword, customer.passwordHash))) {
       return res.status(401).json({ error: 'Current password is incorrect.' });
     }
 
+    // Changing the password also clears any admin-issued temporary
+    // password requirement.
     const passwordHash = await hashPassword(newPassword);
-    await prisma.customer.update({ where: { id: customer.id }, data: { passwordHash } });
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null },
+    });
 
     res.json({ success: true });
   } catch (error) {
     console.error('PATCH /auth/password failed:', error);
     res.status(500).json({ error: 'Could not change password.' });
+  }
+});
+
+// --- Forgot password (email link) ---
+// Always answers with the same generic message whether or not the
+// account exists or has an email, so this can't be used to discover
+// which phone numbers/usernames are registered.
+router.post('/auth/forgot-password', async (req, res) => {
+  const generic = { ok: true, message: 'If that account has an email address, a reset link is on its way. Check your inbox and spam folder.' };
+  try {
+    const identifier = String(req.body.identifier || '').trim();
+    if (!identifier) return res.status(400).json({ error: 'Enter your phone number, username or email.' });
+
+    const customer = await prisma.customer.findFirst({
+      where: {
+        OR: [
+          { phone: identifier },
+          { username: identifier.toLowerCase() },
+          { email: { equals: identifier, mode: 'insensitive' } },
+        ],
+      },
+    });
+    if (!customer || !customer.active || !customer.email) return res.json(generic);
+
+    const recent = await prisma.passwordResetToken.count({
+      where: { customerId: customer.id, createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) } },
+    });
+    if (recent >= MAX_RESET_EMAILS_PER_HOUR) return res.json(generic);
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    await prisma.passwordResetToken.create({
+      data: {
+        customerId: customer.id,
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + RESET_TOKEN_MINUTES * 60 * 1000),
+      },
+    });
+
+    const link = `${APP_URL}/reset-password?token=${rawToken}`;
+    const firstName = customer.name.split(' ')[0];
+    await sendEmail({
+      to: customer.email,
+      subject: 'Reset your ZappiPay password',
+      text: `Hello ${firstName},\n\nWe received a request to reset your ZappiPay password. Open this link to choose a new one (it expires in ${RESET_TOKEN_MINUTES} minutes):\n\n${link}\n\nIf you didn't ask for this, you can ignore this email — your password won't change.\n\nZappiPay`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#1a1a2e">
+  <h2 style="color:#863bff;margin-bottom:4px">ZAPPI PAY</h2>
+  <p>Hello ${firstName},</p>
+  <p>We received a request to reset your ZappiPay password. Tap the button below to choose a new one. This link expires in ${RESET_TOKEN_MINUTES} minutes.</p>
+  <p style="text-align:center;margin:28px 0"><a href="${link}" style="background:#863bff;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Reset password</a></p>
+  <p style="font-size:13px;color:#555">Or copy this link into your browser:<br><span style="word-break:break-all">${link}</span></p>
+  <p style="font-size:13px;color:#555">If you didn't ask for this, you can ignore this email — your password won't change. ZappiPay staff will never ask for your password.</p>
+</div>`,
+    });
+
+    res.json(generic);
+  } catch (error) {
+    console.error('POST /auth/forgot-password failed:', error);
+    res.json(generic);
+  }
+});
+
+router.post('/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'token and newPassword are required.' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+
+    const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash: hashToken(String(token)) } });
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      return res.status(400).json({ error: 'This reset link is invalid or has expired. Please request a new one.' });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.$transaction([
+      prisma.customer.update({
+        where: { id: record.customerId },
+        data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null },
+      }),
+      // Burn this link and any other outstanding ones for the account.
+      prisma.passwordResetToken.updateMany({
+        where: { customerId: record.customerId, usedAt: null },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    notify(record.customerId, 'Password Changed', 'Your password was reset using the link sent to your email. If this wasn\'t you, contact support immediately.');
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('POST /auth/reset-password failed:', error);
+    res.status(500).json({ error: 'Could not reset password.' });
   }
 });
 
