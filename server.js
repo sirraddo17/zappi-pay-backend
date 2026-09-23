@@ -10,6 +10,8 @@ const supportRouter = require('./routes/support.routes');
 const notificationRouter = require('./routes/notification.routes');
 const broadcastRouter = require('./routes/broadcast.routes');
 const airtimeCashRouter = require('./routes/airtimecash.routes');
+const securityRouter = require('./routes/security.routes');
+const referralRouter = require('./routes/referral.routes');
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.use('/api', supportRouter);
 app.use('/api', notificationRouter);
 app.use('/api', broadcastRouter);
 app.use('/api', airtimeCashRouter);
+app.use('/api', securityRouter);
+app.use('/api', referralRouter);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
