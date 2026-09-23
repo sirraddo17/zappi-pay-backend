@@ -199,6 +199,28 @@ model Notification {
   @@index([customerId, createdAt])
 }
 
+// An admin-composed announcement (info, warning or maintenance
+// notice) sent to every active customer at once. Sending one fans
+// out into an ordinary Notification row per customer so it shows up
+// in the bell like any other event; showBanner additionally pins it
+// as a strip on the customer dashboard until an admin ends it
+// (active = false). recipientCount is kept for the admin's own
+// record of how many customers it reached.
+model Broadcast {
+  id               String    @id @default(cuid())
+  title            String
+  message          String
+  type             String    @default("INFO")
+  showBanner       Boolean   @default(false)
+  active           Boolean   @default(true)
+  recipientCount   Int       @default(0)
+  createdByAdminId String?
+  endedAt          DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([active, createdAt])
+}
+
 // Single row, holds the live VTpass credentials and pricing knobs so
 // they're editable from the admin panel rather than redeploying.
 // vtpassMode gates which VTpass base URL requests use — stays on
