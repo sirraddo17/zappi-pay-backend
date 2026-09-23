@@ -59,7 +59,7 @@ router.get('/admin/support/tickets', requireAdminAuth, async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         customer: { select: { id: true, name: true, phone: true } },
-        order: { select: { id: true, service: true, recipient: true, amount: true, status: true, createdAt: true } },
+        order: { select: { id: true, service: true, provider: true, recipient: true, amount: true, status: true, vtpassRequestId: true, createdAt: true } },
       },
     });
     res.json({ tickets });
@@ -82,6 +82,43 @@ router.patch('/admin/support/tickets/:id/resolve', requireAdminAuth, async (req,
   } catch (error) {
     console.error('PATCH /admin/support/tickets/:id/resolve failed:', error);
     res.status(500).json({ error: 'Could not resolve this ticket.' });
+  }
+});
+
+// Sends the admin's reply to the customer (bell notification + shown
+// under the ticket in their Profile), optionally resolving the ticket
+// at the same time. Replying again overwrites the previous reply —
+// the notification history keeps every one the customer was sent.
+router.post('/admin/support/tickets/:id/reply', requireAdminAuth, async (req, res) => {
+  try {
+    const reply = String(req.body.reply || '').trim();
+    const resolve = Boolean(req.body.resolve);
+    if (!reply) return res.status(400).json({ error: 'Reply cannot be empty.' });
+    if (reply.length > 2000) return res.status(400).json({ error: 'Reply must be 2000 characters or fewer.' });
+
+    const existing = await prisma.supportTicket.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Ticket not found.' });
+
+    const now = new Date();
+    const ticket = await prisma.supportTicket.update({
+      where: { id: existing.id },
+      data: {
+        adminReply: reply,
+        repliedAt: now,
+        ...(resolve ? { status: 'RESOLVED', resolvedAt: now } : {}),
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: { actorAdminId: req.admin.adminId, action: 'SUPPORT_REPLY_SENT', details: { ticketId: ticket.id, customerId: ticket.customerId, resolved: resolve } },
+    });
+
+    notify(ticket.customerId, resolve ? 'Support Reply (Resolved)' : 'Support Reply', reply);
+
+    res.json({ ticket });
+  } catch (error) {
+    console.error('POST /admin/support/tickets/:id/reply failed:', error);
+    res.status(500).json({ error: 'Could not send reply.' });
   }
 });
 
