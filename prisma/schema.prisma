@@ -44,12 +44,16 @@ model Customer {
   orders             Order[]
   supportTickets     SupportTicket[]
   notifications      Notification[]
+  transfersSent      Transfer[]      @relation("TransferSender")
+  transfersReceived  Transfer[]      @relation("TransferReceiver")
 }
 
 enum WalletTxType {
   FUND
   DEBIT
   REFUND
+  TRANSFER_OUT
+  TRANSFER_IN
 }
 
 enum WalletTxStatus {
@@ -149,6 +153,28 @@ model SupportTicket {
   createdAt  DateTime     @default(now())
 
   @@index([customerId, createdAt])
+}
+
+// A completed wallet-to-wallet transfer between two ZappiPay
+// customers, found by phone number or username. Kept as its own
+// record (rather than just two WalletTransaction rows) so a
+// transfer's sender and receiver can both be looked up directly —
+// the matching WalletTransaction rows (TRANSFER_OUT / TRANSFER_IN)
+// still get created too, purely so it shows up in each side's
+// ordinary transaction history the same way funding or a purchase
+// does.
+model Transfer {
+  id         String   @id @default(cuid())
+  senderId   String
+  sender     Customer @relation("TransferSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   Customer @relation("TransferReceiver", fields: [receiverId], references: [id])
+  amount     Decimal  @db.Decimal(14, 2)
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([senderId, createdAt])
+  @@index([receiverId, createdAt])
 }
 
 // A single event surfaced to a customer via the notification bell —
