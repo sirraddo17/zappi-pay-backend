@@ -246,7 +246,7 @@ router.post('/auth/forgot-password', async (req, res) => {
     await sendEmail({
       to: customer.email,
       subject: 'Reset your ZappiPay password',
-      text: `Hello ${firstName},\n\nWe received a request to reset your ZappiPay password. Open this link to choose a new one (it expires in ${RESET_TOKEN_MINUTES} minutes):\n\n${link}\n\nIf you didn't ask for this, you can ignore this email — your password won't change.\n\nZappiPay`,
+      text: `Hello ${firstName},\n\nWe received a request to reset your ZappiPay password. Open this link to choose a new one (it expires in ${RESET_TOKEN_MINUTES} minutes):\n\n${link}\n\nIf you didn't ask for this, you can ignore this email — your password won't change.\n\nNeed help? Email support@zappipay.com.ng\n\nZappiPay`,
       html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#1a1a2e">
   <h2 style="color:#863bff;margin-bottom:4px">ZAPPI PAY</h2>
   <p>Hello ${firstName},</p>
@@ -254,6 +254,7 @@ router.post('/auth/forgot-password', async (req, res) => {
   <p style="text-align:center;margin:28px 0"><a href="${link}" style="background:#863bff;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Reset password</a></p>
   <p style="font-size:13px;color:#555">Or copy this link into your browser:<br><span style="word-break:break-all">${link}</span></p>
   <p style="font-size:13px;color:#555">If you didn't ask for this, you can ignore this email — your password won't change. ZappiPay staff will never ask for your password.</p>
+  <p style="font-size:13px;color:#555">Need help? Email <a href="mailto:support@zappipay.com.ng" style="color:#863bff">support@zappipay.com.ng</a></p>
 </div>`,
     });
 
