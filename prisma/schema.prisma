@@ -44,6 +44,24 @@ model Customer {
   // tempPasswordExpiresAt even if never used.
   mustChangePassword    Boolean   @default(false)
   tempPasswordExpiresAt DateTime?
+  // 4-digit PIN (bcrypt-hashed) used to confirm purchases/transfers
+  // and for quick login on a trusted device. Five wrong tries locks
+  // the PIN for 15 minutes; a password login clears the counter.
+  pinHash           String?
+  pinFailedAttempts Int       @default(0)
+  pinLockedUntil    DateTime?
+  // Single pending WebAuthn (fingerprint / Face ID) challenge — only
+  // one ceremony per customer is ever in flight, so it lives on the
+  // row instead of a separate table.
+  webauthnChallenge        String?
+  webauthnChallengeExpires DateTime?
+  // Referral program: who invited this customer, and when the
+  // referrer's one-time bonus was paid (null = not paid yet).
+  referredById        String?
+  referredBy          Customer?  @relation("Referrals", fields: [referredById], references: [id])
+  referrals           Customer[] @relation("Referrals")
+  referralBonusPaidAt DateTime?
+  referralBonusAmount Decimal?   @db.Decimal(14, 2)
   createdAt     DateTime @default(now())
 
   walletTransactions WalletTransaction[]
@@ -54,6 +72,43 @@ model Customer {
   transfersSent      Transfer[]      @relation("TransferSender")
   transfersReceived  Transfer[]      @relation("TransferReceiver")
   airtimeCashRequests AirtimeCashRequest[]
+  trustedDevices      TrustedDevice[]
+  webauthnCredentials WebAuthnCredential[]
+}
+
+// A browser/phone where the customer turned on quick login. The raw
+// device token lives only in that browser's storage; we keep its
+// SHA-256 hash, so PIN login only works from a device the customer
+// set up themselves (a stranger can't guess PINs from elsewhere).
+model TrustedDevice {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  label      String?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  webauthnCredentials WebAuthnCredential[]
+
+  @@index([customerId])
+}
+
+// A fingerprint / Face ID passkey registered on a trusted device.
+model WebAuthnCredential {
+  id           String         @id @default(cuid())
+  customerId   String
+  customer     Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deviceId     String?
+  device       TrustedDevice? @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  credentialId String         @unique
+  publicKey    Bytes
+  counter      Int            @default(0)
+  transports   String[]
+  createdAt    DateTime       @default(now())
+  lastUsedAt   DateTime       @default(now())
+
+  @@index([customerId])
 }
 
 enum WalletTxType {
@@ -63,6 +118,7 @@ enum WalletTxType {
   TRANSFER_OUT
   TRANSFER_IN
   AIRTIME_CASH
+  REFERRAL_BONUS
 }
 
 enum WalletTxStatus {
@@ -321,6 +377,12 @@ model Settings {
   airtimeToCashFeePercent Decimal @default(20) @db.Decimal(5, 2)
   airtimeToCashMinAmount  Decimal @default(500) @db.Decimal(14, 2)
   airtimeToCashNumbers    Json    @default("{}")
+  // Referral program: fixed bonus paid to the referrer once, when the
+  // person they invited completes a first successful purchase of at
+  // least referralMinPurchase.
+  referralEnabled     Boolean @default(false)
+  referralBonusAmount Decimal @default(100) @db.Decimal(14, 2)
+  referralMinPurchase Decimal @default(500) @db.Decimal(14, 2)
   updatedAt              DateTime @updatedAt
 }
 
