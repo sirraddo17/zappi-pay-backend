@@ -141,4 +141,87 @@ router.post('/admin/wallet/:id/reject', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Looks up a ZappiPay customer by phone or username, without
+// exposing anything beyond their name — used before a transfer is
+// confirmed so the sender can see who they're actually paying.
+router.get('/wallet/lookup', requireCustomerAuth, async (req, res) => {
+  try {
+    const { identifier } = req.query;
+    if (!identifier) return res.status(400).json({ error: 'identifier is required.' });
+    const trimmed = identifier.trim();
+    const recipient = await prisma.customer.findFirst({
+      where: { OR: [{ phone: trimmed }, { username: trimmed.toLowerCase() }] },
+      select: { id: true, name: true },
+    });
+    if (!recipient || recipient.id === req.customer.customerId) {
+      return res.status(404).json({ error: 'No ZappiPay user found with that phone number or username.' });
+    }
+    res.json({ recipient });
+  } catch (error) {
+    console.error('GET /wallet/lookup failed:', error);
+    res.status(500).json({ error: 'Could not look up recipient.' });
+  }
+});
+
+// Wallet-to-wallet transfer between two ZappiPay customers. Fully
+// internal — no external payment provider involved, so this works
+// regardless of the Monnify integration's status.
+router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
+  try {
+    const { identifier, amount, note } = req.body;
+    const amountNum = Number(amount);
+    if (!identifier || !amountNum || amountNum <= 0) {
+      return res.status(400).json({ error: 'identifier and a positive amount are required.' });
+    }
+
+    const trimmed = identifier.trim();
+    const receiver = await prisma.customer.findFirst({
+      where: { OR: [{ phone: trimmed }, { username: trimmed.toLowerCase() }] },
+    });
+    if (!receiver) return res.status(404).json({ error: 'No ZappiPay user found with that phone number or username.' });
+    if (receiver.id === req.customer.customerId) {
+      return res.status(400).json({ error: 'You cannot send money to yourself.' });
+    }
+
+    const sender = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
+    if (Number(sender.walletBalance) < amountNum) {
+      return res.status(400).json({ error: 'Insufficient wallet balance.' });
+    }
+
+    const [transfer] = await prisma.$transaction([
+      prisma.transfer.create({
+        data: { senderId: sender.id, receiverId: receiver.id, amount: amountNum, note: note || undefined },
+      }),
+      prisma.customer.update({ where: { id: sender.id }, data: { walletBalance: { decrement: amountNum } } }),
+      prisma.customer.update({ where: { id: receiver.id }, data: { walletBalance: { increment: amountNum } } }),
+      prisma.walletTransaction.create({
+        data: {
+          customerId: sender.id,
+          type: 'TRANSFER_OUT',
+          amount: amountNum,
+          status: 'APPROVED',
+          note: `Sent to ${receiver.name}`,
+        },
+      }),
+      prisma.walletTransaction.create({
+        data: {
+          customerId: receiver.id,
+          type: 'TRANSFER_IN',
+          amount: amountNum,
+          status: 'APPROVED',
+          note: `Received from ${sender.name}`,
+        },
+      }),
+    ]);
+
+    notify(receiver.id, 'Money Received', `${sender.name} sent you ₦${amountNum.toLocaleString()}.`);
+    notify(sender.id, 'Money Sent', `You sent ₦${amountNum.toLocaleString()} to ${receiver.name}.`);
+
+    res.status(201).json({ transfer });
+  } catch (error) {
+    console.error('POST /wallet/transfer failed:', error);
+    res.status(500).json({ error: 'Could not complete transfer.' });
+  }
+});
+
 module.exports = router;
