@@ -28,6 +28,7 @@ model Customer {
   id            String   @id @default(cuid())
   name          String
   phone         String   @unique
+  username      String?  @unique
   email         String?  @unique
   passwordHash  String
   walletBalance Decimal  @default(0) @db.Decimal(14, 2)
