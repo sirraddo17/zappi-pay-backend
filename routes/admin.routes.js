@@ -22,7 +22,8 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 // to sandbox or back).
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
-    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount } = req.body;
+    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
+      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -42,6 +43,16 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       }
     }
 
+    if (airtimeToCashFeePercent !== undefined) {
+      const n = Number(airtimeToCashFeePercent);
+      if (!Number.isFinite(n) || n < 0 || n >= 100) {
+        return res.status(400).json({ error: 'Airtime-to-Cash fee must be at least 0 and below 100.' });
+      }
+    }
+    if (airtimeToCashNumbers !== undefined && (typeof airtimeToCashNumbers !== 'object' || airtimeToCashNumbers === null || Array.isArray(airtimeToCashNumbers))) {
+      return res.status(400).json({ error: 'airtimeToCashNumbers must be an object.' });
+    }
+
     const existing = await getSettings();
     const data = {};
     if (vtpassMode !== undefined) data.vtpassMode = vtpassMode;
@@ -56,6 +67,17 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
     if (minFundingAmount !== undefined) data.minFundingAmount = Number(minFundingAmount);
     if (minPurchaseAmount !== undefined) data.minPurchaseAmount = Number(minPurchaseAmount);
+    if (airtimeToCashEnabled !== undefined) data.airtimeToCashEnabled = Boolean(airtimeToCashEnabled);
+    if (airtimeToCashFeePercent !== undefined) data.airtimeToCashFeePercent = Number(airtimeToCashFeePercent);
+    if (airtimeToCashMinAmount !== undefined) data.airtimeToCashMinAmount = Number(airtimeToCashMinAmount);
+    if (airtimeToCashNumbers !== undefined) {
+      // Only keep networks that actually have a number filled in.
+      data.airtimeToCashNumbers = Object.fromEntries(
+        Object.entries(airtimeToCashNumbers)
+          .map(([net, num]) => [net, String(num || '').trim()])
+          .filter(([, num]) => num)
+      );
+    }
 
     const settings = await prisma.settings.update({ where: { id: existing.id }, data });
 
