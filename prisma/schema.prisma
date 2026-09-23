@@ -38,9 +38,16 @@ model Customer {
   // base64 image comfortably exceeds a normal varchar limit.
   avatarUrl     String?  @db.Text
   active        Boolean  @default(true)
+  // Set when an admin issues a temporary password (forgotten-password
+  // support). The customer is forced to choose a new password on their
+  // next login, and the temporary one stops working after
+  // tempPasswordExpiresAt even if never used.
+  mustChangePassword    Boolean   @default(false)
+  tempPasswordExpiresAt DateTime?
   createdAt     DateTime @default(now())
 
   walletTransactions WalletTransaction[]
+  passwordResetTokens PasswordResetToken[]
   orders             Order[]
   supportTickets     SupportTicket[]
   notifications      Notification[]
@@ -262,6 +269,21 @@ model AirtimeCashRequest {
 
   @@index([customerId, createdAt])
   @@index([status, createdAt])
+}
+
+// One-time "forgot password" email link. Only a SHA-256 hash of the
+// token is stored, so a database leak can't be used to reset anyone's
+// password; the raw token only ever exists in the email itself.
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId, createdAt])
 }
 
 // Single row, holds the live VTpass credentials and pricing knobs so
