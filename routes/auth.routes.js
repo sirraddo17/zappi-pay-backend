@@ -15,6 +15,7 @@ function publicCustomer(customer) {
     id: customer.id,
     name: customer.name,
     phone: customer.phone,
+    username: customer.username,
     email: customer.email,
     walletBalance: customer.walletBalance,
     avatarUrl: customer.avatarUrl,
@@ -25,14 +26,24 @@ function publicCustomer(customer) {
 
 router.post('/auth/signup', async (req, res) => {
   try {
-    const { name, phone, email, password } = req.body;
-    if (!name || !phone || !password) {
-      return res.status(400).json({ error: 'name, phone, and password are required.' });
+    const { name, phone, email, password, username } = req.body;
+    if (!name || !phone || !password || !username) {
+      return res.status(400).json({ error: 'name, phone, username, and password are required.' });
+    }
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,20}$/.test(normalizedUsername)) {
+      return res.status(400).json({ error: 'Username must be 3-20 characters, letters, numbers, and underscores only.' });
     }
 
-    const existing = await prisma.customer.findUnique({ where: { phone: phone.trim() } });
+    const existing = await prisma.customer.findFirst({
+      where: { OR: [{ phone: phone.trim() }, { username: normalizedUsername }] },
+    });
     if (existing) {
-      return res.status(409).json({ error: 'An account with this phone number already exists.' });
+      return res.status(409).json({
+        error: existing.phone === phone.trim()
+          ? 'An account with this phone number already exists.'
+          : 'This username is already taken.',
+      });
     }
 
     const passwordHash = await hashPassword(password);
@@ -40,6 +51,7 @@ router.post('/auth/signup', async (req, res) => {
       data: {
         name: name.trim(),
         phone: phone.trim(),
+        username: normalizedUsername,
         email: email ? email.trim() : undefined,
         passwordHash,
       },
@@ -55,14 +67,17 @@ router.post('/auth/signup', async (req, res) => {
 
 router.post('/auth/login', async (req, res) => {
   try {
-    const { phone, password } = req.body;
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'phone and password are required.' });
+    const { identifier, password } = req.body;
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'identifier and password are required.' });
     }
+    const trimmedIdentifier = identifier.trim();
 
-    const customer = await prisma.customer.findUnique({ where: { phone: phone.trim() } });
+    const customer = await prisma.customer.findFirst({
+      where: { OR: [{ phone: trimmedIdentifier }, { username: trimmedIdentifier.toLowerCase() }] },
+    });
     if (!customer || !(await comparePassword(password, customer.passwordHash))) {
-      return res.status(401).json({ error: 'Invalid phone number or password.' });
+      return res.status(401).json({ error: 'Invalid phone/username or password.' });
     }
     if (!customer.active) {
       return res.status(403).json({ error: 'This account has been deactivated.' });
