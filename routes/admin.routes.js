@@ -23,7 +23,8 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
-      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers } = req.body;
+      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
+      referralEnabled, referralBonusAmount, referralMinPurchase } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -53,6 +54,12 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       return res.status(400).json({ error: 'airtimeToCashNumbers must be an object.' });
     }
 
+    for (const [label, v] of [['Referral bonus', referralBonusAmount], ['Referral minimum purchase', referralMinPurchase]]) {
+      if (v !== undefined && (!Number.isFinite(Number(v)) || Number(v) < 0)) {
+        return res.status(400).json({ error: `${label} must be 0 or more.` });
+      }
+    }
+
     const existing = await getSettings();
     const data = {};
     if (vtpassMode !== undefined) data.vtpassMode = vtpassMode;
@@ -70,6 +77,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (airtimeToCashEnabled !== undefined) data.airtimeToCashEnabled = Boolean(airtimeToCashEnabled);
     if (airtimeToCashFeePercent !== undefined) data.airtimeToCashFeePercent = Number(airtimeToCashFeePercent);
     if (airtimeToCashMinAmount !== undefined) data.airtimeToCashMinAmount = Number(airtimeToCashMinAmount);
+    if (referralEnabled !== undefined) data.referralEnabled = Boolean(referralEnabled);
+    if (referralBonusAmount !== undefined) data.referralBonusAmount = Number(referralBonusAmount);
+    if (referralMinPurchase !== undefined) data.referralMinPurchase = Number(referralMinPurchase);
     if (airtimeToCashNumbers !== undefined) {
       // Only keep networks that actually have a number filled in.
       data.airtimeToCashNumbers = Object.fromEntries(
@@ -123,9 +133,19 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     const { id } = req.params;
     const customer = await prisma.customer.findUnique({
       where: { id },
-      select: { id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true },
+      select: {
+        id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
+        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true,
+        referredBy: { select: { id: true, name: true, username: true } },
+        _count: { select: { referrals: true } },
+      },
     });
     if (!customer) return res.status(404).json({ error: 'Customer not found.' });
+    // Never send the PIN hash itself — just whether one exists.
+    customer.hasPin = Boolean(customer.pinHash);
+    delete customer.pinHash;
+    customer.referralCount = customer._count.referrals;
+    delete customer._count;
 
     const [orders, walletTransactions] = await Promise.all([
       prisma.order.findMany({ where: { customerId: id }, orderBy: { createdAt: 'desc' } }),

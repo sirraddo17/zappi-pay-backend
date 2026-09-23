@@ -4,6 +4,8 @@ const prisma = require('../lib/prisma');
 const { vtpassRequest, getSettings } = require('../lib/vtpass');
 const { notify } = require('../lib/notify');
 const { computePrice } = require('../lib/pricing');
+const { confirmTransaction } = require('../lib/security');
+const { maybePayReferralBonus } = require('../lib/referral');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
@@ -155,6 +157,11 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   const settings = await getSettings();
   const { chargeAmount, discountAmount } = computePrice(baseAmount, service, settings);
 
+  // PIN or fingerprint/Face ID confirmation — checked after pricing so
+  // a bad plan/amount is reported first, but before any money moves.
+  const confirmation = await confirmTransaction(req);
+  if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
+
   let order;
   try {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
@@ -244,6 +251,8 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
 
     const savedText = discountAmount > 0 ? ` You saved ₦${Number(discountAmount).toLocaleString()} with a discount.` : '';
     notify(req.customer.customerId, 'Purchase Successful', `Your ${service} purchase of ₦${Number(chargeAmount).toLocaleString()} was successful.${savedText}`);
+
+    maybePayReferralBonus(req.customer.customerId, chargeAmount);
 
     res.status(201).json({ order: updated });
   } catch (error) {

@@ -4,6 +4,8 @@ const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 const { getSettings } = require('../lib/vtpass');
 const { notify } = require('../lib/notify');
 
+const { confirmTransaction } = require('../lib/security');
+
 const router = express.Router();
 
 // --- Customer-facing ---
@@ -182,6 +184,9 @@ router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
     if (receiver.id === req.customer.customerId) {
       return res.status(400).json({ error: 'You cannot send money to yourself.' });
     }
+
+    const confirmation = await confirmTransaction(req);
+    if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
     const sender = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     if (Number(sender.walletBalance) < amountNum) {

@@ -23,6 +23,7 @@ function publicCustomer(customer) {
     walletBalance: customer.walletBalance,
     avatarUrl: customer.avatarUrl,
     mustChangePassword: customer.mustChangePassword,
+    hasPin: Boolean(customer.pinHash),
   };
 }
 
@@ -38,7 +39,7 @@ function hashToken(token) {
 
 router.post('/auth/signup', async (req, res) => {
   try {
-    const { name, phone, email, password, username } = req.body;
+    const { name, phone, email, password, username, referralCode } = req.body;
     if (!name || !phone || !password || !username) {
       return res.status(400).json({ error: 'name, phone, username, and password are required.' });
     }
@@ -58,6 +59,17 @@ router.post('/auth/signup', async (req, res) => {
       });
     }
 
+    // Referral code = the referrer's username. An unknown code is an
+    // error (rather than silently ignored) so the new customer can fix
+    // a typo before their friend misses out on the bonus.
+    let referredById;
+    const code = String(referralCode || '').trim().toLowerCase().replace(/^@/, '');
+    if (code) {
+      const referrer = await prisma.customer.findFirst({ where: { username: code, active: true }, select: { id: true } });
+      if (!referrer) return res.status(400).json({ error: 'That referral code was not found. Check it or leave it empty.' });
+      referredById = referrer.id;
+    }
+
     const passwordHash = await hashPassword(password);
     const customer = await prisma.customer.create({
       data: {
@@ -66,6 +78,7 @@ router.post('/auth/signup', async (req, res) => {
         username: normalizedUsername,
         email: email ? email.trim() : undefined,
         passwordHash,
+        referredById,
       },
     });
 
@@ -96,6 +109,12 @@ router.post('/auth/login', async (req, res) => {
     }
     if (customer.mustChangePassword && customer.tempPasswordExpiresAt && customer.tempPasswordExpiresAt < new Date()) {
       return res.status(403).json({ error: 'Your temporary password has expired. Please contact support for a new one.' });
+    }
+
+    // A successful password login unlocks a PIN that was locked by
+    // too many wrong attempts.
+    if (customer.pinFailedAttempts || customer.pinLockedUntil) {
+      await prisma.customer.update({ where: { id: customer.id }, data: { pinFailedAttempts: 0, pinLockedUntil: null } });
     }
 
     const token = signCustomerToken(customer);
