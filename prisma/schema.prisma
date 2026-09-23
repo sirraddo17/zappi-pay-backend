@@ -156,6 +156,10 @@ model SupportTicket {
   order      Order?       @relation(fields: [orderId], references: [id])
   message    String
   status     TicketStatus @default(OPEN)
+  // The admin's written answer, sent to the customer as a
+  // notification and shown under the ticket in their Profile.
+  adminReply String?
+  repliedAt  DateTime?
   resolvedAt DateTime?
   createdAt  DateTime     @default(now())
 
