@@ -13,6 +13,7 @@ const airtimeCashRouter = require('./routes/airtimecash.routes');
 const securityRouter = require('./routes/security.routes');
 const referralRouter = require('./routes/referral.routes');
 const savedRouter = require('./routes/saved.routes');
+const bankFundingRouter = require('./routes/bankfunding.routes');
 const { startScheduler } = require('./lib/schedules');
 
 const app = express();
@@ -22,7 +23,9 @@ app.use(cors());
 // photo — raised to cover that (matched by the 2MB cap on the
 // avatar field itself in auth.routes.js) without leaving the limit
 // unbounded.
-app.use(express.json({ limit: '3mb' }));
+// rawBody is kept for webhook signature checks (the signature is over
+// the exact bytes the payment provider sent).
+app.use(express.json({ limit: '3mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-backend' }));
 
@@ -37,6 +40,7 @@ app.use('/api', airtimeCashRouter);
 app.use('/api', securityRouter);
 app.use('/api', referralRouter);
 app.use('/api', savedRouter);
+app.use('/api', bankFundingRouter);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -46,7 +50,6 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`zappi-pay-backend listening on port ${PORT}`);
-  // Runs scheduled top-ups every 5 minutes (the server is kept awake
-  // by the cron-job.org / GitHub pings).
+  // Runs scheduled top-ups when they're due (see lib/schedules.js).
   startScheduler();
 });
