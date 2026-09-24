@@ -1,4 +1,5 @@
 const express = require('express');
+const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 const { confirmTransaction } = require('../lib/security');
@@ -170,6 +171,67 @@ router.post('/admin/bank-transfers/:id/cancel', requireAdminAuth, async (req, re
     res.json({ status: result.status });
   } catch (error) {
     fail(res, error, 'Could not cancel the transfer.');
+  }
+});
+
+// --- Monnify overview & go-live reset (admin) ---------------------
+
+// Mode + payout wallet balance for the admin Overview and the test-mode
+// banner. `?light=1` skips the Monnify balance call (used on every
+// admin page just to know sandbox vs live).
+let balanceCache = { at: 0, value: null };
+router.get('/admin/monnify/overview', requireAdminAuth, async (req, res) => {
+  try {
+    const cfg = await monnify.getConfig();
+    const configured = await monnify.isConfigured();
+    const out = { configured, mode: configured ? cfg.mode : null };
+    if (req.query.light) return res.json(out);
+
+    const settings = await d.transferSettings();
+    const [accountsCount, waitingOtp, processing] = await Promise.all([
+      prisma.customer.count({ where: { bankAccountRef: { not: null } } }),
+      prisma.bankTransfer.count({ where: { status: 'PENDING_AUTHORIZATION' } }),
+      prisma.bankTransfer.count({ where: { status: 'PROCESSING' } }),
+    ]);
+    Object.assign(out, { accountsCount, waitingOtp, processing, transfersEnabled: settings.enabled, walletAccount: settings.walletAccount || null });
+
+    if (configured && settings.walletAccount) {
+      if (Date.now() - balanceCache.at < 60 * 1000 && balanceCache.key === settings.walletAccount + cfg.mode) {
+        out.walletBalance = balanceCache.value;
+      } else {
+        try {
+          const b = await monnify.api('GET', `/api/v2/disbursements/wallet-balance?accountNumber=${encodeURIComponent(settings.walletAccount)}`);
+          out.walletBalance = Number(b?.availableBalance ?? 0);
+          balanceCache = { at: Date.now(), value: out.walletBalance, key: settings.walletAccount + cfg.mode };
+        } catch (error) {
+          out.walletBalanceError = error.message;
+        }
+      }
+      // Low when it can't cover one maximum-size transfer (or ₦10,000).
+      out.lowBalanceThreshold = Math.max(10000, settings.max || 0);
+    }
+    res.json(out);
+  } catch (error) {
+    fail(res, error, 'Could not load Monnify status.');
+  }
+});
+
+// Go-live reset: sandbox account numbers stop working in live mode, so
+// clear them all. Each customer is simply asked for BVN/NIN again the
+// next time they open Wallet, and gets real account numbers.
+router.post('/admin/monnify/reset-accounts', requireAdminAuth, async (req, res) => {
+  try {
+    if (String(req.body?.confirm || '') !== 'RESET') return res.status(400).json({ error: 'Type RESET to confirm.' });
+    const r = await prisma.customer.updateMany({
+      where: { bankAccountRef: { not: null } },
+      data: { bankAccountRef: null, bankAccounts: Prisma.DbNull, kycType: null, bankAccountAt: null },
+    });
+    await prisma.auditLog.create({
+      data: { actorAdminId: req.admin.adminId, action: 'MONNIFY_ACCOUNTS_RESET', details: { cleared: r.count, mode: (await monnify.getConfig()).mode } },
+    }).catch(() => {});
+    res.json({ cleared: r.count });
+  } catch (error) {
+    fail(res, error, 'Could not reset account numbers.');
   }
 });
 
