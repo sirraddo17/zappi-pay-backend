@@ -6,7 +6,11 @@ name: Keep backend awake
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    # 06:00–23:59 Nigeria time (05–22 UTC) only, so this service uses
+    # ~560 of the workspace's 750 free Render hours a month and leaves
+    # room for other free services. At night the first visitor waits
+    # about a minute while it wakes.
+    - cron: '*/10 5-22 * * *'
   workflow_dispatch:
 
 jobs:
