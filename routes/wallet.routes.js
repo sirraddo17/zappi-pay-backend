@@ -5,6 +5,7 @@ const { getSettings } = require('../lib/vtpass');
 const { notify } = require('../lib/notify');
 
 const { confirmTransaction } = require('../lib/security');
+const { checkDailyLimit } = require('../lib/limits');
 
 const router = express.Router();
 
@@ -192,6 +193,8 @@ router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
     if (Number(sender.walletBalance) < amountNum) {
       return res.status(400).json({ error: 'Insufficient wallet balance.' });
     }
+    const limitError = await checkDailyLimit(sender, amountNum, await getSettings());
+    if (limitError) return res.status(403).json({ error: limitError, code: 'DAILY_LIMIT' });
 
     const [transfer] = await prisma.$transaction([
       prisma.transfer.create({

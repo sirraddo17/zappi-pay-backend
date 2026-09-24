@@ -70,6 +70,15 @@ model Customer {
   bankAccounts    Json?
   kycType         String?
   bankAccountAt   DateTime?
+  // Email alerts for money in/out and new logins (customer can switch
+  // off). lastLoginFingerprint spots a login from a new device.
+  emailAlerts          Boolean   @default(true)
+  lastLoginFingerprint String?
+  // "Delete my account" request; an admin completes it (the ledger is
+  // kept, personal details are wiped).
+  deletionRequestedAt DateTime?
+  deletionReason      String?
+  deletedAt           DateTime?
   createdAt     DateTime @default(now())
 
   walletTransactions WalletTransaction[]
@@ -85,6 +94,7 @@ model Customer {
   scheduledPurchases  ScheduledPurchase[]
   webauthnCredentials WebAuthnCredential[]
   bankTransfers       BankTransfer[]
+  promoRedemptions    PromoRedemption[]
 }
 
 // A browser/phone where the customer turned on quick login. The raw
@@ -130,6 +140,7 @@ enum WalletTxType {
   TRANSFER_IN
   AIRTIME_CASH
   REFERRAL_BONUS
+  CASHBACK
 }
 
 enum WalletTxStatus {
@@ -208,6 +219,11 @@ model Order {
   // Electricity only: "prepaid" / "postpaid" (sent to VTpass as
   // variation_code), kept so "Buy again" can repeat it exactly.
   meterType       String?
+  // Promo code used on this order (discount already taken off amount)
+  // and any cashback credited back after it succeeded.
+  promoCode       String?
+  promoDiscount   Decimal?     @db.Decimal(14, 2)
+  cashbackAmount  Decimal?     @db.Decimal(14, 2)
   vtpassRequestId String?      @unique
   vtpassStatus    String?
   status          OrderStatus  @default(PENDING)
@@ -420,6 +436,18 @@ model Settings {
   bankTransferMin       Decimal @default(100) @db.Decimal(14, 2)
   bankTransferMax       Decimal @default(50000) @db.Decimal(14, 2)
   bankTransferDailyMax  Decimal @default(200000) @db.Decimal(14, 2)
+  // Email alerts (off until Resend is set up and an admin turns it on).
+  emailAlertsEnabled    Boolean @default(false)
+  // Daily spending limits by verification level (verified = has done
+  // BVN/NIN). Covers purchases, ZappiPay transfers and bank transfers.
+  kycLimitsEnabled      Boolean @default(false)
+  dailyLimitUnverified  Decimal @default(50000) @db.Decimal(14, 2)
+  dailyLimitVerified    Decimal @default(1000000) @db.Decimal(14, 2)
+  // Cashback per service, e.g. { "DATA": 1 } = 1% back, capped per order.
+  cashbackEnabled          Boolean @default(false)
+  cashbackPercentByService Json    @default("{}")
+  cashbackMaxPerOrder      Decimal @default(500) @db.Decimal(14, 2)
+  supportWhatsapp          String?
   updatedAt              DateTime @updatedAt
 }
 
@@ -514,4 +542,50 @@ model BankTransfer {
 
   @@index([customerId, createdAt])
   @@index([status])
+}
+
+// Discount codes customers type at checkout, e.g. FIRST50.
+// type PERCENT (value = %, capped by maxDiscount) or FLAT (value = ₦).
+model PromoCode {
+  id               String            @id @default(cuid())
+  code             String            @unique
+  description      String?
+  type             String            @default("FLAT")
+  value            Decimal           @db.Decimal(14, 2)
+  maxDiscount      Decimal?          @db.Decimal(14, 2)
+  minAmount        Decimal           @default(0) @db.Decimal(14, 2)
+  services         String[]
+  usageLimit       Int?
+  perCustomerLimit Int               @default(1)
+  usedCount        Int               @default(0)
+  newCustomersOnly Boolean           @default(false)
+  active           Boolean           @default(true)
+  expiresAt        DateTime?
+  createdAt        DateTime          @default(now())
+  redemptions      PromoRedemption[]
+}
+
+model PromoRedemption {
+  id         String    @id @default(cuid())
+  promoId    String
+  promo      PromoCode @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orderId    String    @unique
+  discount   Decimal   @db.Decimal(14, 2)
+  createdAt  DateTime  @default(now())
+
+  @@index([promoId, customerId])
+}
+
+// Admin-posted notices, e.g. "MTN data is slow right now". service
+// null = shown everywhere; level INFO or WARNING.
+model ServiceNotice {
+  id        String    @id @default(cuid())
+  message   String
+  service   String?
+  level     String    @default("INFO")
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
 }

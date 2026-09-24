@@ -5,7 +5,7 @@ const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 // Customer statements and the admin profit dashboard.
 const router = express.Router();
 
-const CREDIT_TYPES = ['FUND', 'REFUND', 'TRANSFER_IN', 'AIRTIME_CASH', 'REFERRAL_BONUS'];
+const CREDIT_TYPES = ['FUND', 'REFUND', 'TRANSFER_IN', 'AIRTIME_CASH', 'REFERRAL_BONUS', 'CASHBACK'];
 const DEBIT_TYPES = ['DEBIT', 'TRANSFER_OUT'];
 
 // Days are grouped in Nigerian time (UTC+1).
@@ -100,7 +100,7 @@ router.get('/admin/analytics', requireAdminAuth, async (req, res) => {
     const [orders, transfers, failedOrders] = await Promise.all([
       prisma.order.findMany({
         where: { status: 'SUCCESS', createdAt: { gte: since } },
-        select: { service: true, amount: true, costAmount: true, createdAt: true },
+        select: { service: true, amount: true, costAmount: true, cashbackAmount: true, createdAt: true },
       }),
       prisma.bankTransfer.findMany({
         where: { status: 'SUCCESS', createdAt: { gte: since } },
@@ -119,7 +119,8 @@ router.get('/admin/analytics', requireAdminAuth, async (req, res) => {
 
     for (const o of orders) {
       const revenue = Number(o.amount);
-      const cost = o.costAmount == null ? revenue : Number(o.costAmount);
+      // Cashback paid back to the customer is a cost too.
+      const cost = (o.costAmount == null ? revenue : Number(o.costAmount)) + Number(o.cashbackAmount || 0);
       const day = dayMap.get(lagosDay(o.createdAt));
       if (day) {
         day.revenue += revenue;

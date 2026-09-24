@@ -93,7 +93,7 @@ router.get('/pricing', requireCustomerAuth, async (req, res) => {
 // repeat automatically — both only after a successful purchase, so a
 // failed first payment never leaves a schedule behind.
 router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
-  const { service, serviceID, variationCode, billersCode, phone, amount, meterType, saveBeneficiary, repeat } = req.body;
+  const { service, serviceID, variationCode, billersCode, phone, amount, meterType, saveBeneficiary, repeat, promoCode } = req.body;
   if (!service || !serviceID || !billersCode || !phone) {
     return res.status(400).json({ error: 'service, serviceID, billersCode, and phone are required.' });
   }
@@ -105,7 +105,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
   const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType };
-  const result = await performPurchase(req.customer.customerId, input);
+  const result = await performPurchase(req.customer.customerId, { ...input, promoCode });
 
   if (result.status === 201) {
     const extras = {};

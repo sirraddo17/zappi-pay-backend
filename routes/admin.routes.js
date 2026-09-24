@@ -26,7 +26,8 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
-      monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax } = req.body;
+      monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -64,6 +65,18 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
 
     for (const [label, v] of [['Bank transfer fee', bankTransferFee], ['Minimum transfer', bankTransferMin], ['Maximum transfer', bankTransferMax], ['Daily transfer limit', bankTransferDailyMax]]) {
       if (v !== undefined && (!Number.isFinite(Number(v)) || Number(v) < 0)) return res.status(400).json({ error: `${label} must be 0 or more.` });
+    }
+    for (const [label, v] of [['Unverified daily limit', dailyLimitUnverified], ['Verified daily limit', dailyLimitVerified], ['Cashback cap', cashbackMaxPerOrder]]) {
+      if (v !== undefined && (!Number.isFinite(Number(v)) || Number(v) < 0)) return res.status(400).json({ error: `${label} must be 0 or more.` });
+    }
+    if (cashbackPercentByService !== undefined) {
+      if (typeof cashbackPercentByService !== 'object' || cashbackPercentByService === null || Array.isArray(cashbackPercentByService)) {
+        return res.status(400).json({ error: 'cashbackPercentByService must be an object.' });
+      }
+      for (const [svc, pct] of Object.entries(cashbackPercentByService)) {
+        const n = Number(pct);
+        if (!Number.isFinite(n) || n < 0 || n > 20) return res.status(400).json({ error: `Cashback for ${svc} must be between 0 and 20%.` });
+      }
     }
     if (monnifyMode !== undefined && !['sandbox', 'live'].includes(monnifyMode)) {
       return res.status(400).json({ error: 'monnifyMode must be "sandbox" or "live".' });
@@ -108,6 +121,20 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (bankTransferMin !== undefined) data.bankTransferMin = Number(bankTransferMin);
     if (bankTransferMax !== undefined) data.bankTransferMax = Number(bankTransferMax);
     if (bankTransferDailyMax !== undefined) data.bankTransferDailyMax = Number(bankTransferDailyMax);
+    if (emailAlertsEnabled !== undefined) data.emailAlertsEnabled = Boolean(emailAlertsEnabled);
+    if (kycLimitsEnabled !== undefined) data.kycLimitsEnabled = Boolean(kycLimitsEnabled);
+    if (dailyLimitUnverified !== undefined) data.dailyLimitUnverified = Number(dailyLimitUnverified);
+    if (dailyLimitVerified !== undefined) data.dailyLimitVerified = Number(dailyLimitVerified);
+    if (cashbackEnabled !== undefined) data.cashbackEnabled = Boolean(cashbackEnabled);
+    if (cashbackPercentByService !== undefined) {
+      data.cashbackPercentByService = Object.fromEntries(Object.entries(cashbackPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
+    }
+    if (cashbackMaxPerOrder !== undefined) data.cashbackMaxPerOrder = Number(cashbackMaxPerOrder);
+    if (supportWhatsapp !== undefined) {
+      let n = String(supportWhatsapp).replace(/\D/g, '');
+      if (n.startsWith('0')) n = `234${n.slice(1)}`;
+      data.supportWhatsapp = n || null;
+    }
     if (airtimeToCashNumbers !== undefined) {
       // Only keep networks that actually have a number filled in.
       data.airtimeToCashNumbers = Object.fromEntries(
@@ -172,7 +199,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
       where: { id },
       select: {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
-        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true,
+        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true,
         referredBy: { select: { id: true, name: true, username: true } },
         _count: { select: { referrals: true } },
       },

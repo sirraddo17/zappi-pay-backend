@@ -24,6 +24,9 @@ function publicCustomer(customer) {
     avatarUrl: customer.avatarUrl,
     mustChangePassword: customer.mustChangePassword,
     hasPin: Boolean(customer.pinHash),
+    verified: Boolean(customer.kycType),
+    emailAlerts: customer.emailAlerts !== false,
+    deletionRequestedAt: customer.deletionRequestedAt || null,
   };
 }
 
@@ -115,6 +118,18 @@ router.post('/auth/login', async (req, res) => {
     // too many wrong attempts.
     if (customer.pinFailedAttempts || customer.pinLockedUntil) {
       await prisma.customer.update({ where: { id: customer.id }, data: { pinFailedAttempts: 0, pinLockedUntil: null } });
+    }
+
+    // New-device alert: a password login from a browser/phone we
+    // haven't seen for this account before.
+    const fingerprint = require('crypto').createHash('sha256').update(String(req.headers['user-agent'] || 'unknown')).digest('hex').slice(0, 32);
+    if (customer.lastLoginFingerprint !== fingerprint) {
+      if (customer.lastLoginFingerprint) {
+        const ua = String(req.headers['user-agent'] || '');
+        const device = /iphone|ipad/i.test(ua) ? 'an iPhone/iPad' : /android/i.test(ua) ? 'an Android phone' : /windows/i.test(ua) ? 'a Windows computer' : /mac os/i.test(ua) ? 'a Mac' : 'a new device';
+        notify(customer.id, 'New Login', `Your ZappiPay account was just logged into from ${device} (${new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}). If this wasn't you, change your password now.`);
+      }
+      prisma.customer.update({ where: { id: customer.id }, data: { lastLoginFingerprint: fingerprint } }).catch(() => {});
     }
 
     const token = signCustomerToken(customer);
