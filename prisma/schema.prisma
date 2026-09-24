@@ -84,6 +84,7 @@ model Customer {
   beneficiaries       Beneficiary[]
   scheduledPurchases  ScheduledPurchase[]
   webauthnCredentials WebAuthnCredential[]
+  bankTransfers       BankTransfer[]
 }
 
 // A browser/phone where the customer turned on quick login. The raw
@@ -410,6 +411,15 @@ model Settings {
   monnifyApiKey       String?
   monnifySecretKey    String?
   monnifyContractCode String?
+  // Send to Bank (Monnify disbursement). Off until an admin turns it on.
+  // monnifyWalletAccount is the Monnify wallet account number money is
+  // sent from. Fee is a flat ₦ amount the customer pays per transfer.
+  monnifyWalletAccount  String?
+  bankTransferEnabled   Boolean @default(false)
+  bankTransferFee       Decimal @default(0) @db.Decimal(14, 2)
+  bankTransferMin       Decimal @default(100) @db.Decimal(14, 2)
+  bankTransferMax       Decimal @default(50000) @db.Decimal(14, 2)
+  bankTransferDailyMax  Decimal @default(200000) @db.Decimal(14, 2)
   updatedAt              DateTime @updatedAt
 }
 
@@ -476,4 +486,32 @@ model ScheduledPurchase {
 
   @@index([active, nextRunAt])
   @@index([customerId])
+}
+
+// A customer's transfer from their wallet to a bank account (Monnify
+// disbursement). The wallet is debited (amount + fee) before Monnify is
+// called; a FAILED / REVERSED / EXPIRED result refunds it exactly once.
+// Status: PROCESSING | PENDING_AUTHORIZATION | SUCCESS | FAILED | REVERSED
+model BankTransfer {
+  id             String    @id @default(cuid())
+  customerId     String
+  customer       Customer  @relation(fields: [customerId], references: [id])
+  amount         Decimal   @db.Decimal(14, 2)
+  fee            Decimal   @default(0) @db.Decimal(14, 2)
+  bankCode       String
+  bankName       String?
+  accountNumber  String
+  accountName    String
+  narration      String?
+  reference      String    @unique
+  status         String    @default("PROCESSING")
+  providerStatus String?
+  failureReason  String?
+  refundedAt     DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([customerId, createdAt])
+  @@index([status])
 }

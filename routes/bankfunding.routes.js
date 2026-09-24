@@ -84,6 +84,15 @@ router.post('/webhooks/monnify', async (req, res) => {
       const result = await monnify.creditFromTransaction(eventData.transactionReference);
       console.log('Monnify webhook:', eventData.transactionReference, JSON.stringify(result));
     }
+    // Send-to-Bank results. The body is only a hint — refreshStatus asks
+    // Monnify's API for the real status before anything is refunded.
+    if (/_DISBURSEMENT$/.test(String(eventType || '')) && eventData?.reference) {
+      const transfer = await prisma.bankTransfer.findUnique({ where: { reference: String(eventData.reference) } });
+      if (transfer) {
+        const result = await require('../lib/disbursement').refreshStatus(transfer);
+        console.log('Monnify disbursement webhook:', transfer.reference, eventType, JSON.stringify(result));
+      }
+    }
     res.json({ ok: true });
   } catch (error) {
     console.error('POST /webhooks/monnify failed:', error.message);

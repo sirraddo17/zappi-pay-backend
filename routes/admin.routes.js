@@ -25,7 +25,8 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
-      monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode } = req.body;
+      monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
+      monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -61,6 +62,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       }
     }
 
+    for (const [label, v] of [['Bank transfer fee', bankTransferFee], ['Minimum transfer', bankTransferMin], ['Maximum transfer', bankTransferMax], ['Daily transfer limit', bankTransferDailyMax]]) {
+      if (v !== undefined && (!Number.isFinite(Number(v)) || Number(v) < 0)) return res.status(400).json({ error: `${label} must be 0 or more.` });
+    }
     if (monnifyMode !== undefined && !['sandbox', 'live'].includes(monnifyMode)) {
       return res.status(400).json({ error: 'monnifyMode must be "sandbox" or "live".' });
     }
@@ -98,6 +102,12 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (monnifyApiKey !== undefined) data.monnifyApiKey = String(monnifyApiKey).trim() || null;
     if (monnifySecretKey !== undefined) data.monnifySecretKey = String(monnifySecretKey).trim() || null;
     if (monnifyContractCode !== undefined) data.monnifyContractCode = String(monnifyContractCode).trim() || null;
+    if (monnifyWalletAccount !== undefined) data.monnifyWalletAccount = String(monnifyWalletAccount).replace(/\D/g, '') || null;
+    if (bankTransferEnabled !== undefined) data.bankTransferEnabled = Boolean(bankTransferEnabled);
+    if (bankTransferFee !== undefined) data.bankTransferFee = Number(bankTransferFee);
+    if (bankTransferMin !== undefined) data.bankTransferMin = Number(bankTransferMin);
+    if (bankTransferMax !== undefined) data.bankTransferMax = Number(bankTransferMax);
+    if (bankTransferDailyMax !== undefined) data.bankTransferDailyMax = Number(bankTransferDailyMax);
     if (airtimeToCashNumbers !== undefined) {
       // Only keep networks that actually have a number filled in.
       data.airtimeToCashNumbers = Object.fromEntries(
