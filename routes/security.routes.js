@@ -127,7 +127,7 @@ router.post('/security/webauthn/register-options', requireCustomerAuth, async (r
     const device = await currentDevice(req);
     if (!device) return res.status(400).json({ error: 'Turn on quick login for this device first.' });
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
-    res.json({ options: await sec.registrationOptions(req, customer, device) });
+    res.json({ options: await sec.registrationOptions(req, customer, device, { compat: Boolean(req.body?.compat) }) });
   } catch (error) {
     console.error('POST /security/webauthn/register-options failed:', error);
     res.status(500).json({ error: 'Could not start fingerprint / Face ID setup.' });
