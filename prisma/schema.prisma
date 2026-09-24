@@ -62,6 +62,14 @@ model Customer {
   referrals           Customer[] @relation("Referrals")
   referralBonusPaidAt DateTime?
   referralBonusAmount Decimal?   @db.Decimal(14, 2)
+  // Personal bank account number for automatic wallet funding
+  // (payment provider "reserved account"). The BVN/NIN used to create
+  // it is sent to the provider only — never stored here; kycType just
+  // records which one was used.
+  bankAccountRef  String?   @unique
+  bankAccounts    Json?
+  kycType         String?
+  bankAccountAt   DateTime?
   createdAt     DateTime @default(now())
 
   walletTransactions WalletTransaction[]
@@ -146,6 +154,10 @@ model WalletTransaction {
   note               String?
   reviewedByAdminId  String?
   reviewedAt         DateTime?
+  // Payment provider's transaction reference for automatic bank
+  // funding. Unique, so the same payment can never be credited twice
+  // (webhook retries, the "check now" button and the webhook racing).
+  providerRef        String?        @unique
   createdAt          DateTime       @default(now())
 
   @@index([customerId, createdAt])
@@ -388,6 +400,10 @@ model Settings {
   referralEnabled     Boolean @default(false)
   referralBonusAmount Decimal @default(100) @db.Decimal(14, 2)
   referralMinPurchase Decimal @default(500) @db.Decimal(14, 2)
+  // Fee kept from automatic bank-transfer funding: percent of the
+  // amount, capped at bankFundingFeeCap (0 = no cap). Both 0 = free.
+  bankFundingFeePercent Decimal @default(0) @db.Decimal(5, 2)
+  bankFundingFeeCap     Decimal @default(0) @db.Decimal(14, 2)
   updatedAt              DateTime @updatedAt
 }
 
