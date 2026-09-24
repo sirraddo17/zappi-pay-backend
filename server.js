@@ -15,6 +15,7 @@ const referralRouter = require('./routes/referral.routes');
 const savedRouter = require('./routes/saved.routes');
 const bankFundingRouter = require('./routes/bankfunding.routes');
 const bankTransferRouter = require('./routes/banktransfer.routes');
+const reportsRouter = require('./routes/reports.routes');
 const { startScheduler } = require('./lib/schedules');
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api', referralRouter);
 app.use('/api', savedRouter);
 app.use('/api', bankFundingRouter);
 app.use('/api', bankTransferRouter);
+app.use('/api', reportsRouter);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
