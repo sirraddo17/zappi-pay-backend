@@ -27,7 +27,8 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp } = req.body;
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp,
+      agentPricingEnabled, agentDiscountPercentByService } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -76,6 +77,15 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       for (const [svc, pct] of Object.entries(cashbackPercentByService)) {
         const n = Number(pct);
         if (!Number.isFinite(n) || n < 0 || n > 20) return res.status(400).json({ error: `Cashback for ${svc} must be between 0 and 20%.` });
+      }
+    }
+    if (agentDiscountPercentByService !== undefined) {
+      if (typeof agentDiscountPercentByService !== 'object' || agentDiscountPercentByService === null || Array.isArray(agentDiscountPercentByService)) {
+        return res.status(400).json({ error: 'agentDiscountPercentByService must be an object.' });
+      }
+      for (const [svc, pct] of Object.entries(agentDiscountPercentByService)) {
+        const n = Number(pct);
+        if (!Number.isFinite(n) || n < 0 || n > 50) return res.status(400).json({ error: `Agent discount for ${svc} must be between 0 and 50%.` });
       }
     }
     if (monnifyMode !== undefined && !['sandbox', 'live'].includes(monnifyMode)) {
@@ -130,6 +140,10 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data.cashbackPercentByService = Object.fromEntries(Object.entries(cashbackPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
     }
     if (cashbackMaxPerOrder !== undefined) data.cashbackMaxPerOrder = Number(cashbackMaxPerOrder);
+    if (agentPricingEnabled !== undefined) data.agentPricingEnabled = Boolean(agentPricingEnabled);
+    if (agentDiscountPercentByService !== undefined) {
+      data.agentDiscountPercentByService = Object.fromEntries(Object.entries(agentDiscountPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
+    }
     if (supportWhatsapp !== undefined) {
       let n = String(supportWhatsapp).replace(/\D/g, '');
       if (n.startsWith('0')) n = `234${n.slice(1)}`;
@@ -199,7 +213,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
       where: { id },
       select: {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
-        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true,
+        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true,
         referredBy: { select: { id: true, name: true, username: true } },
         _count: { select: { referrals: true } },
       },

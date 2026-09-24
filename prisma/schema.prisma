@@ -72,6 +72,11 @@ model Customer {
   bankAccountAt   DateTime?
   // Email alerts for money in/out and new logins (customer can switch
   // off). lastLoginFingerprint spots a login from a new device.
+  // Agent / reseller: buys at agent prices (extra admin-set discount)
+  // once an admin approves them.
+  isAgent             Boolean   @default(false)
+  agentRequestedAt    DateTime?
+  agentBusinessName   String?
   emailAlerts          Boolean   @default(true)
   lastLoginFingerprint String?
   // "Delete my account" request; an admin completes it (the ledger is
@@ -448,6 +453,10 @@ model Settings {
   cashbackPercentByService Json    @default("{}")
   cashbackMaxPerOrder      Decimal @default(500) @db.Decimal(14, 2)
   supportWhatsapp          String?
+  // Agent pricing: extra % off per service for approved agents, on top
+  // of any normal discount, e.g. { "DATA": 3, "AIRTIME": 2 }.
+  agentPricingEnabled          Boolean @default(false)
+  agentDiscountPercentByService Json   @default("{}")
   updatedAt              DateTime @updatedAt
 }
 

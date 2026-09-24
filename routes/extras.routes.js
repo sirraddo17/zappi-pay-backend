@@ -92,6 +92,65 @@ router.delete('/account/delete-request', requireCustomerAuth, async (req, res) =
   }
 });
 
+// --- Agents -------------------------------------------------------
+
+router.get('/agent/info', requireCustomerAuth, async (req, res) => {
+  try {
+    const [settings, customer] = await Promise.all([
+      getSettings(),
+      prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true, agentRequestedAt: true, agentBusinessName: true } }),
+    ]);
+    res.json({ enabled: Boolean(settings.agentPricingEnabled), rates: settings.agentPricingEnabled ? settings.agentDiscountPercentByService || {} : {}, ...customer });
+  } catch (error) {
+    console.error('GET /agent/info failed:', error);
+    res.status(500).json({ error: 'Could not load agent info.' });
+  }
+});
+
+router.post('/agent/request', requireCustomerAuth, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    if (!settings.agentPricingEnabled) return res.status(400).json({ error: 'Agent accounts are not open right now.' });
+    const businessName = String(req.body?.businessName || '').trim().slice(0, 80);
+    if (!businessName) return res.status(400).json({ error: 'Enter your business or shop name.' });
+    await prisma.customer.update({ where: { id: req.customer.customerId }, data: { agentRequestedAt: new Date(), agentBusinessName: businessName } });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('POST /agent/request failed:', error);
+    res.status(500).json({ error: 'Could not send your request.' });
+  }
+});
+
+router.get('/admin/agent-requests', requireAdminAuth, async (req, res) => {
+  try {
+    const customers = await prisma.customer.findMany({
+      where: { agentRequestedAt: { not: null }, isAgent: false, deletedAt: null },
+      select: { id: true, name: true, phone: true, agentBusinessName: true, agentRequestedAt: true, kycType: true },
+      orderBy: { agentRequestedAt: 'asc' },
+    });
+    res.json({ customers });
+  } catch (error) {
+    console.error('GET /admin/agent-requests failed:', error);
+    res.status(500).json({ error: 'Could not load agent requests.' });
+  }
+});
+
+router.post('/admin/customers/:id/agent', requireAdminAuth, async (req, res) => {
+  try {
+    const isAgent = Boolean(req.body?.isAgent);
+    const c = await prisma.customer.update({
+      where: { id: req.params.id },
+      data: isAgent ? { isAgent: true } : { isAgent: false, agentRequestedAt: null },
+    });
+    await audit(req, isAgent ? 'AGENT_APPROVED' : 'AGENT_REMOVED', { customerId: c.id, name: c.name });
+    if (isAgent) require('../lib/notify').notify(c.id, 'Agent Account Approved', 'You are now a ZappiPay agent. Agent prices are applied automatically when you buy.');
+    res.json({ isAgent: c.isAgent });
+  } catch (error) {
+    console.error('POST /admin/customers/:id/agent failed:', error);
+    res.status(500).json({ error: 'Could not update agent status.' });
+  }
+});
+
 router.get('/promo/check', requireCustomerAuth, async (req, res) => {
   try {
     const amount = Number(req.query.amount || 0);

@@ -75,10 +75,13 @@ router.get('/vtpass/verify', requireCustomerAuth, async (req, res) => {
 // route still recomputes the price itself — this is display only.
 router.get('/pricing', requireCustomerAuth, async (req, res) => {
   try {
-    const settings = await getSettings();
+    const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true } });
+    const raw = await getSettings();
+    const settings = require('../lib/pricing').settingsForCustomer(raw, customer);
     res.json({
       markupPercentByService: settings.markupPercentByService || {},
       discountPercentByService: settings.discountPercentByService || {},
+      agentPricing: settings !== raw,
     });
   } catch (error) {
     console.error('GET /pricing failed:', error);

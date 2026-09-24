@@ -27,6 +27,8 @@ function publicCustomer(customer) {
     verified: Boolean(customer.kycType),
     emailAlerts: customer.emailAlerts !== false,
     deletionRequestedAt: customer.deletionRequestedAt || null,
+    isAgent: Boolean(customer.isAgent),
+    agentRequestedAt: customer.agentRequestedAt || null,
   };
 }
 
