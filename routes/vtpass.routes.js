@@ -1,22 +1,12 @@
 const express = require('express');
-const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { vtpassRequest, getSettings } = require('../lib/vtpass');
-const { notify } = require('../lib/notify');
-const { computePrice } = require('../lib/pricing');
 const { confirmTransaction } = require('../lib/security');
-const { maybePayReferralBonus } = require('../lib/referral');
+const { performPurchase } = require('../lib/purchase');
+const { FREQUENCIES, createSchedule, upsertBeneficiary } = require('../lib/schedules');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
-
-function generateRequestId() {
-  // VTpass wants something unique and roughly time-ordered; this is
-  // their own documented convention (date/time prefix + random suffix).
-  const now = new Date();
-  const stamp = now.toISOString().replace(/[-:T.Z]/g, '').slice(0, 12);
-  return `${stamp}${crypto.randomBytes(4).toString('hex')}`;
-}
 
 // --- Catalog & verification (read-only, proxied straight to VTpass) ---
 // These don't touch the wallet or Order table at all — just pass VTpass's
@@ -97,182 +87,40 @@ router.get('/pricing', requireCustomerAuth, async (req, res) => {
 });
 
 // --- Purchase ---
-// Reserve-then-commit: the wallet is debited and the Order row created
-// as PENDING in one Prisma transaction *before* VTpass is ever called,
-// so a crash mid-request can never leave money unaccounted for. If the
-// VTpass call then fails or comes back declined, the debit is reversed
-// with a REFUND transaction. This is deliberately two separate
-// transactions (debit, then refund-if-needed) rather than one, because
-// the VTpass call in between is a real network request Prisma can't
-// hold a DB transaction open across safely.
+// The purchase itself lives in lib/purchase.js (shared with scheduled
+// top-ups). This route adds the PIN / biometric check and, optionally,
+// saves the recipient as a beneficiary and/or sets the purchase to
+// repeat automatically — both only after a successful purchase, so a
+// failed first payment never leaves a schedule behind.
 router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
-  const { service, serviceID, variationCode, billersCode, phone, amount } = req.body;
-
+  const { service, serviceID, variationCode, billersCode, phone, amount, meterType, saveBeneficiary, repeat } = req.body;
   if (!service || !serviceID || !billersCode || !phone) {
     return res.status(400).json({ error: 'service, serviceID, billersCode, and phone are required.' });
   }
-
-  if (!variationCode) {
-    const settings = await getSettings();
-    const minPurchase = Number(settings.minPurchaseAmount);
-    if (!amount || Number(amount) < minPurchase) {
-      return res.status(400).json({ error: `Minimum purchase amount is ₦${minPurchase}.` });
-    }
+  if (repeat && !FREQUENCIES.includes(repeat.frequency)) {
+    return res.status(400).json({ error: 'Choose how often to repeat: daily, weekly or monthly.' });
   }
 
-  // Data/cable/education plans have a fixed VTpass price tied to their
-  // variation code — looked up here rather than trusted from the
-  // client, so a customer can't claim a cheaper price for a plan than
-  // VTpass actually charges. Airtime/electricity have no such fixed
-  // price (the customer picks the amount), so those still come from
-  // the request body.
-  let baseAmount;
-  if (variationCode) {
-    try {
-      const variationsData = await vtpassRequest('GET', '/service-variations', { query: { serviceID } });
-      const variations = variationsData?.content?.varations || variationsData?.content?.variations || [];
-      const match = variations.find((v) => v.variation_code === variationCode);
-      if (!match) return res.status(400).json({ error: 'Unknown variation for this service.' });
-      baseAmount = Number(match.variation_amount);
-    } catch (error) {
-      console.error('POST /vtpass/purchase (variation lookup) failed:', error);
-      return res.status(502).json({ error: 'Could not verify plan pricing with VTpass.' });
-    }
-  } else {
-    baseAmount = Number(amount);
-  }
-  if (!baseAmount || baseAmount <= 0) {
-    return res.status(400).json({ error: 'A positive amount is required.' });
-  }
-
-  // Markup is added on top of the verified base price to get what the
-  // customer's wallet is actually charged; VTpass itself is still paid
-  // the base amount below, since that's what determines what the
-  // customer receives (airtime credited, data allocated, etc.) — the
-  // markup is our margin, not part of what VTpass processes.
-  //
-  // Any admin-set discount for this service is then taken off that
-  // marked-up price (see lib/pricing.js) — also only affects what the
-  // wallet is charged, never what VTpass is sent.
-  const settings = await getSettings();
-  const { chargeAmount, discountAmount } = computePrice(baseAmount, service, settings);
-
-  // PIN or fingerprint/Face ID confirmation — checked after pricing so
-  // a bad plan/amount is reported first, but before any money moves.
   const confirmation = await confirmTransaction(req);
   if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
-  let order;
-  try {
-    const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
-    if (!customer) return res.status(404).json({ error: 'Account not found.' });
-    if (Number(customer.walletBalance) < chargeAmount) {
-      return res.status(402).json({ error: 'Insufficient wallet balance.' });
+  const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType };
+  const result = await performPurchase(req.customer.customerId, input);
+
+  if (result.status === 201) {
+    const extras = {};
+    if (saveBeneficiary) {
+      extras.beneficiary = await upsertBeneficiary(req.customer.customerId, {
+        service, serviceID, billersCode, meterType, nickname: saveBeneficiary.nickname,
+      }).catch((e) => { console.error('save beneficiary failed:', e); return null; });
     }
-
-    const requestId = generateRequestId();
-
-    const result = await prisma.$transaction([
-      prisma.customer.update({
-        where: { id: customer.id },
-        data: { walletBalance: { decrement: chargeAmount } },
-      }),
-      prisma.walletTransaction.create({
-        data: {
-          customerId: customer.id,
-          type: 'DEBIT',
-          amount: chargeAmount,
-          status: 'APPROVED',
-          note: `${service} purchase`,
-        },
-      }),
-      prisma.order.create({
-        data: {
-          customerId: customer.id,
-          service,
-          provider: serviceID,
-          variationCode: variationCode || undefined,
-          recipient: billersCode,
-          amount: chargeAmount,
-          costAmount: baseAmount,
-          discountAmount: discountAmount > 0 ? discountAmount : undefined,
-          vtpassRequestId: requestId,
-          status: 'PENDING',
-        },
-      }),
-    ]);
-    order = result[2];
-  } catch (error) {
-    console.error('POST /vtpass/purchase (reserve) failed:', error);
-    return res.status(500).json({ error: 'Could not reserve funds for this purchase.' });
-  }
-
-  try {
-    const vtpassResponse = await vtpassRequest('POST', '/pay', {
-      body: {
-        request_id: order.vtpassRequestId,
-        serviceID,
-        billersCode,
-        variation_code: variationCode || undefined,
-        amount: baseAmount,
-        phone,
-      },
-    });
-
-    const status = vtpassResponse?.content?.transactions?.status || (vtpassResponse.code === '000' ? 'delivered' : 'failed');
-    const succeeded = status === 'delivered' || vtpassResponse.code === '000';
-
-    const updated = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: succeeded ? 'SUCCESS' : 'FAILED',
-        vtpassStatus: status,
-        responsePayload: vtpassResponse,
-      },
-    });
-
-    if (!succeeded) {
-      console.error('POST /vtpass/purchase (not delivered):', status, JSON.stringify(vtpassResponse, null, 2));
-      await prisma.$transaction([
-        prisma.customer.update({ where: { id: req.customer.customerId }, data: { walletBalance: { increment: chargeAmount } } }),
-        prisma.walletTransaction.create({
-          data: {
-            customerId: req.customer.customerId,
-            type: 'REFUND',
-            amount: chargeAmount,
-            status: 'APPROVED',
-            note: `Refund for failed ${service} purchase`,
-          },
-        }),
-      ]);
-      notify(req.customer.customerId, 'Purchase Failed', `Your ${service} purchase failed and ₦${Number(chargeAmount).toLocaleString()} was refunded to your wallet.`);
-      return res.status(502).json({ error: 'Purchase was not successful. You have been refunded.', order: updated });
+    if (repeat) {
+      extras.schedule = await createSchedule(req.customer.customerId, { ...input, frequency: repeat.frequency, nickname: repeat.nickname })
+        .catch((e) => { console.error('create schedule failed:', e); return null; });
     }
-
-    const savedText = discountAmount > 0 ? ` You saved ₦${Number(discountAmount).toLocaleString()} with a discount.` : '';
-    notify(req.customer.customerId, 'Purchase Successful', `Your ${service} purchase of ₦${Number(chargeAmount).toLocaleString()} was successful.${savedText}`);
-
-    maybePayReferralBonus(req.customer.customerId, chargeAmount);
-
-    res.status(201).json({ order: updated });
-  } catch (error) {
-    console.error('POST /vtpass/purchase (VTpass call) failed:', error);
-    await prisma.order.update({ where: { id: order.id }, data: { status: 'FAILED' } });
-    await prisma.$transaction([
-      prisma.customer.update({ where: { id: req.customer.customerId }, data: { walletBalance: { increment: chargeAmount } } }),
-      prisma.walletTransaction.create({
-        data: {
-          customerId: req.customer.customerId,
-          type: 'REFUND',
-          amount: chargeAmount,
-          status: 'APPROVED',
-          note: `Refund for failed ${service} purchase`,
-        },
-      }),
-    ]);
-    notify(req.customer.customerId, 'Purchase Failed', `Your ${service} purchase couldn't be completed and ₦${Number(chargeAmount).toLocaleString()} was refunded to your wallet.`);
-    res.status(502).json({ error: 'Could not reach VTpass. You have been refunded.' });
+    return res.status(201).json({ ...result.body, ...extras });
   }
+  res.status(result.status).json(result.body);
 });
 
 router.get('/orders', requireCustomerAuth, async (req, res) => {
