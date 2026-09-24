@@ -24,7 +24,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
-      referralEnabled, referralBonusAmount, referralMinPurchase } = req.body;
+      referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -60,6 +60,14 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       }
     }
 
+    if (bankFundingFeePercent !== undefined) {
+      const n = Number(bankFundingFeePercent);
+      if (!Number.isFinite(n) || n < 0 || n > 10) return res.status(400).json({ error: 'Bank funding fee must be between 0 and 10%.' });
+    }
+    if (bankFundingFeeCap !== undefined && (!Number.isFinite(Number(bankFundingFeeCap)) || Number(bankFundingFeeCap) < 0)) {
+      return res.status(400).json({ error: 'Bank funding fee cap must be 0 or more.' });
+    }
+
     const existing = await getSettings();
     const data = {};
     if (vtpassMode !== undefined) data.vtpassMode = vtpassMode;
@@ -80,6 +88,8 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (referralEnabled !== undefined) data.referralEnabled = Boolean(referralEnabled);
     if (referralBonusAmount !== undefined) data.referralBonusAmount = Number(referralBonusAmount);
     if (referralMinPurchase !== undefined) data.referralMinPurchase = Number(referralMinPurchase);
+    if (bankFundingFeePercent !== undefined) data.bankFundingFeePercent = Number(bankFundingFeePercent);
+    if (bankFundingFeeCap !== undefined) data.bankFundingFeeCap = Number(bankFundingFeeCap);
     if (airtimeToCashNumbers !== undefined) {
       // Only keep networks that actually have a number filled in.
       data.airtimeToCashNumbers = Object.fromEntries(
@@ -135,7 +145,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
       where: { id },
       select: {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
-        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true,
+        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true,
         referredBy: { select: { id: true, name: true, username: true } },
         _count: { select: { referrals: true } },
       },
