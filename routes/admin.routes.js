@@ -24,7 +24,8 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
-      referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap } = req.body;
+      referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
+      monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -60,6 +61,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       }
     }
 
+    if (monnifyMode !== undefined && !['sandbox', 'live'].includes(monnifyMode)) {
+      return res.status(400).json({ error: 'monnifyMode must be "sandbox" or "live".' });
+    }
     if (bankFundingFeePercent !== undefined) {
       const n = Number(bankFundingFeePercent);
       if (!Number.isFinite(n) || n < 0 || n > 10) return res.status(400).json({ error: 'Bank funding fee must be between 0 and 10%.' });
@@ -90,6 +94,10 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (referralMinPurchase !== undefined) data.referralMinPurchase = Number(referralMinPurchase);
     if (bankFundingFeePercent !== undefined) data.bankFundingFeePercent = Number(bankFundingFeePercent);
     if (bankFundingFeeCap !== undefined) data.bankFundingFeeCap = Number(bankFundingFeeCap);
+    if (monnifyMode !== undefined) data.monnifyMode = monnifyMode;
+    if (monnifyApiKey !== undefined) data.monnifyApiKey = String(monnifyApiKey).trim() || null;
+    if (monnifySecretKey !== undefined) data.monnifySecretKey = String(monnifySecretKey).trim() || null;
+    if (monnifyContractCode !== undefined) data.monnifyContractCode = String(monnifyContractCode).trim() || null;
     if (airtimeToCashNumbers !== undefined) {
       // Only keep networks that actually have a number filled in.
       data.airtimeToCashNumbers = Object.fromEntries(
@@ -118,6 +126,15 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('PATCH /admin/settings failed:', error);
     res.status(500).json({ error: 'Could not update settings.' });
+  }
+});
+
+router.post('/admin/monnify/test', requireAdminAuth, async (req, res) => {
+  try {
+    res.json(await require('../lib/monnify').testConnection());
+  } catch (error) {
+    console.error('POST /admin/monnify/test failed:', error);
+    res.status(500).json({ error: 'Could not test the connection.' });
   }
 });
 

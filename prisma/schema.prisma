@@ -404,6 +404,12 @@ model Settings {
   // amount, capped at bankFundingFeeCap (0 = no cap). Both 0 = free.
   bankFundingFeePercent Decimal @default(0) @db.Decimal(5, 2)
   bankFundingFeeCap     Decimal @default(0) @db.Decimal(14, 2)
+  // Monnify keys set from Admin → Settings. When the API key here is
+  // empty, the MONNIFY_* environment variables on Render are used.
+  monnifyMode         String  @default("sandbox")
+  monnifyApiKey       String?
+  monnifySecretKey    String?
+  monnifyContractCode String?
   updatedAt              DateTime @updatedAt
 }
 

@@ -17,7 +17,7 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
   try {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     res.json({
-      available: monnify.isConfigured(),
+      available: await monnify.isConfigured(),
       accounts: customer.bankAccounts || null,
       kycType: customer.kycType || null,
       ...(await feeInfo()),
@@ -30,7 +30,7 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
 
 router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
   try {
-    if (!monnify.isConfigured()) return res.status(503).json({ error: 'Bank transfer funding is not available yet.' });
+    if (!(await monnify.isConfigured())) return res.status(503).json({ error: 'Bank transfer funding is not available yet.' });
     const idType = String(req.body.idType || '').toUpperCase();
     const idNumber = String(req.body.idNumber || '').replace(/\D/g, '');
     if (!['BVN', 'NIN'].includes(idType)) return res.status(400).json({ error: 'Choose BVN or NIN.' });
@@ -60,7 +60,7 @@ router.post('/wallet/bank-account/check', requireCustomerAuth, async (req, res) 
     lastCheck.set(id, Date.now());
 
     const customer = await prisma.customer.findUnique({ where: { id } });
-    if (!customer.bankAccountRef || !monnify.isConfigured()) return res.json({ credited: 0, amount: 0 });
+    if (!customer.bankAccountRef || !(await monnify.isConfigured())) return res.json({ credited: 0, amount: 0 });
     const result = await monnify.syncCustomerPayments(customer);
     const fresh = await prisma.customer.findUnique({ where: { id }, select: { walletBalance: true } });
     res.json({ ...result, walletBalance: fresh.walletBalance });
@@ -75,7 +75,7 @@ router.post('/wallet/bank-account/check', requireCustomerAuth, async (req, res) 
 // Answering non-200 on errors makes Monnify retry later.
 router.post('/webhooks/monnify', async (req, res) => {
   try {
-    if (!monnify.isValidSignature(req.rawBody, req.headers['monnify-signature'])) {
+    if (!(await monnify.isValidSignature(req.rawBody, req.headers['monnify-signature']))) {
       console.warn('Monnify webhook rejected: bad signature');
       return res.status(401).json({ error: 'Invalid signature.' });
     }
