@@ -92,6 +92,7 @@ router.patch('/schedules/:id', requireCustomerAuth, async (req, res) => {
     }
     if (req.body.nickname !== undefined) data.nickname = String(req.body.nickname || '').trim().slice(0, 40) || null;
     const schedule = await prisma.scheduledPurchase.update({ where: { id: s.id }, data });
+    if (data.active) require('../lib/schedules').kickScheduler();
     res.json({ schedule });
   } catch (error) {
     console.error('PATCH /schedules/:id failed:', error);
