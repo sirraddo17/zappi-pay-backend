@@ -55,7 +55,7 @@ router.get('/wallet/bank-transfer/lookup', requireCustomerAuth, async (req, res)
     res.json(await d.lookupAccount(bankCode, accountNumber));
   } catch (error) {
     if (error instanceof monnify.MonnifyError && error.status && error.status < 500) {
-      return res.status(400).json({ error: 'We could not find that account. Check the number and bank.' });
+      console.warn('Bank lookup failed:', error.message); return res.status(400).json({ error: `We could not find that account. (${error.message})` });
     }
     fail(res, error, 'Could not check that account right now.');
   }
