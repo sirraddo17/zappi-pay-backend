@@ -73,6 +73,8 @@ model Customer {
   transfersReceived  Transfer[]      @relation("TransferReceiver")
   airtimeCashRequests AirtimeCashRequest[]
   trustedDevices      TrustedDevice[]
+  beneficiaries       Beneficiary[]
+  scheduledPurchases  ScheduledPurchase[]
   webauthnCredentials WebAuthnCredential[]
 }
 
@@ -190,6 +192,9 @@ model Order {
   // order so the receipt can show "you saved ₦X" even after the
   // discount itself is later changed or removed.
   discountAmount  Decimal?     @db.Decimal(14, 2)
+  // Electricity only: "prepaid" / "postpaid" (sent to VTpass as
+  // variation_code), kept so "Buy again" can repeat it exactly.
+  meterType       String?
   vtpassRequestId String?      @unique
   vtpassStatus    String?
   status          OrderStatus  @default(PENDING)
@@ -394,4 +399,59 @@ model AuditLog {
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// A saved phone number / meter / smartcard / account ID, so customers
+// tap instead of retyping (fewer wrong-number purchases).
+model Beneficiary {
+  id          String       @id @default(cuid())
+  customerId  String
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  service     OrderService
+  serviceID   String
+  billersCode String
+  meterType   String?
+  nickname    String?
+  createdAt   DateTime     @default(now())
+  lastUsedAt  DateTime     @default(now())
+
+  @@unique([customerId, service, serviceID, billersCode])
+  @@index([customerId, lastUsedAt])
+}
+
+enum ScheduleFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// A purchase that repeats automatically (e.g. renew DStv monthly). It
+// was PIN-confirmed when created; each run is a normal purchase from
+// the wallet (lib/schedules.js). Paused after 3 failures in a row.
+model ScheduledPurchase {
+  id            String            @id @default(cuid())
+  customerId    String
+  customer      Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  service       OrderService
+  serviceID     String
+  variationCode String?
+  meterType     String?
+  billersCode   String
+  phone         String
+  // Base (VTpass) amount for amount-based services; null for plans,
+  // whose current price is looked up at each run.
+  amount        Decimal?          @db.Decimal(14, 2)
+  frequency     ScheduleFrequency
+  anchorDay     Int
+  nickname      String?
+  active        Boolean           @default(true)
+  nextRunAt     DateTime
+  lastRunAt     DateTime?
+  lastStatus    String?
+  lastError     String?
+  failCount     Int               @default(0)
+  createdAt     DateTime          @default(now())
+
+  @@index([active, nextRunAt])
+  @@index([customerId])
 }
