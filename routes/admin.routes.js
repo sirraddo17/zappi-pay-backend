@@ -6,11 +6,21 @@ const { requireAdminAuth, hashPassword, comparePassword } = require('../lib/auth
 
 const router = express.Router();
 
+// The AI key never goes back to the browser — only whether one is saved
+// and its last 4 characters.
+function safeSettings(settings) {
+  const out = { ...settings };
+  delete out.vapidPrivateKey;
+  out.aiApiKeySet = Boolean(out.aiApiKey);
+  out.aiApiKeyHint = out.aiApiKey ? `…${out.aiApiKey.slice(-4)}` : null;
+  delete out.aiApiKey;
+  return out;
+}
+
 router.get('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const settings = await getSettings();
-    delete settings.vapidPrivateKey;
-    res.json({ settings });
+    res.json({ settings: safeSettings(settings) });
   } catch (error) {
     console.error('GET /admin/settings failed:', error);
     res.status(500).json({ error: 'Could not load settings.' });
@@ -29,7 +39,8 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
-      agentPricingEnabled, agentDiscountPercentByService } = req.body;
+      agentPricingEnabled, agentDiscountPercentByService,
+      aiApiKey, aiApiKeyClear, aiCustomerEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -167,6 +178,26 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       if (n && n.length !== 10) return res.status(400).json({ error: 'Account number must be 10 digits.' });
       data.manualAccountNumber = n || null;
     }
+    // AI assistant. An empty key box means "keep the saved key".
+    if (aiApiKeyClear) data.aiApiKey = null;
+    else if (aiApiKey !== undefined && String(aiApiKey).trim()) {
+      const k = String(aiApiKey).trim();
+      if (!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(k)) return res.status(400).json({ error: 'That does not look like a Claude API key (it should start with sk-ant-).' });
+      data.aiApiKey = k;
+    }
+    if (aiCustomerEnabled !== undefined) data.aiCustomerEnabled = Boolean(aiCustomerEnabled);
+    if (aiAdminEnabled !== undefined) data.aiAdminEnabled = Boolean(aiAdminEnabled);
+    for (const [field, value] of [['aiCustomerModel', aiCustomerModel], ['aiAdminModel', aiAdminModel]]) {
+      if (value === undefined) continue;
+      const m = String(value).trim();
+      if (!/^claude-[a-z0-9.-]{3,60}$/.test(m)) return res.status(400).json({ error: 'Model names look like claude-haiku-4-5.' });
+      data[field] = m;
+    }
+    if (aiCustomerDailyLimit !== undefined) data.aiCustomerDailyLimit = Math.min(500, Math.max(1, parseInt(aiCustomerDailyLimit, 10) || 20));
+    if (aiMonthlyBudgetUsd !== undefined) data.aiMonthlyBudgetUsd = Math.min(10000, Math.max(0, Number(aiMonthlyBudgetUsd) || 0));
+    if ((data.aiCustomerEnabled || data.aiAdminEnabled) && !data.aiApiKey && !existing.aiApiKey && !process.env.ANTHROPIC_API_KEY) {
+      return res.status(400).json({ error: 'Paste your Claude API key before turning the assistant on.' });
+    }
     if (supportWhatsapp !== undefined) {
       let n = String(supportWhatsapp).replace(/\D/g, '');
       if (n.startsWith('0')) n = `234${n.slice(1)}`;
@@ -181,8 +212,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       );
     }
 
-    const settings = await prisma.settings.update({ where: { id: existing.id }, data });
-    delete settings.vapidPrivateKey;
+    const settings = safeSettings(await prisma.settings.update({ where: { id: existing.id }, data }));
 
     await prisma.auditLog.create({
       data: {

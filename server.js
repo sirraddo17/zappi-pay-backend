@@ -19,6 +19,7 @@ const reportsRouter = require('./routes/reports.routes');
 const extrasRouter = require('./routes/extras.routes');
 const growthRouter = require('./routes/growth.routes');
 const customersRouter = require('./routes/customers.routes');
+const aiRouter = require('./routes/ai.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -54,6 +55,7 @@ app.use('/api', bankTransferRouter);
 app.use('/api', reportsRouter);
 app.use('/api', extrasRouter);
 app.use('/api', growthRouter);
+app.use('/api', aiRouter);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
