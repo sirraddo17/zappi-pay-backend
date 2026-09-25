@@ -49,9 +49,8 @@ router.post('/auth/signup', async (req, res) => {
       return res.status(400).json({ error: 'name, phone, username, and password are required.' });
     }
     const normalizedUsername = username.trim().toLowerCase();
-    if (!/^[a-z0-9_]{3,20}$/.test(normalizedUsername)) {
-      return res.status(400).json({ error: 'Username must be 3-20 characters, letters, numbers, and underscores only.' });
-    }
+    const usernameError = require('./customers.routes').usernameProblem(normalizedUsername);
+    if (usernameError) return res.status(400).json({ error: usernameError });
 
     const existing = await prisma.customer.findFirst({
       where: { OR: [{ phone: phone.trim() }, { username: normalizedUsername }] },

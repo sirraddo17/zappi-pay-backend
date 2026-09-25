@@ -18,6 +18,7 @@ const bankTransferRouter = require('./routes/banktransfer.routes');
 const reportsRouter = require('./routes/reports.routes');
 const extrasRouter = require('./routes/extras.routes');
 const growthRouter = require('./routes/growth.routes');
+const customersRouter = require('./routes/customers.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -35,6 +36,8 @@ app.use(express.json({ limit: '3mb', verify: (req, res, buf) => { req.rawBody = 
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-backend' }));
 
+// Before adminRouter so /admin/customers/list isn't taken as a customer id.
+app.use('/api', customersRouter);
 app.use('/api', authRouter);
 app.use('/api', walletRouter);
 app.use('/api', vtpassRouter);
