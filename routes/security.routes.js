@@ -62,7 +62,7 @@ router.post('/security/pin', requireCustomerAuth, async (req, res) => {
     const hadPin = Boolean(customer.pinHash);
     await prisma.customer.update({
       where: { id: customer.id },
-      data: { pinHash: await sec.hashPin(pin), pinFailedAttempts: 0, pinLockedUntil: null },
+      data: { pinHash: await sec.hashPin(pin), pinFailedAttempts: 0, pinLockedUntil: null, ...(hadPin ? { securityChangedAt: new Date() } : {}) },
     });
     notify(customer.id, hadPin ? 'PIN Changed' : 'PIN Created', hadPin
       ? 'Your ZappiPay PIN was changed. If this wasn\'t you, contact support right away.'

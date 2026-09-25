@@ -131,7 +131,7 @@ router.post('/auth/login', async (req, res) => {
         const device = /iphone|ipad/i.test(ua) ? 'an iPhone/iPad' : /android/i.test(ua) ? 'an Android phone' : /windows/i.test(ua) ? 'a Windows computer' : /mac os/i.test(ua) ? 'a Mac' : 'a new device';
         notify(customer.id, 'New Login', `Your ZappiPay account was just logged into from ${device} (${new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}). If this wasn't you, change your password now.`);
       }
-      prisma.customer.update({ where: { id: customer.id }, data: { lastLoginFingerprint: fingerprint } }).catch(() => {});
+      prisma.customer.update({ where: { id: customer.id }, data: { lastLoginFingerprint: fingerprint, ...(customer.lastLoginFingerprint ? { securityChangedAt: new Date() } : {}) } }).catch(() => {});
     }
 
     const token = signCustomerToken(customer);
@@ -200,11 +200,71 @@ router.post('/admin/login', async (req, res) => {
       return res.status(403).json({ error: 'This admin account has been deactivated.' });
     }
 
+    // Two-step login: email a 6-digit code unless this browser was
+    // remembered (signed 30-day token). ADMIN_2FA_DISABLED=1 on Render
+    // is the emergency switch if email ever stops working.
+    const settings = await require('../lib/vtpass').getSettings();
+    const { isEmailConfigured, sendEmail } = require('../lib/email');
+    const needs2fa = settings.adminTwoFactorEnabled && isEmailConfigured() && process.env.ADMIN_2FA_DISABLED !== '1';
+    if (needs2fa && !validRememberToken(req.body.rememberToken, admin.id)) {
+      const recent = await prisma.adminLoginCode.count({ where: { adminId: admin.id, createdAt: { gt: new Date(Date.now() - 15 * 60 * 1000) } } });
+      if (recent >= 5) return res.status(429).json({ error: 'Too many login codes requested. Try again in 15 minutes.' });
+      const code = String(require('crypto').randomInt(0, 1000000)).padStart(6, '0');
+      const challenge = await prisma.adminLoginCode.create({
+        data: { adminId: admin.id, codeHash: await hashPassword(code), expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+      });
+      const sent = await sendEmail({
+        to: admin.email,
+        subject: `ZappiPay admin login code: ${code}`,
+        html: `<p>Your ZappiPay admin login code is:</p><p style="font-size:28px;font-weight:bold;letter-spacing:4px">${code}</p><p>It expires in 10 minutes. If you didn't try to log in, change your admin password now.</p>`,
+        text: `Your ZappiPay admin login code is ${code}. It expires in 10 minutes.`,
+      });
+      if (!sent.sent) return res.status(502).json({ error: 'Could not send your login code by email. Try again shortly.' });
+      const [user, domain] = admin.email.split('@');
+      return res.json({ twoFactor: true, challengeId: challenge.id, emailHint: `${user.slice(0, 2)}***@${domain}` });
+    }
+
     const token = signAdminToken(admin);
     res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email } });
   } catch (error) {
     console.error('POST /admin/login failed:', error);
     res.status(500).json({ error: 'Could not log in.' });
+  }
+});
+
+function validRememberToken(token, adminId) {
+  if (!token) return false;
+  try {
+    const p = require('jsonwebtoken').verify(String(token), process.env.JWT_SECRET);
+    return p.kind === 'admin2fa' && p.sub === adminId;
+  } catch {
+    return false;
+  }
+}
+
+router.post('/admin/login/verify', async (req, res) => {
+  try {
+    const { challengeId, code, remember } = req.body || {};
+    const challenge = challengeId ? await prisma.adminLoginCode.findUnique({ where: { id: String(challengeId) }, include: { admin: true } }) : null;
+    if (!challenge || challenge.usedAt || challenge.expiresAt < new Date()) {
+      return res.status(400).json({ error: 'This code has expired. Log in again to get a new one.' });
+    }
+    if (challenge.attempts >= 5) return res.status(429).json({ error: 'Too many wrong codes. Log in again to get a new one.' });
+    const ok = /^\d{6}$/.test(String(code || '')) && (await comparePassword(String(code), challenge.codeHash));
+    if (!ok) {
+      await prisma.adminLoginCode.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
+      return res.status(401).json({ error: 'Wrong code. Check the latest email and try again.' });
+    }
+    const claim = await prisma.adminLoginCode.updateMany({ where: { id: challenge.id, usedAt: null }, data: { usedAt: new Date() } });
+    if (claim.count !== 1) return res.status(400).json({ error: 'This code was already used.' });
+    const admin = challenge.admin;
+    if (!admin.active) return res.status(403).json({ error: 'This admin account has been deactivated.' });
+    const token = signAdminToken(admin);
+    const rememberToken = remember ? require('jsonwebtoken').sign({ sub: admin.id, kind: 'admin2fa' }, process.env.JWT_SECRET, { expiresIn: '30d' }) : undefined;
+    res.json({ token, rememberToken, admin: { id: admin.id, name: admin.name, email: admin.email } });
+  } catch (error) {
+    console.error('POST /admin/login/verify failed:', error);
+    res.status(500).json({ error: 'Could not verify the code.' });
   }
 });
 
@@ -232,7 +292,7 @@ router.patch('/auth/password', requireCustomerAuth, async (req, res) => {
     const passwordHash = await hashPassword(newPassword);
     await prisma.customer.update({
       where: { id: customer.id },
-      data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null },
+      data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null, securityChangedAt: new Date() },
     });
 
     res.json({ success: true });
@@ -316,7 +376,7 @@ router.post('/auth/reset-password', async (req, res) => {
     await prisma.$transaction([
       prisma.customer.update({
         where: { id: record.customerId },
-        data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null },
+        data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null, securityChangedAt: new Date() },
       }),
       // Burn this link and any other outstanding ones for the account.
       prisma.passwordResetToken.updateMany({

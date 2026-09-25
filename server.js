@@ -18,6 +18,8 @@ const bankTransferRouter = require('./routes/banktransfer.routes');
 const reportsRouter = require('./routes/reports.routes');
 const extrasRouter = require('./routes/extras.routes');
 const { startScheduler } = require('./lib/schedules');
+const { startOrderSweeper } = require('./lib/purchase');
+const { startDailySummary } = require('./lib/dailySummary');
 
 const app = express();
 
@@ -58,4 +60,6 @@ app.listen(PORT, () => {
   console.log(`zappi-pay-backend listening on port ${PORT}`);
   // Runs scheduled top-ups when they're due (see lib/schedules.js).
   startScheduler();
+  startOrderSweeper();
+  startDailySummary();
 });

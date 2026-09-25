@@ -27,7 +27,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
       agentPricingEnabled, agentDiscountPercentByService } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
@@ -145,6 +145,16 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data.agentDiscountPercentByService = Object.fromEntries(Object.entries(agentDiscountPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
     }
     if (manualFundingEnabled !== undefined) data.manualFundingEnabled = Boolean(manualFundingEnabled);
+    if (fraudHoldEnabled !== undefined) data.fraudHoldEnabled = Boolean(fraudHoldEnabled);
+    if (fraudHoldAmount !== undefined) data.fraudHoldAmount = Math.max(0, Number(fraudHoldAmount) || 0);
+    if (fraudHoldHours !== undefined) data.fraudHoldHours = Math.min(720, Math.max(1, parseInt(fraudHoldHours, 10) || 24));
+    if (dailySummaryEnabled !== undefined) data.dailySummaryEnabled = Boolean(dailySummaryEnabled);
+    if (adminTwoFactorEnabled !== undefined) {
+      if (adminTwoFactorEnabled && !require('../lib/email').isEmailConfigured()) {
+        return res.status(400).json({ error: 'Set up email (Resend) on Render before turning on two-step login.' });
+      }
+      data.adminTwoFactorEnabled = Boolean(adminTwoFactorEnabled);
+    }
     if (manualBankName !== undefined) data.manualBankName = String(manualBankName).trim().slice(0, 60) || null;
     if (manualAccountName !== undefined) data.manualAccountName = String(manualAccountName).trim().slice(0, 80) || null;
     if (manualAccountNumber !== undefined) {
@@ -185,6 +195,17 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('PATCH /admin/settings failed:', error);
     res.status(500).json({ error: 'Could not update settings.' });
+  }
+});
+
+router.post('/admin/daily-summary/test', requireAdminAuth, async (req, res) => {
+  try {
+    if (!require('../lib/email').isEmailConfigured()) return res.status(400).json({ error: 'Email (Resend) is not set up on Render yet.' });
+    const r = await require('../lib/dailySummary').sendDailySummary({ force: true });
+    res.json(r);
+  } catch (error) {
+    console.error('POST /admin/daily-summary/test failed:', error);
+    res.status(500).json({ error: 'Could not send the summary.' });
   }
 });
 

@@ -2,7 +2,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { vtpassRequest, getSettings } = require('../lib/vtpass');
 const { confirmTransaction } = require('../lib/security');
-const { performPurchase } = require('../lib/purchase');
+const { performPurchase, recheckOrder, forceSettle } = require('../lib/purchase');
 const { FREQUENCIES, createSchedule, upsertBeneficiary } = require('../lib/schedules');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
@@ -110,7 +110,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType };
   const result = await performPurchase(req.customer.customerId, { ...input, promoCode });
 
-  if (result.status === 201) {
+  if (result.status === 201 || result.status === 202) {
     const extras = {};
     if (saveBeneficiary) {
       extras.beneficiary = await upsertBeneficiary(req.customer.customerId, {
@@ -121,13 +121,19 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
       extras.schedule = await createSchedule(req.customer.customerId, { ...input, frequency: repeat.frequency, nickname: repeat.nickname })
         .catch((e) => { console.error('create schedule failed:', e); return null; });
     }
-    return res.status(201).json({ ...result.body, ...extras });
+    return res.status(result.status).json({ ...result.body, ...extras });
   }
   res.status(result.status).json(result.body);
 });
 
 router.get('/orders', requireCustomerAuth, async (req, res) => {
   try {
+    // Settle this customer's orders still waiting on VTpass.
+    const pending = await prisma.order.findMany({
+      where: { customerId: req.customer.customerId, status: 'PENDING', createdAt: { lt: new Date(Date.now() - 30 * 1000) } },
+      take: 3,
+    });
+    for (const o of pending) await recheckOrder(o).catch(() => {});
     const orders = await prisma.order.findMany({
       where: { customerId: req.customer.customerId },
       orderBy: { createdAt: 'desc' },
@@ -153,6 +159,59 @@ router.get('/orders/:id', requireCustomerAuth, async (req, res) => {
   } catch (error) {
     console.error('GET /orders/:id failed:', error);
     res.status(500).json({ error: 'Could not load order.' });
+  }
+});
+
+// Admin: re-check a pending order with VTpass, or settle it by hand
+// after confirming with VTpass support.
+router.post('/admin/orders/:id/recheck', requireAdminAuth, async (req, res) => {
+  try {
+    res.json(await recheckOrder(req.params.id));
+  } catch (error) {
+    console.error('POST /admin/orders/:id/recheck failed:', error);
+    res.status(500).json({ error: 'Could not check this order.' });
+  }
+});
+
+router.post('/admin/orders/:id/settle', requireAdminAuth, async (req, res) => {
+  try {
+    const outcome = req.body?.outcome === 'SUCCESS' ? 'SUCCESS' : req.body?.outcome === 'FAILED' ? 'FAILED' : null;
+    if (!outcome) return res.status(400).json({ error: 'outcome must be SUCCESS or FAILED.' });
+    const result = await forceSettle(req.params.id, outcome);
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'ORDER_FORCE_SETTLED', details: { orderId: req.params.id, outcome } } }).catch(() => {});
+    res.json(result);
+  } catch (error) {
+    console.error('POST /admin/orders/:id/settle failed:', error);
+    res.status(500).json({ error: 'Could not settle this order.' });
+  }
+});
+
+// VTpass wallet balance (for the admin Overview).
+router.get('/admin/vtpass/balance', requireAdminAuth, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    const data = await vtpassRequest('GET', '/balance');
+    const balance = Number(data?.contents?.balance ?? data?.content?.balance ?? data?.balance);
+    res.json({ mode: settings.vtpassMode, balance: Number.isFinite(balance) ? balance : null });
+  } catch (error) {
+    res.json({ mode: null, balance: null, error: error.message });
+  }
+});
+
+// VTpass transaction-update webhook. The body is only a hint: the order
+// is re-queried with VTpass before anything changes.
+router.post('/webhooks/vtpass', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const requestId = b.data?.requestId || b.requestId || b.data?.request_id || b.request_id;
+    if (requestId) {
+      const order = await prisma.order.findUnique({ where: { vtpassRequestId: String(requestId) } });
+      if (order) console.log('VTpass webhook:', requestId, JSON.stringify(await recheckOrder(order)));
+    }
+    res.json({ response: 'success' });
+  } catch (error) {
+    console.error('POST /webhooks/vtpass failed:', error.message);
+    res.json({ response: 'success' });
   }
 });
 

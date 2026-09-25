@@ -18,6 +18,21 @@ model AdminUser {
   // admin panel entirely.
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+  loginCodes   AdminLoginCode[]
+}
+
+// One-time email code for admin two-step login.
+model AdminLoginCode {
+  id        String    @id @default(cuid())
+  adminId   String
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([adminId, createdAt])
 }
 
 // A customer's wallet balance lives directly on this record — there's
@@ -77,6 +92,9 @@ model Customer {
   isAgent             Boolean   @default(false)
   agentRequestedAt    DateTime?
   agentBusinessName   String?
+  // Last PIN/password change or login from a new device — large bank
+  // transfers soon after are held for admin review (fraud check).
+  securityChangedAt   DateTime?
   emailAlerts          Boolean   @default(true)
   lastLoginFingerprint String?
   // "Delete my account" request; an admin completes it (the ledger is
@@ -455,6 +473,16 @@ model Settings {
   supportWhatsapp          String?
   // Business bank account shown to customers for manual funding
   // (they transfer, then submit the reference for admin approval).
+  // Fraud check: hold bank transfers of at least fraudHoldAmount made
+  // within fraudHoldHours of signup or a PIN/password/new-device change.
+  fraudHoldEnabled         Boolean @default(true)
+  fraudHoldAmount          Decimal @default(20000) @db.Decimal(14, 2)
+  fraudHoldHours           Int     @default(24)
+  // Email code on every admin login (needs Resend email set up).
+  adminTwoFactorEnabled    Boolean @default(false)
+  // Morning summary email to admins at 7am.
+  dailySummaryEnabled      Boolean @default(false)
+  lastDailySummaryDate     String?
   manualFundingEnabled     Boolean @default(true)
   manualBankName           String?
   manualAccountNumber      String?

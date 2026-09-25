@@ -104,8 +104,11 @@ router.get('/admin/bank-transfers', requireAdminAuth, async (req, res) => {
       take: 100,
       include: { customer: { select: { id: true, name: true, phone: true } } },
     });
-    const waiting = await prisma.bankTransfer.count({ where: { status: 'PENDING_AUTHORIZATION' } });
-    res.json({ transfers, waiting });
+    const [waiting, held] = await Promise.all([
+      prisma.bankTransfer.count({ where: { status: 'PENDING_AUTHORIZATION' } }),
+      prisma.bankTransfer.count({ where: { status: 'HELD' } }),
+    ]);
+    res.json({ transfers, waiting, held });
   } catch (error) {
     fail(res, error, 'Could not load bank transfers.');
   }
@@ -160,12 +163,24 @@ router.post('/admin/bank-transfers/:id/check', requireAdminAuth, async (req, res
   }
 });
 
+router.post('/admin/bank-transfers/:id/release', requireAdminAuth, async (req, res) => {
+  try {
+    const t = await loadTransfer(req, res);
+    if (!t) return;
+    const result = await d.releaseHeld(t.id);
+    await audit(req, 'BANK_TRANSFER_RELEASED', t, { result: result.transfer?.status });
+    res.json({ status: result.transfer?.status });
+  } catch (error) {
+    fail(res, error, 'Could not release the transfer.');
+  }
+});
+
 // Admin gives up on a transfer still waiting for OTP → refund customer.
 router.post('/admin/bank-transfers/:id/cancel', requireAdminAuth, async (req, res) => {
   try {
     const t = await loadTransfer(req, res);
     if (!t) return;
-    if (t.status !== 'PENDING_AUTHORIZATION') return res.status(400).json({ error: 'Only transfers waiting for an OTP can be cancelled.' });
+    if (!['PENDING_AUTHORIZATION', 'HELD'].includes(t.status)) return res.status(400).json({ error: 'Only held transfers or ones waiting for an OTP can be cancelled.' });
     const result = await d.finalize(t, 'CANCELLED', 'Cancelled by ZappiPay.');
     await audit(req, 'BANK_TRANSFER_CANCELLED', t, {});
     res.json({ status: result.status });
@@ -193,6 +208,7 @@ router.get('/admin/monnify/overview', requireAdminAuth, async (req, res) => {
       prisma.bankTransfer.count({ where: { status: 'PENDING_AUTHORIZATION' } }),
       prisma.bankTransfer.count({ where: { status: 'PROCESSING' } }),
     ]);
+    out.held = await prisma.bankTransfer.count({ where: { status: 'HELD' } });
     Object.assign(out, { accountsCount, waitingOtp, processing, transfersEnabled: settings.enabled, walletAccount: settings.walletAccount || null });
 
     if (configured && settings.walletAccount) {
