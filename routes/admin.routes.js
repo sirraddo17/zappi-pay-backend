@@ -27,7 +27,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
       agentPricingEnabled, agentDiscountPercentByService } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
@@ -143,6 +143,14 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (agentPricingEnabled !== undefined) data.agentPricingEnabled = Boolean(agentPricingEnabled);
     if (agentDiscountPercentByService !== undefined) {
       data.agentDiscountPercentByService = Object.fromEntries(Object.entries(agentDiscountPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
+    }
+    if (manualFundingEnabled !== undefined) data.manualFundingEnabled = Boolean(manualFundingEnabled);
+    if (manualBankName !== undefined) data.manualBankName = String(manualBankName).trim().slice(0, 60) || null;
+    if (manualAccountName !== undefined) data.manualAccountName = String(manualAccountName).trim().slice(0, 80) || null;
+    if (manualAccountNumber !== undefined) {
+      const n = String(manualAccountNumber).replace(/\D/g, '');
+      if (n && n.length !== 10) return res.status(400).json({ error: 'Account number must be 10 digits.' });
+      data.manualAccountNumber = n || null;
     }
     if (supportWhatsapp !== undefined) {
       let n = String(supportWhatsapp).replace(/\D/g, '');

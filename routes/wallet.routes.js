@@ -49,6 +49,9 @@ router.post('/wallet/fund-request', requireCustomerAuth, async (req, res) => {
       return res.status(400).json({ error: 'A positive amount is required.' });
     }
     const settings = await getSettings();
+    if (!settings.manualFundingEnabled || !settings.manualAccountNumber) {
+      return res.status(400).json({ error: 'Manual funding is not available. Please use your personal account number instead.' });
+    }
     const minFunding = Number(settings.minFundingAmount);
     if (amountNum < minFunding) {
       return res.status(400).json({ error: `Minimum funding amount is ₦${minFunding}.` });

@@ -453,6 +453,12 @@ model Settings {
   cashbackPercentByService Json    @default("{}")
   cashbackMaxPerOrder      Decimal @default(500) @db.Decimal(14, 2)
   supportWhatsapp          String?
+  // Business bank account shown to customers for manual funding
+  // (they transfer, then submit the reference for admin approval).
+  manualFundingEnabled     Boolean @default(true)
+  manualBankName           String?
+  manualAccountNumber      String?
+  manualAccountName        String?
   // Agent pricing: extra % off per service for approved agents, on top
   // of any normal discount, e.g. { "DATA": 3, "AIRTIME": 2 }.
   agentPricingEnabled          Boolean @default(false)

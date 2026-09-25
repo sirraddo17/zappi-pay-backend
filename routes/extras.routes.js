@@ -30,6 +30,9 @@ router.get('/app/info', async (req, res) => {
     ]);
     res.json({
       supportWhatsapp: settings.supportWhatsapp || null,
+      manualFunding: settings.manualFundingEnabled && settings.manualAccountNumber
+        ? { bankName: settings.manualBankName, accountNumber: settings.manualAccountNumber, accountName: settings.manualAccountName }
+        : null,
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
       cashback: settings.cashbackEnabled ? settings.cashbackPercentByService || {} : {},
     });
