@@ -9,6 +9,7 @@ const router = express.Router();
 router.get('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const settings = await getSettings();
+    delete settings.vapidPrivateKey;
     res.json({ settings });
   } catch (error) {
     console.error('GET /admin/settings failed:', error);
@@ -27,7 +28,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
       agentPricingEnabled, agentDiscountPercentByService } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
@@ -149,6 +150,10 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (fraudHoldAmount !== undefined) data.fraudHoldAmount = Math.max(0, Number(fraudHoldAmount) || 0);
     if (fraudHoldHours !== undefined) data.fraudHoldHours = Math.min(720, Math.max(1, parseInt(fraudHoldHours, 10) || 24));
     if (dailySummaryEnabled !== undefined) data.dailySummaryEnabled = Boolean(dailySummaryEnabled);
+    if (loyaltyEnabled !== undefined) data.loyaltyEnabled = Boolean(loyaltyEnabled);
+    if (loyaltyPointsPer100 !== undefined) data.loyaltyPointsPer100 = Math.min(100, Math.max(0, Number(loyaltyPointsPer100) || 0));
+    if (loyaltyPointValue !== undefined) data.loyaltyPointValue = Math.min(100, Math.max(0, Number(loyaltyPointValue) || 0));
+    if (loyaltyMinRedeem !== undefined) data.loyaltyMinRedeem = Math.max(1, parseInt(loyaltyMinRedeem, 10) || 1);
     if (adminTwoFactorEnabled !== undefined) {
       if (adminTwoFactorEnabled && !require('../lib/email').isEmailConfigured()) {
         return res.status(400).json({ error: 'Set up email (Resend) on Render before turning on two-step login.' });
@@ -177,6 +182,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
 
     const settings = await prisma.settings.update({ where: { id: existing.id }, data });
+    delete settings.vapidPrivateKey;
 
     await prisma.auditLog.create({
       data: {

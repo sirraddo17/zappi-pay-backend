@@ -95,6 +95,8 @@ model Customer {
   // Last PIN/password change or login from a new device — large bank
   // transfers soon after are held for admin review (fraud check).
   securityChangedAt   DateTime?
+  // Loyalty points balance (earned on purchases, redeemed as wallet credit).
+  loyaltyPoints       Int       @default(0)
   emailAlerts          Boolean   @default(true)
   lastLoginFingerprint String?
   // "Delete my account" request; an admin completes it (the ledger is
@@ -118,6 +120,7 @@ model Customer {
   webauthnCredentials WebAuthnCredential[]
   bankTransfers       BankTransfer[]
   promoRedemptions    PromoRedemption[]
+  pushSubscriptions   PushSubscription[]
 }
 
 // A browser/phone where the customer turned on quick login. The raw
@@ -164,6 +167,7 @@ enum WalletTxType {
   AIRTIME_CASH
   REFERRAL_BONUS
   CASHBACK
+  LOYALTY
 }
 
 enum WalletTxStatus {
@@ -247,6 +251,7 @@ model Order {
   promoCode       String?
   promoDiscount   Decimal?     @db.Decimal(14, 2)
   cashbackAmount  Decimal?     @db.Decimal(14, 2)
+  pointsEarned    Int?
   vtpassRequestId String?      @unique
   vtpassStatus    String?
   status          OrderStatus  @default(PENDING)
@@ -483,6 +488,16 @@ model Settings {
   // Morning summary email to admins at 7am.
   dailySummaryEnabled      Boolean @default(false)
   lastDailySummaryDate     String?
+  // Push notifications: keys generated automatically on first use.
+  vapidPublicKey           String?
+  vapidPrivateKey          String?
+  // Loyalty: earn loyaltyPointsPer100 points per ₦100 spent on
+  // purchases; each point is worth loyaltyPointValue ₦ when redeemed
+  // (minimum loyaltyMinRedeem points).
+  loyaltyEnabled           Boolean @default(false)
+  loyaltyPointsPer100      Decimal @default(1) @db.Decimal(8, 2)
+  loyaltyPointValue        Decimal @default(0.5) @db.Decimal(8, 2)
+  loyaltyMinRedeem         Int     @default(200)
   manualFundingEnabled     Boolean @default(true)
   manualBankName           String?
   manualAccountNumber      String?
@@ -631,4 +646,17 @@ model ServiceNotice {
   active    Boolean   @default(true)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
+}
+
+// A browser/phone that allowed push notifications.
+model PushSubscription {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
 }
