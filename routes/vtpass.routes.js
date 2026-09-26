@@ -148,6 +148,17 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   res.status(result.status).json(result.body);
 });
 
+// The app refreshes pending orders automatically every few seconds, so
+// ask VTpass about any one order at most every 20 seconds.
+const lastRecheck = new Map();
+async function throttledRecheck(order) {
+  const now = Date.now();
+  if (now - (lastRecheck.get(order.id) || 0) < 20 * 1000) return;
+  lastRecheck.set(order.id, now);
+  if (lastRecheck.size > 5000) lastRecheck.clear();
+  await recheckOrder(order).catch(() => {});
+}
+
 router.get('/orders', requireCustomerAuth, async (req, res) => {
   try {
     // Settle this customer's orders still waiting on VTpass.
@@ -155,7 +166,7 @@ router.get('/orders', requireCustomerAuth, async (req, res) => {
       where: { customerId: req.customer.customerId, status: 'PENDING', createdAt: { lt: new Date(Date.now() - 30 * 1000) } },
       take: 3,
     });
-    for (const o of pending) await recheckOrder(o).catch(() => {});
+    for (const o of pending) await throttledRecheck(o);
     const orders = await prisma.order.findMany({
       where: { customerId: req.customer.customerId },
       orderBy: { createdAt: 'desc' },
@@ -177,6 +188,11 @@ router.get('/orders/:id', requireCustomerAuth, async (req, res) => {
       where: { id: req.params.id, customerId: req.customer.customerId },
     });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (order.status === 'PENDING' && Date.now() - new Date(order.createdAt).getTime() > 30 * 1000) {
+      await throttledRecheck(order);
+      const fresh = await prisma.order.findUnique({ where: { id: order.id } });
+      return res.json({ order: fresh || order });
+    }
     res.json({ order });
   } catch (error) {
     console.error('GET /orders/:id failed:', error);
