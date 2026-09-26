@@ -84,6 +84,9 @@ model Customer {
   bankAccountRef  String?   @unique
   bankAccounts    Json?
   kycType         String?
+  // Keyed hash of the BVN/NIN used (never the number itself), so one
+  // identity can only verify one ZAPPI PAY account.
+  kycHash         String?   @unique
   bankAccountAt   DateTime?
   // Email alerts for money in/out and new logins (customer can switch
   // off). lastLoginFingerprint spots a login from a new device.
@@ -737,6 +740,9 @@ model ReferralContest {
   minReferrals        Int       @default(1)
   minQualifyingAmount Decimal   @default(0) @db.Decimal(14, 2)
   autoPay             Boolean   @default(false)
+  // Friends must have verified their BVN/NIN (by getting a personal
+  // account number) before the contest ends to count.
+  requireVerified     Boolean   @default(true)
   status              String    @default("ACTIVE")
   disqualified        Json      @default("[]")
   winners             Json?

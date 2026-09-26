@@ -8,6 +8,11 @@ const monnify = require('../lib/monnify');
 // own account number; money sent to it lands in their wallet.
 const router = express.Router();
 
+function identityHash(idType, idNumber) {
+  const secret = process.env.KYC_HASH_SECRET || process.env.JWT_SECRET || 'zappipay';
+  return require('crypto').createHmac('sha256', secret).update(`${idType}:${idNumber}`).digest('hex');
+}
+
 async function feeInfo() {
   const s = await getSettings();
   return { feePercent: Number(s.bankFundingFeePercent || 0), feeCap: Number(s.bankFundingFeeCap || 0) };
@@ -39,7 +44,27 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     if (customer.bankAccounts) return res.json({ accounts: customer.bankAccounts, kycType: customer.kycType });
 
-    const updated = await monnify.createReservedAccount(customer, { idType, idNumber });
+    // One BVN/NIN = one ZAPPI PAY account. Only a keyed hash is kept,
+    // never the number. Claim it first so two sign-ups can't race.
+    const kycHash = identityHash(idType, idNumber);
+    const other = await prisma.customer.findFirst({ where: { kycHash, NOT: { id: customer.id } }, select: { id: true } });
+    if (other) {
+      return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account. Each person can have only one account — contact support if this is a mistake.`, code: 'IDENTITY_IN_USE' });
+    }
+    try {
+      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash } });
+    } catch (error) {
+      if (error.code === 'P2002') return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account.`, code: 'IDENTITY_IN_USE' });
+      throw error;
+    }
+    let updated;
+    try {
+      updated = await monnify.createReservedAccount(customer, { idType, idNumber });
+    } catch (error) {
+      // Not verified after all — free the identity again.
+      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
+      throw error;
+    }
     res.status(201).json({ accounts: updated.bankAccounts, kycType: updated.kycType });
   } catch (error) {
     console.error('POST /wallet/bank-account failed:', error.message, JSON.stringify(error.body || {}));

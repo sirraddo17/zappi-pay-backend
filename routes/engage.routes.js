@@ -166,6 +166,7 @@ function publicContest(c) {
     prizes: contest.prizeList(c),
     minReferrals: c.minReferrals,
     minQualifyingAmount: Number(c.minQualifyingAmount || 0),
+    requireVerified: c.requireVerified !== false,
     phase: contest.phase(c),
     winners: (Array.isArray(c.winners) ? c.winners : []).map((w) => ({ rank: w.rank, name: w.displayName, qualified: w.qualified, prize: w.prize })),
   };
@@ -215,12 +216,13 @@ function readContestInput(body, existing) {
   const minReferrals = Math.max(1, parseInt(body.minReferrals ?? existing?.minReferrals ?? 1, 10) || 1);
   const minQualifyingAmount = Math.max(0, Number(body.minQualifyingAmount ?? existing?.minQualifyingAmount ?? 0) || 0);
   const autoPay = body.autoPay !== undefined ? Boolean(body.autoPay) : Boolean(existing?.autoPay);
+  const requireVerified = body.requireVerified !== undefined ? Boolean(body.requireVerified) : existing ? existing.requireVerified !== false : true;
   if (!title) return { error: 'Give the contest a title.' };
   if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) return { error: 'Choose a start and end date.' };
   if (endsAt <= startsAt) return { error: 'The end must be after the start.' };
   if (endsAt - startsAt > 92 * 24 * 3600 * 1000) return { error: 'A contest can last at most 3 months.' };
   if (!prizes.length) return { error: 'Add at least one prize.' };
-  return { data: { title, description, startsAt, endsAt, prizes, minReferrals, minQualifyingAmount, autoPay } };
+  return { data: { title, description, startsAt, endsAt, prizes, minReferrals, minQualifyingAmount, autoPay, requireVerified } };
 }
 
 async function overlapping(startsAt, endsAt, exceptId) {
@@ -284,6 +286,7 @@ router.patch('/admin/contests/:id', requireAdminAuth, async (req, res) => {
     if (new Date(existing.startsAt) <= new Date()) {
       delete body.startsAt;
       delete body.minQualifyingAmount;
+      delete body.requireVerified;
     }
     const input = readContestInput(body, existing);
     if (input.error) return res.status(400).json({ error: input.error });
