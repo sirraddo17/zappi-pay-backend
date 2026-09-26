@@ -67,6 +67,7 @@ router.post('/wallet/fund-request', requireCustomerAuth, async (req, res) => {
         note: note || undefined,
       },
     });
+    require('../lib/adminAlert').alertAdmins('New funding request', `A customer says they sent ₦${Number(transaction.amount).toLocaleString()} to the business account (ref ${transaction.reference || '—'}). Check your bank and approve or reject.`, '/admin/pending-funding');
 
     res.status(201).json({ transaction });
   } catch (error) {

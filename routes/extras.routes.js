@@ -78,6 +78,7 @@ router.post('/account/delete-request', requireCustomerAuth, async (req, res) => 
       where: { id: customer.id },
       data: { deletionRequestedAt: new Date(), deletionReason: String(req.body.reason || '').slice(0, 300) || null },
     });
+    require('../lib/adminAlert').alertAdmins('Account deletion request', 'A customer asked to delete their account. Review it on the Overview page.', '/admin');
     res.json({ ok: true, deletionRequestedAt: new Date() });
   } catch (error) {
     console.error('POST /account/delete-request failed:', error);
@@ -117,6 +118,7 @@ router.post('/agent/request', requireCustomerAuth, async (req, res) => {
     const businessName = String(req.body?.businessName || '').trim().slice(0, 80);
     if (!businessName) return res.status(400).json({ error: 'Enter your business or shop name.' });
     await prisma.customer.update({ where: { id: req.customer.customerId }, data: { agentRequestedAt: new Date(), agentBusinessName: businessName } });
+    require('../lib/adminAlert').alertAdmins('New agent application', `${businessName || 'A customer'} applied to become an agent. Review it on the Overview page.`, '/admin');
     res.json({ ok: true });
   } catch (error) {
     console.error('POST /agent/request failed:', error);

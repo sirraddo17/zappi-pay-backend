@@ -40,7 +40,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, aiCustomerEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -178,6 +178,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       if (n && n.length !== 10) return res.status(400).json({ error: 'Account number must be 10 digits.' });
       data.manualAccountNumber = n || null;
     }
+    if (adminAlertPush !== undefined) data.adminAlertPush = Boolean(adminAlertPush);
+    if (adminAlertEmail !== undefined) data.adminAlertEmail = Boolean(adminAlertEmail);
+    if (feedbackPromptEnabled !== undefined) data.feedbackPromptEnabled = Boolean(feedbackPromptEnabled);
     // AI assistant. An empty key box means "keep the saved key".
     if (aiApiKeyClear) data.aiApiKey = null;
     else if (aiApiKey !== undefined && String(aiApiKey).trim()) {

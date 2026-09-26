@@ -168,6 +168,7 @@ enum WalletTxType {
   REFERRAL_BONUS
   CASHBACK
   LOYALTY
+  CONTEST_PRIZE
 }
 
 enum WalletTxStatus {
@@ -516,6 +517,13 @@ model Settings {
   aiAdminModel             String  @default("claude-sonnet-5")
   aiCustomerDailyLimit     Int     @default(20)
   aiMonthlyBudgetUsd       Decimal @default(10) @db.Decimal(10, 2)
+  // Admin alerts for things waiting on you (new support message, OTP
+  // needed, funding request...), by push to the admin app and email.
+  adminAlertPush           Boolean @default(true)
+  adminAlertEmail          Boolean @default(true)
+  // After a successful purchase, ask how it went and invite happy
+  // customers to share their referral link.
+  feedbackPromptEnabled    Boolean @default(true)
   updatedAt              DateTime @updatedAt
 }
 
@@ -686,4 +694,73 @@ model PushSubscription {
   createdAt  DateTime @default(now())
 
   @@index([customerId])
+}
+
+// Push subscriptions for the admin app (separate from customers').
+model AdminPushSubscription {
+  id        String   @id @default(cuid())
+  adminId   String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+}
+
+// "How was your purchase?" ratings.
+model Feedback {
+  id         String   @id @default(cuid())
+  customerId String
+  orderId    String?
+  rating     Int
+  comment    String?
+  shared     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([customerId, createdAt])
+}
+
+// Referral contest. Only friends who SIGN UP during the contest count,
+// and only once they make a purchase or bank transfer before it ends
+// (contests can't overlap, so each new contest starts from zero).
+// prizes: naira per rank, e.g. [10000, 5000, 2500]. status: ACTIVE,
+// AWAITING_PAYOUT (ended, waiting for admin), PAYING, PAID, CANCELLED.
+model ReferralContest {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String?
+  startsAt            DateTime
+  endsAt              DateTime
+  prizes              Json
+  minReferrals        Int       @default(1)
+  minQualifyingAmount Decimal   @default(0) @db.Decimal(14, 2)
+  autoPay             Boolean   @default(false)
+  status              String    @default("ACTIVE")
+  disqualified        Json      @default("[]")
+  winners             Json?
+  paidAt              DateTime?
+  createdAt           DateTime  @default(now())
+
+  @@index([status, endsAt])
+}
+
+// In-app adverts / announcements with a picture (home screen slider
+// and/or a one-time pop-up). image is a data: URI (compressed JPEG).
+model AppAd {
+  id         String    @id @default(cuid())
+  title      String
+  body       String?
+  image      String?   @db.Text
+  linkUrl    String?
+  buttonText String?
+  placement  String    @default("HOME")
+  active     Boolean   @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  sortOrder  Int       @default(0)
+  clicks     Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }

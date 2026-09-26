@@ -112,6 +112,7 @@ router.post('/airtime-cash/requests', requireCustomerAuth, async (req, res) => {
         note,
       },
     });
+    require('../lib/adminAlert').alertAdmins('New Airtime to Cash request', `₦${Number(request.amount ?? 0).toLocaleString()} ${request.network || ''} airtime is waiting for you to confirm.`, '/admin/airtime-cash');
 
     notify(
       customerId,

@@ -5,7 +5,7 @@ const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 // Customer statements and the admin profit dashboard.
 const router = express.Router();
 
-const CREDIT_TYPES = ['FUND', 'REFUND', 'TRANSFER_IN', 'AIRTIME_CASH', 'REFERRAL_BONUS', 'CASHBACK', 'LOYALTY'];
+const CREDIT_TYPES = ['FUND', 'REFUND', 'TRANSFER_IN', 'AIRTIME_CASH', 'REFERRAL_BONUS', 'CASHBACK', 'LOYALTY', 'CONTEST_PRIZE'];
 const DEBIT_TYPES = ['DEBIT', 'TRANSFER_OUT'];
 
 // Days are grouped in Nigerian time (UTC+1).

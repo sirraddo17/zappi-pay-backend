@@ -42,6 +42,9 @@ router.post('/support/tickets', requireCustomerAuth, async (req, res) => {
         message: message.trim(),
       },
     });
+    prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { name: true, phone: true } })
+      .then((c) => require('../lib/adminAlert').alertAdmins('New support message', `${c?.name || 'A customer'} (${c?.phone || ''}): ${message.trim().slice(0, 300)}`, '/admin/support'))
+      .catch(() => {});
 
     res.status(201).json({ ticket });
   } catch (error) {
