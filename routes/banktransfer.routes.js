@@ -98,6 +98,8 @@ router.get('/wallet/bank-transfers', requireCustomerAuth, async (req, res) => {
 router.get('/admin/bank-transfers', requireAdminAuth, async (req, res) => {
   try {
     const status = String(req.query.status || '').toUpperCase();
+    // The admin page refreshes itself; settle anything Monnify finished.
+    await d.refreshPendingTransfers().catch(() => {});
     const transfers = await prisma.bankTransfer.findMany({
       where: status ? { status } : {},
       orderBy: { createdAt: 'desc' },
