@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
-const { getSettings } = require('../lib/vtpass');
+const { getSettings, invalidateSettings } = require('../lib/vtpass');
 const { notify } = require('../lib/notify');
 const { requireAdminAuth, hashPassword, comparePassword } = require('../lib/auth');
 
@@ -213,6 +213,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
 
     const settings = safeSettings(await prisma.settings.update({ where: { id: existing.id }, data }));
+    invalidateSettings();
 
     await prisma.auditLog.create({
       data: {

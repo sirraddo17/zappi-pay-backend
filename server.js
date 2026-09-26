@@ -27,6 +27,9 @@ const { startDailySummary } = require('./lib/dailySummary');
 const app = express();
 
 app.use(cors());
+// Gzip API responses — lists of plans, orders and transactions shrink
+// by 70-80%, which matters most on slow mobile data.
+app.use(require('compression')());
 // Default is 100kb, far too small for a base64-encoded profile
 // photo — raised to cover that (matched by the 2MB cap on the
 // avatar field itself in auth.routes.js) without leaving the limit

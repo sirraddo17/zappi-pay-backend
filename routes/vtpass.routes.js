@@ -8,6 +8,28 @@ const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
 
+// VTpass's catalog (networks, data plans, TV bouquets) rarely changes,
+// but fetching it live takes 1-2 seconds every time a customer opens a
+// Buy page. Keep good answers in memory for an hour, per sandbox/live
+// mode. Prices are still checked by VTpass when the purchase is made.
+const CATALOG_TTL_MS = 60 * 60 * 1000;
+const catalogCache = new Map();
+
+async function cachedCatalog(path, query) {
+  const { vtpassMode } = await getSettings();
+  const key = `${vtpassMode}|${path}|${JSON.stringify(query || {})}`;
+  const hit = catalogCache.get(key);
+  if (hit && Date.now() - hit.at < CATALOG_TTL_MS) return hit.data;
+  const data = await vtpassRequest('GET', path, { query });
+  const content = data?.content;
+  const ok = Array.isArray(content) ? content.length > 0 : Boolean(content && (content.varations || content.variations || Object.keys(content).length));
+  if (ok) {
+    if (catalogCache.size > 200) catalogCache.clear();
+    catalogCache.set(key, { at: Date.now(), data });
+  }
+  return data;
+}
+
 // --- Catalog & verification (read-only, proxied straight to VTpass) ---
 // These don't touch the wallet or Order table at all — just pass VTpass's
 // own catalog data through, since re-hosting a copy of it here would go
@@ -15,7 +37,7 @@ const router = express.Router();
 
 router.get('/vtpass/categories', requireCustomerAuth, async (req, res) => {
   try {
-    const data = await vtpassRequest('GET', '/service-categories');
+    const data = await cachedCatalog('/service-categories');
     res.json(data);
   } catch (error) {
     console.error('GET /vtpass/categories failed:', error);
@@ -27,7 +49,7 @@ router.get('/vtpass/services', requireCustomerAuth, async (req, res) => {
   try {
     const { identifier } = req.query;
     if (!identifier) return res.status(400).json({ error: 'identifier is required.' });
-    const data = await vtpassRequest('GET', '/services', { query: { identifier } });
+    const data = await cachedCatalog('/services', { identifier });
     res.json(data);
   } catch (error) {
     console.error('GET /vtpass/services failed:', error);
@@ -39,7 +61,7 @@ router.get('/vtpass/variations', requireCustomerAuth, async (req, res) => {
   try {
     const { serviceID } = req.query;
     if (!serviceID) return res.status(400).json({ error: 'serviceID is required.' });
-    const data = await vtpassRequest('GET', '/service-variations', { query: { serviceID } });
+    const data = await cachedCatalog('/service-variations', { serviceID });
     res.json(data);
   } catch (error) {
     console.error('GET /vtpass/variations failed:', error);
