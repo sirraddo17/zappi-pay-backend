@@ -89,6 +89,8 @@ model Customer {
   // Wrong-password lock: 5 wrong tries → locked for 15 minutes.
   loginFailedAttempts Int       @default(0)
   loginLockedUntil    DateTime?
+  // "Log out all other devices": tokens issued before this are refused.
+  tokensValidAfter    DateTime?
   // Stored as a data: URI (base64-encoded image) rather than a file
   // path — there's no separate file storage set up for this app, so
   // the picture just lives on the row itself. @db.Text since a
@@ -168,6 +170,7 @@ model Customer {
   walletTransactions WalletTransaction[]
   passwordResetTokens PasswordResetToken[]
   orders             Order[]
+  loginSessions      LoginSession[]
   supportTickets     SupportTicket[]
   notifications      Notification[]
   transfersSent      Transfer[]      @relation("TransferSender")
@@ -416,6 +419,9 @@ model Broadcast {
   recipientCount   Int       @default(0)
   createdByAdminId String?
   endedAt          DateTime?
+  // Who it went to (lib/audience.js): ALL, AGENTS, NEW_7, NEVER_BOUGHT,
+  // ACTIVE_30, INACTIVE_30.
+  audience         String    @default("ALL")
   createdAt        DateTime  @default(now())
 
   @@index([active, createdAt])
@@ -625,6 +631,8 @@ model Settings {
   purchasesPaused          Boolean @default(false)
   pausedServices           Json    @default("[]")
   maintenanceMessage       String?
+  // Email owners when the server crashes or VTpass keeps failing.
+  errorAlertsEnabled       Boolean @default(true)
   // Hours an escalated request should be answered in (told to the
   // customer), and where "Report to VTpass" emails go.
   escalationHours          Int     @default(24)
@@ -708,6 +716,8 @@ model ScheduledPurchase {
   lastStatus    String?
   lastError     String?
   failCount     Int               @default(0)
+  // The run we last sent a "top up before your renewal" reminder for.
+  lowBalanceWarnedFor DateTime?
   createdAt     DateTime          @default(now())
 
   @@index([active, nextRunAt])
@@ -759,6 +769,8 @@ model PromoCode {
   perCustomerLimit Int               @default(1)
   usedCount        Int               @default(0)
   newCustomersOnly Boolean           @default(false)
+  // Only customers in this group can use it (lib/audience.js).
+  audience         String            @default("ALL")
   active           Boolean           @default(true)
   expiresAt        DateTime?
   createdAt        DateTime          @default(now())
@@ -944,4 +956,22 @@ model ChallengeReward {
 
   @@unique([challengeId, customerId, periodKey])
   @@index([customerId, createdAt])
+}
+
+// One row per login (password, sign-up, PIN or fingerprint), so the
+// customer can see where they're logged in and log other phones out.
+model LoginSession {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String
+  method     String
+  // Trusted device used for PIN / fingerprint login: a new quick login
+  // on the same phone replaces the old session instead of adding one.
+  deviceId   String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([customerId, lastSeenAt])
 }

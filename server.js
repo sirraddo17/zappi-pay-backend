@@ -32,7 +32,10 @@ const { startDailySummary } = require('./lib/dailySummary');
 const app = express();
 
 app.disable('x-powered-by');
+// Email owners about crashes and repeated failures (lib/errorAlerts.js).
+require('./lib/errorAlerts').installCrashHandlers();
 app.use(cors());
+app.use(require('./lib/errorAlerts').watchResponses);
 // Security headers and request limits (lib/protect.js).
 app.use(require('./lib/protect').securityHeaders);
 app.use(require('./lib/protect').rateLimit);

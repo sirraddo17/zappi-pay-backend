@@ -277,6 +277,7 @@ function promoData(body, partial) {
   if (has('usageLimit')) data.usageLimit = body.usageLimit === '' || body.usageLimit == null ? null : Math.max(1, parseInt(body.usageLimit, 10));
   if (has('perCustomerLimit')) data.perCustomerLimit = Math.max(1, parseInt(body.perCustomerLimit, 10) || 1);
   if (has('newCustomersOnly')) data.newCustomersOnly = Boolean(body.newCustomersOnly);
+  if (has('audience')) data.audience = require('../lib/audience').clean(body.audience);
   if (has('active')) data.active = Boolean(body.active);
   if (has('expiresAt')) data.expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
   if (!partial && data.type === 'CREDIT') {

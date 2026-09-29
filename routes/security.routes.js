@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
-const { comparePassword, signCustomerToken, requireCustomerAuth } = require('../lib/auth');
+const { comparePassword, signCustomerToken, issueCustomerToken, requireCustomerAuth } = require('../lib/auth');
 const { notify } = require('../lib/notify');
 const sec = require('../lib/security');
 
@@ -203,9 +203,9 @@ async function loginDevice(req, res) {
   return { device, customer };
 }
 
-async function finishLogin(res, device, customer) {
+async function finishLogin(req, res, device, customer, method) {
   await prisma.trustedDevice.update({ where: { id: device.id }, data: { lastUsedAt: new Date() } });
-  res.json({ token: signCustomerToken(customer), customer: quickLoginCustomer(customer) });
+  res.json({ token: await issueCustomerToken(customer, req, method, device.id), customer: quickLoginCustomer(customer) });
 }
 
 router.post('/auth/quick/pin', async (req, res) => {
@@ -214,7 +214,7 @@ router.post('/auth/quick/pin', async (req, res) => {
     if (!found) return;
     const check = await sec.checkPin(found.customer, String(req.body.pin || ''));
     if (!check.ok) return res.status(check.status).json({ error: check.error, code: check.code });
-    await finishLogin(res, found.device, found.customer);
+    await finishLogin(req, res, found.device, found.customer, 'PIN');
   } catch (error) {
     console.error('POST /auth/quick/pin failed:', error);
     res.status(500).json({ error: 'Could not log in.' });
@@ -240,10 +240,54 @@ router.post('/auth/quick/biometric', async (req, res) => {
     if (!found) return;
     const result = await sec.verifyAuthentication(req, found.customer, found.device, req.body.response);
     if (!result.ok) return res.status(401).json({ error: result.error });
-    await finishLogin(res, found.device, found.customer);
+    await finishLogin(req, res, found.device, found.customer, 'FINGERPRINT');
   } catch (error) {
     console.error('POST /auth/quick/biometric failed:', error);
     res.status(500).json({ error: 'Could not log in.' });
+  }
+});
+
+// --- Where you're logged in ---
+
+router.get('/security/sessions', requireCustomerAuth, async (req, res) => {
+  try {
+    res.json({ sessions: await require('../lib/sessions').list(req.customer.customerId, req.customer.sessionId), hasCurrent: Boolean(req.customer.sessionId) });
+  } catch (error) {
+    console.error('GET /security/sessions failed:', error);
+    res.status(500).json({ error: 'Could not load your devices.' });
+  }
+});
+
+router.delete('/security/sessions/:id', requireCustomerAuth, async (req, res) => {
+  try {
+    if (req.params.id === req.customer.sessionId) return res.status(400).json({ error: 'Use Log out to leave this device.' });
+    const n = await require('../lib/sessions').revoke(req.customer.customerId, req.params.id);
+    if (!n) return res.status(404).json({ error: 'That login was not found.' });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('DELETE /security/sessions/:id failed:', error);
+    res.status(500).json({ error: 'Could not log that device out.' });
+  }
+});
+
+router.post('/security/sessions/logout-others', requireCustomerAuth, async (req, res) => {
+  try {
+    await require('../lib/sessions').revokeOthers(req.customer.customerId, req.customer.sessionId);
+    notify(req.customer.customerId, 'Logged Out Other Devices', 'You logged out of ZAPPI PAY on all your other phones and browsers.');
+    res.json({ ok: true, keptCurrent: Boolean(req.customer.sessionId) });
+  } catch (error) {
+    console.error('POST /security/sessions/logout-others failed:', error);
+    res.status(500).json({ error: 'Could not log out other devices.' });
+  }
+});
+
+// Log out of this device (ends the session on the server too).
+router.post('/security/sessions/logout', requireCustomerAuth, async (req, res) => {
+  try {
+    if (req.customer.sessionId) await require('../lib/sessions').revoke(req.customer.customerId, req.customer.sessionId);
+    res.json({ ok: true });
+  } catch (error) {
+    res.json({ ok: true });
   }
 });
 

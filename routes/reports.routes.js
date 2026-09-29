@@ -26,6 +26,51 @@ function signed(t) {
   return 0;
 }
 
+// --- Spending insights --------------------------------------------------
+
+// "You spent ₦12,400 this month, mostly on data" + the last 6 months.
+router.get('/insights', requireCustomerAuth, async (req, res) => {
+  try {
+    const id = req.customer.customerId;
+    const months = [];
+    const now = lagosDay(new Date());
+    let y = Number(now.slice(0, 4));
+    let m = Number(now.slice(5, 7));
+    for (let i = 0; i < 6; i += 1) {
+      months.unshift(`${y}-${String(m).padStart(2, '0')}`);
+      m -= 1;
+      if (m === 0) { m = 12; y -= 1; }
+    }
+    const from = startOfLagosDay(`${months[0]}-01`);
+    const [orders, transfers, sent] = await Promise.all([
+      prisma.order.findMany({ where: { customerId: id, status: 'SUCCESS', createdAt: { gte: from } }, select: { service: true, amount: true, createdAt: true }, take: 5000 }),
+      prisma.bankTransfer.findMany({ where: { customerId: id, status: 'SUCCESS', createdAt: { gte: from } }, select: { amount: true, fee: true, createdAt: true }, take: 2000 }),
+      prisma.walletTransaction.findMany({ where: { customerId: id, type: 'TRANSFER_OUT', status: 'APPROVED', createdAt: { gte: from } }, select: { amount: true, createdAt: true }, take: 2000 }),
+    ]);
+    const byMonth = Object.fromEntries(months.map((k) => [k, { month: k, total: 0, byCategory: {} }]));
+    const add = (when, cat, amt) => {
+      const k = lagosDay(when).slice(0, 7);
+      if (!byMonth[k]) return;
+      byMonth[k].total += amt;
+      byMonth[k].byCategory[cat] = (byMonth[k].byCategory[cat] || 0) + amt;
+    };
+    orders.forEach((o) => add(o.createdAt, o.service, Number(o.amount)));
+    transfers.forEach((t) => add(t.createdAt, 'BANK_TRANSFER', Number(t.amount) + Number(t.fee || 0)));
+    sent.forEach((t) => add(t.createdAt, 'SENT_TO_FRIENDS', Number(t.amount)));
+    const list = months.map((k) => {
+      const e = byMonth[k];
+      const cats = Object.entries(e.byCategory).map(([category, amount]) => ({ category, amount: Math.round(amount * 100) / 100 })).sort((a, b) => b.amount - a.amount);
+      return { month: k, total: Math.round(e.total * 100) / 100, categories: cats };
+    });
+    const current = list[list.length - 1];
+    const previous = list[list.length - 2];
+    res.json({ months: list, current, previous, top: current.categories[0] || null });
+  } catch (error) {
+    console.error('GET /insights failed:', error);
+    res.status(500).json({ error: 'Could not load your spending.' });
+  }
+});
+
 // --- Customer statement -----------------------------------------------
 
 // Only approved transactions change the balance, so only they appear.

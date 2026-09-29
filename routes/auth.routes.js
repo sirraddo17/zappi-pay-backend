@@ -8,6 +8,7 @@ const {
   comparePassword,
   signAdminToken,
   signCustomerToken,
+  issueCustomerToken,
   requireCustomerAuth,
 } = require('../lib/auth');
 const identity = require('../lib/identity');
@@ -97,7 +98,7 @@ router.post('/auth/signup', async (req, res) => {
       },
     });
 
-    const token = signCustomerToken(customer);
+    const token = await issueCustomerToken(customer, req, 'SIGNUP');
     res.status(201).json({ token, customer: publicCustomer(customer) });
   } catch (error) {
     console.error('POST /auth/signup failed:', error);
@@ -172,7 +173,7 @@ router.post('/auth/login', async (req, res) => {
       prisma.customer.update({ where: { id: customer.id }, data: { lastIpHash: ipNow } }).catch(() => {});
     }
 
-    const token = signCustomerToken(customer);
+    const token = await issueCustomerToken(customer, req, 'PASSWORD');
     res.json({ token, customer: publicCustomer(customer) });
   } catch (error) {
     console.error('POST /auth/login failed:', error);
@@ -363,8 +364,12 @@ router.patch('/auth/password', requireCustomerAuth, async (req, res) => {
       where: { id: customer.id },
       data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null, securityChangedAt: new Date(), loginFailedAttempts: 0, loginLockedUntil: null },
     });
+    // New password: every other phone/browser has to log in again. This
+    // one gets a fresh login token so it stays logged in.
+    await require('../lib/sessions').revokeOthers(customer.id, req.customer.sessionId).catch(() => {});
+    const token = req.customer.sessionId ? undefined : await issueCustomerToken(customer, req, 'PASSWORD');
 
-    res.json({ success: true });
+    res.json({ success: true, ...(token ? { token } : {}) });
   } catch (error) {
     console.error('PATCH /auth/password failed:', error);
     res.status(500).json({ error: 'Could not change password.' });
@@ -456,6 +461,7 @@ router.post('/auth/reset-password', async (req, res) => {
       }),
     ]);
 
+    await require('../lib/sessions').revokeOthers(record.customerId, null).catch(() => {});
     notify(record.customerId, 'Password Changed', 'Your password was reset using the link sent to your email. If this wasn\'t you, contact support immediately.');
     res.json({ ok: true });
   } catch (error) {

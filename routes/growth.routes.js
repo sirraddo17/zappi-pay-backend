@@ -57,8 +57,12 @@ router.post('/admin/push/broadcast', requireAdminAuth, async (req, res) => {
     const title = String(req.body?.title || '').trim().slice(0, 60);
     const message = String(req.body?.message || '').trim().slice(0, 180);
     if (!title || !message) return res.status(400).json({ error: 'Write a title and a message.' });
-    const result = await push.pushToAll(title, message, '/');
-    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'PUSH_BROADCAST', details: { title, message, sent: result.sent } } }).catch(() => {});
+    const aud = require('../lib/audience');
+    const audience = aud.clean(req.body?.audience);
+    const ids = audience === 'ALL' ? null : await aud.customerIds(audience);
+    if (ids && !ids.length) return res.status(400).json({ error: 'No customers are in that group right now.' });
+    const result = await push.pushToAll(title, message, '/', ids);
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'PUSH_BROADCAST', details: { title, message, audience, sent: result.sent } } }).catch(() => {});
     res.json(result);
   } catch (error) {
     console.error('POST /admin/push/broadcast failed:', error);

@@ -34,7 +34,10 @@ router.post('/admin/broadcasts', requireAdminAuth, async (req, res) => {
     if (title.length > 100) return res.status(400).json({ error: 'Title must be 100 characters or fewer.' });
     if (message.length > 1000) return res.status(400).json({ error: 'Message must be 1000 characters or fewer.' });
 
-    const customers = await prisma.customer.findMany({ where: { active: true }, select: { id: true } });
+    const aud = require('../lib/audience');
+    const audience = aud.clean(req.body.audience);
+    const customers = await prisma.customer.findMany({ where: aud.where(audience), select: { id: true } });
+    if (!customers.length) return res.status(400).json({ error: 'No customers are in that group right now.' });
     const notificationTitle = `${TYPE_LABELS[type]}${title}`;
 
     const [broadcast] = await prisma.$transaction([
@@ -46,6 +49,7 @@ router.post('/admin/broadcasts', requireAdminAuth, async (req, res) => {
           showBanner,
           active: showBanner,
           recipientCount: customers.length,
+          audience,
           createdByAdminId: req.admin.adminId,
         },
       }),
@@ -56,7 +60,7 @@ router.post('/admin/broadcasts', requireAdminAuth, async (req, res) => {
         data: {
           actorAdminId: req.admin.adminId,
           action: 'BROADCAST_SENT',
-          details: { title, type, showBanner, recipientCount: customers.length },
+          details: { title, type, showBanner, audience, recipientCount: customers.length },
         },
       }),
     ]);
@@ -96,12 +100,29 @@ router.get('/broadcasts/active', requireCustomerAuth, async (req, res) => {
       where: { active: true, showBanner: true },
       orderBy: { createdAt: 'desc' },
       take: 3,
-      select: { id: true, title: true, message: true, type: true, createdAt: true },
+      select: { id: true, title: true, message: true, type: true, createdAt: true, audience: true },
     });
-    res.json({ broadcasts });
+    // Banners for a group only show to customers in that group.
+    const aud = require('../lib/audience');
+    const mine = [];
+    for (const b of broadcasts) if (await aud.isMember(req.customer.customerId, b.audience)) mine.push({ ...b, audience: undefined });
+    res.json({ broadcasts: mine });
   } catch (error) {
     console.error('GET /broadcasts/active failed:', error);
     res.status(500).json({ error: 'Could not load announcements.' });
+  }
+});
+
+// Group sizes for the admin form.
+router.get('/admin/audiences', requireAdminAuth, async (req, res) => {
+  try {
+    const aud = require('../lib/audience');
+    const groups = [];
+    for (const [key, label] of Object.entries(aud.AUDIENCES)) groups.push({ key, label, count: await aud.count(key) });
+    res.json({ groups });
+  } catch (error) {
+    console.error('GET /admin/audiences failed:', error);
+    res.status(500).json({ error: 'Could not load customer groups.' });
   }
 });
 
