@@ -34,6 +34,7 @@ function maskName(name) {
 
 router.get('/referrals', requireCustomerAuth, async (req, res) => {
   try {
+    await require('../lib/referral').catchUpReferralBonuses(req.customer.customerId);
     const settings = await getSettings();
     const me = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { username: true } });
     const referrals = await prisma.customer.findMany({

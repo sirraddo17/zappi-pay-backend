@@ -372,7 +372,7 @@ router.post('/admin/contests/:id/disqualify', requireAdminAuth, async (req, res)
 
 // --- In-app adverts ------------------------------------------------
 
-const AD_PLACEMENTS = ['HOME', 'POPUP', 'BOTH'];
+const AD_PLACEMENTS = ['HOME', 'BOTTOM', 'POPUP', 'BOTH'];
 
 function liveAdWhere() {
   const now = new Date();
