@@ -25,6 +25,7 @@ const escalationsRouter = require('./routes/escalations.routes');
 const savingsRouter = require('./routes/savings.routes');
 const challengesRouter = require('./routes/challenges.routes');
 const moneyRouter = require('./routes/money.routes');
+const statusRouter = require('./routes/status.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -59,6 +60,7 @@ app.use('/api', escalationsRouter);
 app.use('/api', savingsRouter);
 app.use('/api', challengesRouter);
 app.use('/api', moneyRouter);
+app.use('/api', statusRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
