@@ -37,7 +37,7 @@ app.use(require('compression')());
 // unbounded.
 // rawBody is kept for webhook signature checks (the signature is over
 // the exact bytes the payment provider sent).
-app.use(express.json({ limit: '3mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
+app.use(express.json({ limit: '6mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-backend' }));
 

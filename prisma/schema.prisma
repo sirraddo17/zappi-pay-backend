@@ -297,6 +297,8 @@ model SupportTicket {
   resolvedAt DateTime?
   createdAt  DateTime     @default(now())
 
+  attachments TicketAttachment[]
+
   @@index([customerId, createdAt])
 }
 
@@ -774,4 +776,17 @@ model AppAd {
   clicks     Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+// Screenshots/photos a customer attaches to a support message (data:
+// URI, compressed on the phone first). Kept separate so ticket lists
+// stay light.
+model TicketAttachment {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  image     String        @db.Text
+  createdAt DateTime      @default(now())
+
+  @@index([ticketId])
 }

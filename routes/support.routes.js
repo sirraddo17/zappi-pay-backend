@@ -27,6 +27,11 @@ router.post('/support/tickets', requireCustomerAuth, async (req, res) => {
     if (!message || !message.trim()) {
       return res.status(400).json({ error: 'Please describe the issue.' });
     }
+    const images = Array.isArray(req.body.images) ? req.body.images.slice(0, 3) : [];
+    for (const img of images) {
+      if (typeof img !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/.test(img)) return res.status(400).json({ error: 'Pictures must be JPG, PNG or WebP.' });
+      if (img.length > 1.4 * 1024 * 1024) return res.status(400).json({ error: 'A picture is too large. Please try a smaller screenshot.' });
+    }
 
     if (orderId) {
       const order = await prisma.order.findFirst({
@@ -40,6 +45,7 @@ router.post('/support/tickets', requireCustomerAuth, async (req, res) => {
         customerId: req.customer.customerId,
         orderId: orderId || undefined,
         message: message.trim(),
+        ...(images.length ? { attachments: { create: images.map((image) => ({ image })) } } : {}),
       },
     });
     prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { name: true, phone: true } })
@@ -63,12 +69,27 @@ router.get('/admin/support/tickets', requireAdminAuth, async (req, res) => {
       include: {
         customer: { select: { id: true, name: true, phone: true } },
         order: { select: { id: true, service: true, provider: true, recipient: true, amount: true, status: true, vtpassRequestId: true, createdAt: true } },
+        attachments: { select: { id: true } },
       },
     });
     res.json({ tickets });
   } catch (error) {
     console.error('GET /admin/support/tickets failed:', error);
     res.status(500).json({ error: 'Could not load support tickets.' });
+  }
+});
+
+// A picture attached to a ticket (admin only).
+router.get('/admin/support/attachments/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const a = await prisma.ticketAttachment.findUnique({ where: { id: req.params.id } });
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(a?.image || '');
+    if (!m) return res.status(404).end();
+    res.set('Content-Type', m[1]);
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.send(Buffer.from(m[2], 'base64'));
+  } catch (error) {
+    res.status(404).end();
   }
 });
 
