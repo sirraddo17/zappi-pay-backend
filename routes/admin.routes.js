@@ -40,7 +40,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -225,6 +225,14 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       if (!(p >= 0 && p <= 100)) return res.status(400).json({ error: 'Safety limit must be between 0 and 100%.' });
       data.rewardGuardPercent = p;
     }
+    // Maintenance mode (lib/maintenance.js).
+    if (purchasesPaused !== undefined) data.purchasesPaused = Boolean(purchasesPaused);
+    if (pausedServices !== undefined) {
+      if (!Array.isArray(pausedServices)) return res.status(400).json({ error: 'pausedServices must be a list.' });
+      const allowed = require('../lib/maintenance').SERVICES;
+      data.pausedServices = [...new Set(pausedServices.filter((x) => allowed.includes(x)))];
+    }
+    if (maintenanceMessage !== undefined) data.maintenanceMessage = String(maintenanceMessage || '').trim().slice(0, 200) || null;
     // Savings with daily interest (lib/savings.js).
     if (savingsPartnerNote !== undefined) data.savingsPartnerNote = String(savingsPartnerNote || '').trim().slice(0, 300) || null;
     if (savingsRatePct !== undefined) {

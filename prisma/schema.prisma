@@ -619,6 +619,12 @@ model Settings {
   savingsDailyBudget       Int     @default(5000)
   savingsPartnerNote       String?
   savingsLastRunDate       String?
+  // Maintenance: pause every purchase, or just some services, with a
+  // message for customers (lib/maintenance.js). Scheduled top-ups wait
+  // and run once it's switched back on.
+  purchasesPaused          Boolean @default(false)
+  pausedServices           Json    @default("[]")
+  maintenanceMessage       String?
   // Hours an escalated request should be answered in (told to the
   // customer), and where "Report to VTpass" emails go.
   escalationHours          Int     @default(24)

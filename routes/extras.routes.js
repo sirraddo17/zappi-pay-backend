@@ -39,6 +39,7 @@ router.get('/app/info', async (req, res) => {
       manualAccounts: manualList.map((m) => ({ id: m.id, bankName: m.bankName, accountNumber: m.accountNumber, accountName: m.accountName })),
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
       cashback: settings.cashbackEnabled ? settings.cashbackPercentByService || {} : {},
+      maintenance: require('../lib/maintenance').publicInfo(settings),
     });
   } catch (error) {
     console.error('GET /app/info failed:', error);
