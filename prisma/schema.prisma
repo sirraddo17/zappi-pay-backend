@@ -102,6 +102,11 @@ model Customer {
   loyaltyPoints       Int       @default(0)
   emailAlerts          Boolean   @default(true)
   lastLoginFingerprint String?
+  // Scrambled network/device fingerprints (never the raw IP) to spot
+  // one person creating many accounts.
+  signupIpHash         String?
+  signupDeviceHash     String?
+  lastIpHash           String?
   // "Delete my account" request; an admin completes it (the ledger is
   // kept, personal details are wiped).
   deletionRequestedAt DateTime?

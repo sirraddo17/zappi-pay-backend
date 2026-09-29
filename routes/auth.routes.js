@@ -83,6 +83,9 @@ router.post('/auth/signup', async (req, res) => {
         email: email ? email.trim() : undefined,
         passwordHash,
         referredById,
+        signupIpHash: require('../lib/clientHints').ipHash(req),
+        signupDeviceHash: require('../lib/clientHints').deviceHash(req),
+        lastIpHash: require('../lib/clientHints').ipHash(req),
       },
     });
 
@@ -131,6 +134,11 @@ router.post('/auth/login', async (req, res) => {
         notify(customer.id, 'New Login', `Your ZappiPay account was just logged into from ${device} (${new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })}). If this wasn't you, change your password now.`);
       }
       prisma.customer.update({ where: { id: customer.id }, data: { lastLoginFingerprint: fingerprint, ...(customer.lastLoginFingerprint ? { securityChangedAt: new Date() } : {}) } }).catch(() => {});
+    }
+
+    const ipNow = require('../lib/clientHints').ipHash(req);
+    if (ipNow && ipNow !== customer.lastIpHash) {
+      prisma.customer.update({ where: { id: customer.id }, data: { lastIpHash: ipNow } }).catch(() => {});
     }
 
     const token = signCustomerToken(customer);

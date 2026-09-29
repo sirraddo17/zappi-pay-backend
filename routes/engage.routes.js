@@ -260,6 +260,19 @@ router.get('/admin/contests/:id', requireAdminAuth, async (req, res) => {
   }
 });
 
+router.get('/admin/contests/:id/friends/:customerId', requireAdminAuth, async (req, res) => {
+  try {
+    const c = await prisma.referralContest.findUnique({ where: { id: req.params.id } });
+    if (!c) return res.status(404).json({ error: 'Contest not found.' });
+    const report = await contest.friendsReport(c, req.params.customerId);
+    if (!report) return res.status(404).json({ error: 'Customer not found.' });
+    res.json(report);
+  } catch (error) {
+    console.error('GET /admin/contests/:id/friends failed:', error);
+    res.status(500).json({ error: 'Could not load the friends list.' });
+  }
+});
+
 router.post('/admin/contests', requireAdminAuth, async (req, res) => {
   try {
     const input = readContestInput(req.body || {});
