@@ -31,6 +31,10 @@ router.get('/app/info', async (req, res) => {
     const manualList = require('../lib/funding').activeManualAccounts(settings);
     res.json({
       supportWhatsapp: settings.supportWhatsapp || null,
+      // True while VTpass or Monnify is still on sandbox (test) keys —
+      // customers see a "test mode, no real money" banner. It turns off
+      // by itself once both are switched to live.
+      testMode: settings.vtpassMode !== 'live' || (await require('../lib/monnify').getConfig().then((c) => c.mode !== 'live').catch(() => true)),
       manualFunding: manualList[0] ? { bankName: manualList[0].bankName, accountNumber: manualList[0].accountNumber, accountName: manualList[0].accountName } : null,
       manualAccounts: manualList.map((m) => ({ id: m.id, bankName: m.bankName, accountNumber: m.accountNumber, accountName: m.accountName })),
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
