@@ -40,7 +40,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -213,6 +213,12 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (adminAlertEmail !== undefined) data.adminAlertEmail = Boolean(adminAlertEmail);
     if (feedbackPromptEnabled !== undefined) data.feedbackPromptEnabled = Boolean(feedbackPromptEnabled);
     if (rewardGuardEnabled !== undefined) data.rewardGuardEnabled = Boolean(rewardGuardEnabled);
+    if (escalationHours !== undefined) data.escalationHours = Math.min(168, Math.max(1, parseInt(escalationHours, 10) || 24));
+    if (vtpassSupportEmail !== undefined) {
+      const e = String(vtpassSupportEmail || '').trim();
+      if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return res.status(400).json({ error: 'Enter a valid VTpass support email.' });
+      data.vtpassSupportEmail = e || null;
+    }
     if (rewardGuardPercent !== undefined) {
       const p = parseInt(rewardGuardPercent, 10);
       if (!(p >= 0 && p <= 100)) return res.status(400).json({ error: 'Safety limit must be between 0 and 100%.' });
@@ -554,7 +560,7 @@ router.get('/admin/admins', requireAdminAuth, async (req, res) => {
   try {
     const admins = await prisma.adminUser.findMany({
       orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, email: true, active: true, createdAt: true },
+      select: { id: true, name: true, email: true, active: true, role: true, createdAt: true },
     });
     res.json({ admins });
   } catch (error) {
@@ -594,6 +600,7 @@ router.patch('/admin/admins/:id/active', requireAdminAuth, async (req, res) => {
       },
     });
 
+    require('../lib/staffAccess').forget(id);
     res.json({ admin });
   } catch (error) {
     console.error('PATCH /admin/admins/:id/active failed:', error);
@@ -633,9 +640,32 @@ router.post('/admin/admins/:id/reset-password', requireAdminAuth, async (req, re
   }
 });
 
+// Change a staff member's access: OWNER (everything) or SUPPORT
+// (customer care only). There must always be at least one active owner.
+router.patch('/admin/admins/:id/role', requireAdminAuth, async (req, res) => {
+  try {
+    const role = req.body?.role === 'OWNER' ? 'OWNER' : req.body?.role === 'SUPPORT' ? 'SUPPORT' : null;
+    if (!role) return res.status(400).json({ error: 'role must be OWNER or SUPPORT.' });
+    const target = await prisma.adminUser.findUnique({ where: { id: req.params.id } });
+    if (!target) return res.status(404).json({ error: 'Staff member not found.' });
+    if (role === 'SUPPORT') {
+      const owners = await prisma.adminUser.count({ where: { active: true, role: 'OWNER', id: { not: target.id } } });
+      if (owners < 1) return res.status(400).json({ error: 'You need at least one other active owner first.' });
+    }
+    const admin = await prisma.adminUser.update({ where: { id: target.id }, data: { role }, select: { id: true, name: true, email: true, role: true, active: true } });
+    require('../lib/staffAccess').forget(target.id);
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'ADMIN_ROLE_CHANGED', details: { targetAdminId: target.id, name: target.name, role } } });
+    res.json({ admin });
+  } catch (error) {
+    console.error('PATCH /admin/admins/:id/role failed:', error);
+    res.status(500).json({ error: 'Could not change access.' });
+  }
+});
+
 router.post('/admin/admins', requireAdminAuth, async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const role = req.body.role === 'OWNER' ? 'OWNER' : 'SUPPORT';
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email, and password are required.' });
     }
@@ -649,15 +679,15 @@ router.post('/admin/admins', requireAdminAuth, async (req, res) => {
 
     const passwordHash = await hashPassword(password);
     const admin = await prisma.adminUser.create({
-      data: { name: name.trim(), email: normalizedEmail, passwordHash },
-      select: { id: true, name: true, email: true, createdAt: true },
+      data: { name: name.trim(), email: normalizedEmail, passwordHash, role },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
 
     await prisma.auditLog.create({
       data: {
         actorAdminId: req.admin.adminId,
         action: 'ADMIN_CREATED',
-        details: { newAdminId: admin.id, email: admin.email },
+        details: { newAdminId: admin.id, email: admin.email, role },
       },
     });
 

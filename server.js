@@ -21,6 +21,7 @@ const growthRouter = require('./routes/growth.routes');
 const customersRouter = require('./routes/customers.routes');
 const aiRouter = require('./routes/ai.routes');
 const engageRouter = require('./routes/engage.routes');
+const escalationsRouter = require('./routes/escalations.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -40,6 +41,11 @@ app.use(require('compression')());
 app.use(express.json({ limit: '6mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-backend' }));
+
+// Support staff (role SUPPORT) may only reach customer-care admin routes;
+// everything sensitive needs an owner (lib/staffAccess.js).
+app.use('/api', require('./lib/staffAccess').staffGate);
+app.use('/api', escalationsRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);

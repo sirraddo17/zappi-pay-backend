@@ -17,8 +17,39 @@ model AdminUser {
   // in code so a mistake here can never lock everyone out of the
   // admin panel entirely.
   active       Boolean  @default(true)
+  // OWNER = full access. SUPPORT = customer care only: can look up
+  // customers, check identity, answer tickets and re-check orders, but
+  // money, passwords and settings go to an OWNER as an Escalation.
+  role         String   @default("OWNER")
   createdAt    DateTime @default(now())
   loginCodes   AdminLoginCode[]
+}
+
+// A support staff request that needs an owner's approval (password
+// reset, refund, wallet correction...). The customer is told it was
+// escalated and when to expect an answer (dueAt).
+model Escalation {
+  id             String    @id @default(cuid())
+  ref            String    @unique
+  type           String
+  status         String    @default("PENDING") // PENDING, PROCESSING, APPROVED, REJECTED
+  customerId     String
+  orderId        String?
+  amount         Decimal?  @db.Decimal(14, 2)
+  reason         String
+  checks         Json      @default("{}")
+  createdById    String
+  createdByName  String
+  reviewedById   String?
+  reviewedByName String?
+  reviewNote     String?
+  result         String?
+  dueAt          DateTime
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([customerId])
 }
 
 // One-time email code for admin two-step login.
@@ -275,6 +306,8 @@ model Order {
   vtpassStatus    String?
   status          OrderStatus  @default(PENDING)
   responsePayload Json?
+  // Last time the order was reported to VTpass support by email.
+  vtpassEscalatedAt  DateTime?
   createdAt       DateTime     @default(now())
 
   supportTickets SupportTicket[]
@@ -561,6 +594,10 @@ model Settings {
   // may use at most this % of what we earn on it (lib/rewardGuard.js).
   rewardGuardEnabled       Boolean @default(true)
   rewardGuardPercent       Int     @default(50)
+  // Hours an escalated request should be answered in (told to the
+  // customer), and where "Report to VTpass" emails go.
+  escalationHours          Int     @default(24)
+  vtpassSupportEmail       String?
   updatedAt              DateTime @updatedAt
 }
 
