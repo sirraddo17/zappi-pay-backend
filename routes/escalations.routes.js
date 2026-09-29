@@ -18,6 +18,9 @@ const TYPES = {
   WALLET_DEBIT: 'Debit wallet',
   SECURITY_RESET: 'Reset date of birth & security question',
   REACTIVATE: 'Reactivate account',
+  PIN_RESET: 'Reset transaction PIN',
+  DEVICES_RESET: 'Remove quick login & fingerprint (lost phone)',
+  CONTACT_CHANGE: 'Change phone number or email',
   FUNDING_MISSING: 'Bank funding not credited',
   TRANSFER_ISSUE: 'Send-to-bank problem',
   OTHER: 'Other',
@@ -71,7 +74,16 @@ router.post('/admin/escalations', requireAdminAuth, async (req, res) => {
     }).catch(() => null);
     if (idCheck) checks.appIdentityCheck = { dob: idCheck.details.dob || null, answer: idCheck.details.answer || null, at: idCheck.createdAt };
 
-    if (['PASSWORD_RESET', 'SECURITY_RESET', 'REACTIVATE'].includes(type) && !checks.identityVerified) {
+    if (type === 'CONTACT_CHANGE') {
+      try {
+        const d = await require('../lib/accountTools').checkContact(customer.id, { phone: b.newPhone, email: b.newEmail });
+        checks.newPhone = d.phone || null;
+        checks.newEmail = d.email || null;
+      } catch (error) {
+        return res.status(400).json({ error: error.message });
+      }
+    }
+    if (['PASSWORD_RESET', 'SECURITY_RESET', 'REACTIVATE', 'PIN_RESET', 'DEVICES_RESET', 'CONTACT_CHANGE'].includes(type) && !checks.identityVerified) {
       return res.status(400).json({ error: 'Confirm you checked it’s really the customer (date of birth / security question) first.' });
     }
     if (type === 'REACTIVATE' && customer.active) return res.status(400).json({ error: 'This account is already active.' });
@@ -234,6 +246,14 @@ async function execute(esc, req) {
       notify(esc.customerId, 'Transfer Update', `We've reviewed your bank transfer (request ${esc.ref}). ${['FAILED', 'REVERSED', 'CANCELLED'].includes(status) ? 'It did not go through, and the money is back in your wallet.' : 'We are following up with our payment partner and will update you.'}`);
       return { summary: `Reviewed — transfer status ${String(status || 'unknown').toLowerCase()}` };
     }
+    case 'PIN_RESET':
+      return { summary: await require('../lib/accountTools').resetPin(esc.customerId) };
+    case 'DEVICES_RESET':
+      return { summary: await require('../lib/accountTools').removeDevices(esc.customerId) };
+    case 'CONTACT_CHANGE': {
+      const r = await require('../lib/accountTools').changeContact(esc.customerId, { phone: esc.checks?.newPhone, email: esc.checks?.newEmail });
+      return { summary: r.summary };
+    }
     case 'SECURITY_RESET':
       await prisma.customer.update({ where: { id: esc.customerId }, data: { dateOfBirth: null, securityQuestion: null, securityAnswerHash: null } });
       notify(esc.customerId, 'Security Details Reset', 'Your date of birth and security question were reset. Please set them again in Profile → Security details.');
@@ -288,6 +308,37 @@ router.post('/admin/escalations/:id/reject', requireAdminAuth, async (req, res) 
   } catch (error) {
     console.error('POST /admin/escalations/:id/reject failed:', error);
     res.status(500).json({ error: 'Could not reject this request.' });
+  }
+});
+
+// --- Owner account tools (staffGate keeps these owner-only) ---------------
+router.post('/admin/customers/:id/account-tool', requireAdminAuth, async (req, res) => {
+  try {
+    const tools = require('../lib/accountTools');
+    const id = req.params.id;
+    const c = await prisma.customer.findUnique({ where: { id }, select: { id: true, name: true } });
+    if (!c) return res.status(404).json({ error: 'Customer not found.' });
+    const action = String(req.body?.action || '');
+    let summary;
+    if (action === 'RESET_PIN') summary = await tools.resetPin(id);
+    else if (action === 'UNLOCK_PIN') summary = await tools.unlockPin(id);
+    else if (action === 'REMOVE_DEVICES') summary = await tools.removeDevices(id);
+    else if (action === 'CHANGE_CONTACT') {
+      try {
+        summary = (await tools.changeContact(id, { phone: req.body.phone, email: req.body.email })).summary;
+      } catch (error) {
+        return res.status(400).json({ error: error.message });
+      }
+    } else if (action === 'RESET_SECURITY') {
+      await prisma.customer.update({ where: { id }, data: { dateOfBirth: null, securityQuestion: null, securityAnswerHash: null } });
+      notify(id, 'Security Details Reset', 'Your date of birth and security question were reset. Please set them again in Profile → Security details.');
+      summary = 'Date of birth & security question cleared';
+    } else return res.status(400).json({ error: 'Unknown action.' });
+    await audit(req, `ACCOUNT_TOOL_${action}`, { customerId: id, name: c.name, result: summary });
+    res.json({ ok: true, message: summary });
+  } catch (error) {
+    console.error('POST /admin/customers/:id/account-tool failed:', error);
+    res.status(500).json({ error: 'Could not do that.' });
   }
 });
 

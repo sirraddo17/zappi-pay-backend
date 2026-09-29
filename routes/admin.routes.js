@@ -327,7 +327,8 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
         pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true, dateOfBirth: true, securityQuestion: true, securityAnswerHash: true,
         referredBy: { select: { id: true, name: true, username: true } },
-        _count: { select: { referrals: true } },
+        pinLockedUntil: true,
+        _count: { select: { referrals: true, trustedDevices: true, webauthnCredentials: true } },
       },
     });
     if (!customer) return res.status(404).json({ error: 'Customer not found.' });
@@ -342,6 +343,9 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     delete customer.dateOfBirth;
     delete customer.securityAnswerHash;
     customer.referralCount = customer._count.referrals;
+    customer.quickLoginDevices = customer._count.trustedDevices;
+    customer.fingerprintLogins = customer._count.webauthnCredentials;
+    customer.pinLocked = Boolean(customer.pinLockedUntil && new Date(customer.pinLockedUntil) > new Date());
     delete customer._count;
 
     const [orders, walletTransactions] = await Promise.all([
