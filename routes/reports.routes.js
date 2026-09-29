@@ -5,8 +5,10 @@ const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 // Customer statements and the admin profit dashboard.
 const router = express.Router();
 
-const CREDIT_TYPES = ['FUND', 'REFUND', 'TRANSFER_IN', 'AIRTIME_CASH', 'REFERRAL_BONUS', 'CASHBACK', 'LOYALTY', 'CONTEST_PRIZE', 'COUPON'];
-const DEBIT_TYPES = ['DEBIT', 'TRANSFER_OUT'];
+const CREDIT_TYPES = ['FUND', 'REFUND', 'TRANSFER_IN', 'AIRTIME_CASH', 'REFERRAL_BONUS', 'CASHBACK', 'LOYALTY', 'CONTEST_PRIZE', 'COUPON', 'SAVINGS_OUT'];
+// SAVINGS_IN/OUT move money between the wallet and the savings pocket;
+// INTEREST lands in savings, so it doesn't change the wallet.
+const DEBIT_TYPES = ['DEBIT', 'TRANSFER_OUT', 'SAVINGS_IN'];
 
 // Days are grouped in Nigerian time (UTC+1).
 const LAGOS_MS = 60 * 60 * 1000;

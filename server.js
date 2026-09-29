@@ -22,6 +22,7 @@ const customersRouter = require('./routes/customers.routes');
 const aiRouter = require('./routes/ai.routes');
 const engageRouter = require('./routes/engage.routes');
 const escalationsRouter = require('./routes/escalations.routes');
+const savingsRouter = require('./routes/savings.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -46,6 +47,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-ba
 // everything sensitive needs an owner (lib/staffAccess.js).
 app.use('/api', require('./lib/staffAccess').staffGate);
 app.use('/api', escalationsRouter);
+app.use('/api', savingsRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
@@ -80,5 +82,6 @@ app.listen(PORT, () => {
   startScheduler();
   startOrderSweeper();
   startDailySummary();
+  require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();
 });

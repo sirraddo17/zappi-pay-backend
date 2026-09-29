@@ -40,7 +40,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -112,6 +112,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
 
     const existing = await getSettings();
+    const wasSavingsOn = Boolean(existing.savingsEnabled);
     const data = {};
     if (vtpassMode !== undefined) data.vtpassMode = vtpassMode;
     if (vtpassApiKey !== undefined) data.vtpassApiKey = vtpassApiKey;
@@ -224,7 +225,29 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       if (!(p >= 0 && p <= 100)) return res.status(400).json({ error: 'Safety limit must be between 0 and 100%.' });
       data.rewardGuardPercent = p;
     }
-    // AI assistant. An empty key box means "keep the saved key".
+    // Savings with daily interest (lib/savings.js).
+    if (savingsPartnerNote !== undefined) data.savingsPartnerNote = String(savingsPartnerNote || '').trim().slice(0, 300) || null;
+    if (savingsRatePct !== undefined) {
+      const r = Math.round(Number(savingsRatePct) * 100) / 100;
+      if (!(r > 0 && r <= 30)) return res.status(400).json({ error: 'Savings interest must be more than 0% and at most 30% a year.' });
+      data.savingsRatePct = r;
+    }
+    for (const [field, value, lo, hi] of [['savingsMinBalance', savingsMinBalance, 0, 10000000], ['savingsMaxBalance', savingsMaxBalance, 1, 100000000], ['savingsDailyBudget', savingsDailyBudget, 0, 100000000]]) {
+      if (value === undefined) continue;
+      const n = parseInt(value, 10);
+      if (!(n >= lo && n <= hi)) return res.status(400).json({ error: `${field} must be between ${lo} and ${hi}.` });
+      data[field] = n;
+    }
+    if ((data.savingsMinBalance ?? existing.savingsMinBalance) > (data.savingsMaxBalance ?? existing.savingsMaxBalance)) {
+      return res.status(400).json({ error: 'The minimum savings balance can’t be more than the maximum.' });
+    }
+    if (savingsEnabled !== undefined) data.savingsEnabled = Boolean(savingsEnabled);
+    if (data.savingsEnabled && !wasSavingsOn) {
+      const note = data.savingsPartnerNote !== undefined ? data.savingsPartnerNote : existing.savingsPartnerNote;
+      if (!note || note.length < 5) {
+        return res.status(400).json({ error: 'Paying interest on customer money needs a CBN licence or a licensed partner. Enter which one before turning savings on.' });
+      }
+    }
     if (aiApiKeyClear) data.aiApiKey = null;
     else if (aiApiKey !== undefined && String(aiApiKey).trim()) {
       const k = String(aiApiKey).trim();
@@ -274,6 +297,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       },
     });
 
+    if (data.savingsEnabled === false && wasSavingsOn) {
+      require('../lib/savings').tellSaversItIsOff().catch(() => {});
+    }
     res.json({ settings });
   } catch (error) {
     console.error('PATCH /admin/settings failed:', error);

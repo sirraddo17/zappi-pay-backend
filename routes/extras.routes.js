@@ -388,6 +388,9 @@ router.post('/admin/customers/:id/delete-account', requireAdminAuth, async (req,
     if (Number(c.walletBalance) > 0) {
       return res.status(400).json({ error: `This customer still has ₦${Number(c.walletBalance).toLocaleString()} in their wallet. Pay it out or ask them to spend it first.` });
     }
+    if (Number(c.savingsBalance) > 0) {
+      return res.status(400).json({ error: `This customer still has ₦${Number(c.savingsBalance).toLocaleString()} in savings. Ask them to move it to their wallet and spend or withdraw it first.` });
+    }
     const tag = `deleted-${c.id.slice(-8)}`;
     await prisma.$transaction([
       prisma.trustedDevice.deleteMany({ where: { customerId: c.id } }),
