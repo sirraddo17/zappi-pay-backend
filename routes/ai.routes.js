@@ -269,6 +269,26 @@ const ADMIN_TOOLS = [
   { name: 'get_bank_transfers', description: 'Recent Send-to-Bank transfers, optionally by status.', input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['HELD', 'PENDING_AUTHORIZATION', 'PROCESSING', 'SUCCESS', 'FAILED', 'REVERSED', 'CANCELLED'] }, limit: { type: 'integer', description: '1-20, default 10' } } } },
   { name: 'get_open_tickets', description: 'Open support tickets, oldest first.', input_schema: { type: 'object', properties: { limit: { type: 'integer', description: '1-15, default 8' } } } },
   { name: 'get_settings_overview', description: 'Current modes and feature switches (no secret keys).', input_schema: { type: 'object', properties: {} } },
+  {
+    name: 'get_earnings',
+    description: "The owner's real earnings for a period, line by line: markup, VTpass commission, send-to-bank fees, bank-funding fees, airtime-to-cash fees, minus Monnify funding/payout fees and rewards (cashback, referral, loyalty, contest prizes, coupons), plus profit by service. Use for 'how much did I make'.",
+    input_schema: { type: 'object', properties: { period: PERIOD, from: DATE, to: DATE } },
+  },
+  {
+    name: 'estimate_earnings',
+    description: "What the owner keeps if a customer spends a given amount, using the current markup/discount/fee settings, VTpass's published commission and Monnify's fees. service: AIRTIME, DATA, ELECTRICITY, CABLE, EDUCATION, INTERNET, BETTING, SEND_TO_BANK, TRANSFER or AIRTIME_CASH. provider: VTpass serviceID, e.g. mtn, airtel, glo, etisalat, mtn-data, ikeja-electric, ibadan-electric, abuja-electric, dstv, gotv, startimes, smile-direct, waec. funding: 'wallet' (already in wallet) or 'bank' (customer just funded this amount by bank transfer). Pass several items to compare.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: { type: 'object', properties: { service: { type: 'string' }, provider: { type: 'string' }, amount: { type: 'number' }, funding: { type: 'string', enum: ['wallet', 'bank'] }, agent: { type: 'boolean' } }, required: ['service', 'amount'] },
+        },
+      },
+      required: ['items'],
+    },
+  },
+  { name: 'get_vtpass_rates', description: "VTpass's published commission rate for each provider (used when an order's exact commission is missing) and Monnify's fee rates.", input_schema: { type: 'object', properties: {} } },
 ];
 
 function adminHandlers(settings) {
@@ -300,7 +320,7 @@ function adminHandlers(settings) {
         period: r.label,
         sales: naira(sales),
         profit: naira(profit),
-        profitNote: 'Profit = sale price − VTpass cost − cashback, plus bank transfer fees.',
+        profitNote: 'Rough profit (sale price − face value − cashback + transfer fees). For exact earnings incl. VTpass commission and Monnify fees, use get_earnings.',
         successfulOrders: orders.length,
         ordersByStatus: Object.fromEntries(byStatus.map((g) => [g.status, g._count.status])),
         byService: Object.fromEntries(Object.entries(byService).map(([k, v]) => [k, { orders: v.orders, sales: naira(v.sales), profit: naira(v.profit) }])),
@@ -310,6 +330,42 @@ function adminHandlers(settings) {
         refunds: naira(refunds),
         cashbackPaid: naira(cashback),
         newCustomers,
+      };
+    },
+    async get_earnings({ period, from, to }) {
+      const r = lagosRange(period, from, to);
+      const rep = await require('../lib/earnings').earningsReport({ gte: r.gte, lt: r.lt });
+      const nz = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, naira(v)]));
+      return {
+        period: r.label,
+        profit: naira(rep.profit),
+        income: nz(rep.income),
+        costs: nz(rep.costs),
+        rewardsByType: nz(rep.rewardsByType),
+        sales: naira(rep.sales),
+        successfulOrders: rep.orders,
+        commissionNote: `${rep.commissionExactOrders} of ${rep.orders} orders have the exact commission from VTpass; the rest use published rates.`,
+        byService: rep.byService.map((x) => ({ service: x.service, orders: x.orders, sales: naira(x.revenue), markup: naira(x.margin), vtpassCommission: naira(x.commission), profit: naira(x.profit) })),
+        sendToBank: { transfers: rep.transfers, volume: naira(rep.transferVolume) },
+        bankFunding: { deposits: rep.bankFundings, volume: naira(rep.bankFundingVolume) },
+      };
+    },
+    async estimate_earnings({ items }) {
+      const { estimateSale } = require('../lib/earnings');
+      return (items || []).slice(0, 30).map((it) => {
+        try {
+          const e = estimateSale(it, settings);
+          return { ...e, lines: e.lines.map((l) => `${l.label}: ${naira(l.amount)}`), customerPays: naira(e.customerPays), profit: naira(e.profit) };
+        } catch (error) {
+          return { ...it, error: error.message };
+        }
+      });
+    },
+    async get_vtpass_rates() {
+      const { VTPASS_RATES } = require('../lib/earnings');
+      return {
+        vtpass: Object.fromEntries(Object.entries(VTPASS_RATES).map(([k, v]) => [k, v.flat ? `₦${v.flat} per PIN` : `${v.pct}%${v.cap ? ` (max ₦${v.cap})` : ''}`])),
+        monnify: 'Bank-transfer funding: 1.5% capped at ₦2,000; payouts: ₦10 (<₦10k), ₦20 (≥₦10k), ₦40 (≥₦50k); plus 7.5% VAT. Published rates — the owner\'s negotiated rates may differ.',
       };
     },
     async get_attention_items() {
@@ -446,6 +502,7 @@ function adminSystemPrompt(adminName) {
   return `You are the ZAPPI PAY admin assistant for ${adminName || 'the business owner'}. ZAPPI PAY (by Sirraddo Venture, Nigeria) sells airtime, data, electricity, cable TV, education PINs, internet and bet funding through VTpass, funds customer wallets through Monnify reserved accounts, and sends money to banks through Monnify disbursements.
 
 Answer business questions using the tools — never invent numbers. Times are Lagos time. Amounts in naira.
+For "how much did I make" use get_earnings. For "how much would I make if…" use estimate_earnings (it applies the owner's current settings). Explain each line simply (VTpass commission, markup, fees, Monnify fees, rewards) and point out services that lose money so the owner can adjust markup or fees.
 
 Rules:
 - Be concise and useful: lead with the answer, then a few bullets. Point out anything unusual (spikes in failed orders, big transfers, low VTpass balance, repeated complaints).

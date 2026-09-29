@@ -89,86 +89,55 @@ router.get('/wallet/statement', requireCustomerAuth, async (req, res) => {
 
 // --- Admin profit dashboard -------------------------------------------
 
-// Profit on a purchase = what the customer paid − what VTpass charged
-// (costAmount). Bank-transfer fees are added as their own income line.
+// Profit = markup + VTpass commission + fees you charge − Monnify's
+// fees − rewards paid (see lib/earnings.js for every line).
 router.get('/admin/analytics', requireAdminAuth, async (req, res) => {
   try {
     const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 90);
     const today = lagosDay(new Date());
     const since = new Date(startOfLagosDay(today).getTime() - (days - 1) * 24 * LAGOS_MS);
+    const dayList = [];
+    for (let i = 0; i < days; i += 1) dayList.push(lagosDay(new Date(since.getTime() + i * 24 * LAGOS_MS)));
 
-    const [orders, transfers, failedOrders] = await Promise.all([
-      prisma.order.findMany({
-        where: { status: 'SUCCESS', createdAt: { gte: since } },
-        select: { service: true, amount: true, costAmount: true, cashbackAmount: true, createdAt: true },
-      }),
-      prisma.bankTransfer.findMany({
-        where: { status: 'SUCCESS', createdAt: { gte: since } },
-        select: { fee: true, amount: true, createdAt: true },
-      }),
+    const [report, failedOrders] = await Promise.all([
+      require('../lib/earnings').earningsReport({ gte: since }, { dayOf: lagosDay, days: dayList }),
       prisma.order.count({ where: { status: 'FAILED', createdAt: { gte: since } } }),
     ]);
-
-    const dayMap = new Map();
-    for (let i = 0; i < days; i += 1) {
-      const ymd = lagosDay(new Date(since.getTime() + i * 24 * LAGOS_MS));
-      dayMap.set(ymd, { date: ymd, revenue: 0, cost: 0, profit: 0, orders: 0 });
-    }
-    const services = new Map();
-    const round = (n) => Math.round(n * 100) / 100;
-
-    for (const o of orders) {
-      const revenue = Number(o.amount);
-      // Cashback paid back to the customer is a cost too.
-      const cost = (o.costAmount == null ? revenue : Number(o.costAmount)) + Number(o.cashbackAmount || 0);
-      const day = dayMap.get(lagosDay(o.createdAt));
-      if (day) {
-        day.revenue += revenue;
-        day.cost += cost;
-        day.profit += revenue - cost;
-        day.orders += 1;
-      }
-      const s = services.get(o.service) || { service: o.service, revenue: 0, cost: 0, profit: 0, orders: 0 };
-      s.revenue += revenue;
-      s.cost += cost;
-      s.profit += revenue - cost;
-      s.orders += 1;
-      services.set(o.service, s);
-    }
-
-    let transferFees = 0;
-    let transferVolume = 0;
-    for (const t of transfers) {
-      transferFees += Number(t.fee || 0);
-      transferVolume += Number(t.amount);
-      const day = dayMap.get(lagosDay(t.createdAt));
-      if (day) day.profit += Number(t.fee || 0);
-    }
-
-    const daysOut = [...dayMap.values()].map((d) => ({ ...d, revenue: round(d.revenue), cost: round(d.cost), profit: round(d.profit) }));
-    const byService = [...services.values()]
-      .map((s) => ({ ...s, revenue: round(s.revenue), cost: round(s.cost), profit: round(s.profit) }))
-      .sort((a, b) => b.profit - a.profit);
-    const revenue = byService.reduce((s, x) => s + x.revenue, 0);
-    const purchaseProfit = byService.reduce((s, x) => s + x.profit, 0);
+    const purchaseProfit = report.income.purchaseMarkup + report.income.vtpassCommission;
 
     res.json({
-      days: daysOut,
-      byService,
+      days: report.days,
+      byService: report.byService,
+      breakdown: { income: report.income, costs: report.costs, rewardsByType: report.rewardsByType },
       totals: {
-        revenue: round(revenue),
-        purchaseProfit: round(purchaseProfit),
-        transferFees: round(transferFees),
-        transferVolume: round(transferVolume),
-        profit: round(purchaseProfit + transferFees),
-        orders: orders.length,
+        revenue: report.sales,
+        purchaseProfit: Math.round(purchaseProfit * 100) / 100,
+        transferFees: report.income.sendToBankFees,
+        transferVolume: report.transferVolume,
+        bankFundingVolume: report.bankFundingVolume,
+        profit: report.profit,
+        orders: report.orders,
+        commissionExactOrders: report.commissionExactOrders,
         failedOrders,
-        transfers: transfers.length,
+        transfers: report.transfers,
       },
     });
   } catch (error) {
     console.error('GET /admin/analytics failed:', error);
     res.status(500).json({ error: 'Could not load analytics.' });
+  }
+});
+
+// "What do I make if a customer spends ₦X on this?" (Earnings calculator)
+router.post('/admin/earnings/estimate', requireAdminAuth, async (req, res) => {
+  try {
+    const settings = await require('../lib/vtpass').getSettings();
+    const b = req.body || {};
+    const one = (x) => require('../lib/earnings').estimateSale({ service: String(x.service || ''), provider: x.provider, amount: x.amount, funding: x.funding === 'bank' ? 'bank' : 'wallet', agent: Boolean(x.agent) }, settings);
+    if (Array.isArray(b.items)) return res.json({ results: b.items.slice(0, 40).map(one) });
+    res.json(one(b));
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'Could not calculate.' });
   }
 });
 
