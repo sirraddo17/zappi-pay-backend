@@ -257,7 +257,7 @@ router.get('/admin/orders', requireAdminAuth, async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take: 300,
       include: { customer: { select: { id: true, name: true, phone: true } } },
     });
     res.json({ orders });

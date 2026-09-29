@@ -43,15 +43,21 @@ router.get('/wallet/transactions', requireCustomerAuth, async (req, res) => {
 // once an admin approves it below.
 router.post('/wallet/fund-request', requireCustomerAuth, async (req, res) => {
   try {
-    const { amount, reference, note } = req.body;
+    const { amount, reference, accountId } = req.body;
+    let { note } = req.body;
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
       return res.status(400).json({ error: 'A positive amount is required.' });
     }
     const settings = await getSettings();
-    if (!settings.manualFundingEnabled || !settings.manualAccountNumber) {
+    const accounts = require('../lib/funding').activeManualAccounts(settings);
+    if (!accounts.length) {
       return res.status(400).json({ error: 'Manual funding is not available. Please use your personal account number instead.' });
     }
+    // Record which business account they paid into, so the admin checks
+    // the right bank.
+    const paidTo = accounts.find((a) => a.id === accountId) || (accounts.length === 1 ? accounts[0] : null);
+    if (paidTo) note = `Paid to ${paidTo.bankName} ${paidTo.accountNumber}${note ? ` — ${String(note).slice(0, 200)}` : ''}`;
     const minFunding = Number(settings.minFundingAmount);
     if (amountNum < minFunding) {
       return res.status(400).json({ error: `Minimum funding amount is ₦${minFunding}.` });

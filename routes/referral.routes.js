@@ -41,8 +41,21 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
       where: { referredById: req.customer.customerId },
       orderBy: { createdAt: 'desc' },
       take: 200,
-      select: { name: true, createdAt: true, referralBonusPaidAt: true, referralBonusAmount: true },
+      select: { id: true, name: true, createdAt: true, referralBonusPaidAt: true, referralBonusAmount: true },
     });
+    // Friends who already made a qualifying purchase/transfer but got no
+    // bonus (e.g. rewards were switched off at the time), so the page
+    // can say "Purchased" instead of "Waiting".
+    const min = Number(settings.referralMinPurchase || 0);
+    const unpaidIds = referrals.filter((r) => !r.referralBonusPaidAt).map((r) => r.id);
+    const purchased = new Set();
+    if (unpaidIds.length) {
+      const [o, t] = await Promise.all([
+        prisma.order.groupBy({ by: ['customerId'], where: { customerId: { in: unpaidIds }, status: 'SUCCESS', amount: { gte: min } } }),
+        prisma.bankTransfer.groupBy({ by: ['customerId'], where: { customerId: { in: unpaidIds }, status: 'SUCCESS', amount: { gte: min } } }),
+      ]);
+      for (const g of [...o, ...t]) purchased.add(g.customerId);
+    }
     const totalEarned = referrals.reduce((sum, r) => sum + (r.referralBonusPaidAt ? Number(r.referralBonusAmount || 0) : 0), 0);
     res.json({
       enabled: settings.referralEnabled,
@@ -54,6 +67,7 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
         name: maskName(r.name),
         joinedAt: r.createdAt,
         rewarded: Boolean(r.referralBonusPaidAt),
+        purchased: Boolean(r.referralBonusPaidAt) || purchased.has(r.id),
         amount: r.referralBonusPaidAt ? Number(r.referralBonusAmount || 0) : null,
       })),
     });

@@ -95,6 +95,15 @@ model Customer {
   isAgent             Boolean   @default(false)
   agentRequestedAt    DateTime?
   agentBusinessName   String?
+  agentShopAddress    String?
+  agentRejectedAt     DateTime?
+  agentRejectReason   String?
+  // Identity checks for support: date of birth (set once at signup,
+  // only support can clear it) and a security question whose answer
+  // is stored bcrypt-hashed like a password.
+  dateOfBirth         DateTime? @db.Date
+  securityQuestion    String?
+  securityAnswerHash  String?
   // Last PIN/password change or login from a new device — large bank
   // transfers soon after are held for admin review (fraud check).
   securityChangedAt   DateTime?
@@ -177,6 +186,7 @@ enum WalletTxType {
   CASHBACK
   LOYALTY
   CONTEST_PRIZE
+  COUPON
 }
 
 enum WalletTxStatus {
@@ -513,6 +523,12 @@ model Settings {
   manualBankName           String?
   manualAccountNumber      String?
   manualAccountName        String?
+  // Several business accounts for manual funding, each with its own
+  // on/off switch: [{ id, bankName, accountNumber, accountName, enabled }].
+  manualAccounts           Json    @default("[]")
+  // Automatic-funding banks (e.g. "Wema bank") hidden from customers
+  // while that bank is having network problems.
+  hiddenFundingBanks       Json    @default("[]")
   // Agent pricing: extra % off per service for approved agents, on top
   // of any normal discount, e.g. { "DATA": 3, "AIRTIME": 2 }.
   agentPricingEnabled          Boolean @default(false)
@@ -653,6 +669,8 @@ model PromoCode {
   id               String            @id @default(cuid())
   code             String            @unique
   description      String?
+  // FLAT / PERCENT = discount at checkout. CREDIT = wallet gift coupon:
+  // redeemed on the Wallet page, adds value ₦ to the wallet.
   type             String            @default("FLAT")
   value            Decimal           @db.Decimal(14, 2)
   maxDiscount      Decimal?          @db.Decimal(14, 2)

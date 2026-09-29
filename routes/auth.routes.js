@@ -10,6 +10,7 @@ const {
   signCustomerToken,
   requireCustomerAuth,
 } = require('../lib/auth');
+const identity = require('../lib/identity');
 
 const router = express.Router();
 
@@ -29,6 +30,8 @@ function publicCustomer(customer) {
     deletionRequestedAt: customer.deletionRequestedAt || null,
     isAgent: Boolean(customer.isAgent),
     agentRequestedAt: customer.agentRequestedAt || null,
+    hasDob: Boolean(customer.dateOfBirth),
+    hasSecurityQuestion: Boolean(customer.securityAnswerHash),
   };
 }
 
@@ -51,6 +54,10 @@ router.post('/auth/signup', async (req, res) => {
     const normalizedUsername = username.trim().toLowerCase();
     const usernameError = require('./customers.routes').usernameProblem(normalizedUsername);
     if (usernameError) return res.status(400).json({ error: usernameError });
+    const pwError = identity.passwordProblem(password, { name, phone, username: normalizedUsername });
+    if (pwError) return res.status(400).json({ error: pwError });
+    const details = await identity.securityDetailsData(req.body);
+    if (details.error) return res.status(400).json({ error: details.error });
 
     const existing = await prisma.customer.findFirst({
       where: { OR: [{ phone: phone.trim() }, { username: normalizedUsername }] },
@@ -82,6 +89,7 @@ router.post('/auth/signup', async (req, res) => {
         username: normalizedUsername,
         email: email ? email.trim() : undefined,
         passwordHash,
+        ...details.data,
         referredById,
         signupIpHash: require('../lib/clientHints').ipHash(req),
         signupDeviceHash: require('../lib/clientHints').deviceHash(req),
@@ -188,6 +196,39 @@ router.patch('/auth/me', requireCustomerAuth, async (req, res) => {
   }
 });
 
+// Security questions list (public, for the signup form).
+router.get('/auth/security-questions', (req, res) => {
+  res.json({ questions: identity.SECURITY_QUESTIONS });
+});
+
+// Existing customers add (or change) their security details. Needs the
+// password. Date of birth can only be set once here — after that only
+// support can clear it, so someone who gets into the account can't
+// change it to pass support's identity check.
+router.post('/auth/security-details', requireCustomerAuth, async (req, res) => {
+  try {
+    const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
+    if (!customer) return res.status(404).json({ error: 'Account not found.' });
+    if (!req.body.password || !(await comparePassword(String(req.body.password), customer.passwordHash))) {
+      return res.status(401).json({ error: 'Password is incorrect.' });
+    }
+    const needDob = !customer.dateOfBirth;
+    const details = await identity.securityDetailsData(needDob ? req.body : { ...req.body, dateOfBirth: undefined }, { requireDob: needDob });
+    if (details.error) return res.status(400).json({ error: details.error });
+    const updated = await prisma.customer.update({ where: { id: customer.id }, data: { ...details.data, securityChangedAt: new Date() } });
+    notify(customer.id, 'Security Details Updated', 'Your security question' + (needDob ? ' and date of birth were' : ' was') + ' saved. If this wasn\'t you, contact support immediately.');
+    res.json({ customer: publicCustomer(updated) });
+  } catch (error) {
+    console.error('POST /auth/security-details failed:', error);
+    res.status(500).json({ error: 'Could not save your security details.' });
+  }
+});
+
+router.get('/auth/security-details', requireCustomerAuth, async (req, res) => {
+  const c = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { dateOfBirth: true, securityQuestion: true } }).catch(() => null);
+  res.json({ hasDob: Boolean(c?.dateOfBirth), securityQuestion: c?.securityQuestion || null, questions: identity.SECURITY_QUESTIONS });
+});
+
 // --- Admin auth ---
 // No self-service signup on purpose — admin accounts are seeded
 // directly, same pattern used across the other apps in this ecosystem.
@@ -281,10 +322,6 @@ router.patch('/auth/password', requireCustomerAuth, async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'currentPassword and newPassword are required.' });
     }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
-    }
-
     if (newPassword === currentPassword) {
       return res.status(400).json({ error: 'Choose a new password that is different from the current one.' });
     }
@@ -293,6 +330,8 @@ router.patch('/auth/password', requireCustomerAuth, async (req, res) => {
     if (!customer || !(await comparePassword(currentPassword, customer.passwordHash))) {
       return res.status(401).json({ error: 'Current password is incorrect.' });
     }
+    const pwError = identity.passwordProblem(newPassword, customer);
+    if (pwError) return res.status(400).json({ error: pwError });
 
     // Changing the password also clears any admin-issued temporary
     // password requirement.
@@ -372,12 +411,14 @@ router.post('/auth/reset-password', async (req, res) => {
   try {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) return res.status(400).json({ error: 'token and newPassword are required.' });
-    if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters.' });
 
     const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash: hashToken(String(token)) } });
     if (!record || record.usedAt || record.expiresAt < new Date()) {
       return res.status(400).json({ error: 'This reset link is invalid or has expired. Please request a new one.' });
     }
+    const owner = await prisma.customer.findUnique({ where: { id: record.customerId }, select: { name: true, phone: true, username: true } });
+    const pwError = identity.passwordProblem(newPassword, owner || {});
+    if (pwError) return res.status(400).json({ error: pwError });
 
     const passwordHash = await hashPassword(newPassword);
     await prisma.$transaction([

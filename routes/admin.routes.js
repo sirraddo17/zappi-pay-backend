@@ -38,7 +38,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
@@ -178,6 +178,27 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       if (n && n.length !== 10) return res.status(400).json({ error: 'Account number must be 10 digits.' });
       data.manualAccountNumber = n || null;
     }
+    if (manualAccounts !== undefined) {
+      if (!Array.isArray(manualAccounts) || manualAccounts.length > 10) return res.status(400).json({ error: 'Add up to 10 business accounts.' });
+      const list = [];
+      for (const a of manualAccounts) {
+        const accountNumber = String(a?.accountNumber || '').replace(/\D/g, '');
+        const bankName = String(a?.bankName || '').trim().slice(0, 60);
+        const accountName = String(a?.accountName || '').trim().slice(0, 80);
+        if (!accountNumber && !bankName && !accountName) continue;
+        if (accountNumber.length !== 10) return res.status(400).json({ error: `Account number for ${bankName || 'a bank'} must be 10 digits.` });
+        if (!bankName || !accountName) return res.status(400).json({ error: 'Each business account needs a bank name and account name.' });
+        list.push({ id: String(a.id || require('crypto').randomBytes(4).toString('hex')).slice(0, 20), bankName, accountNumber, accountName, enabled: a.enabled !== false });
+      }
+      data.manualAccounts = list;
+      // Keep the old single-account fields in step (first account).
+      data.manualBankName = list[0]?.bankName || null;
+      data.manualAccountNumber = list[0]?.accountNumber || null;
+      data.manualAccountName = list[0]?.accountName || null;
+    }
+    if (hiddenFundingBanks !== undefined) {
+      data.hiddenFundingBanks = Array.isArray(hiddenFundingBanks) ? [...new Set(hiddenFundingBanks.map((b) => String(b).trim().slice(0, 60)).filter(Boolean))].slice(0, 20) : [];
+    }
     if (adminAlertPush !== undefined) data.adminAlertPush = Boolean(adminAlertPush);
     if (adminAlertEmail !== undefined) data.adminAlertEmail = Boolean(adminAlertEmail);
     if (feedbackPromptEnabled !== undefined) data.feedbackPromptEnabled = Boolean(feedbackPromptEnabled);
@@ -282,7 +303,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
       where: { id },
       select: {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
-        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true,
+        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true, dateOfBirth: true, securityQuestion: true, securityAnswerHash: true,
         referredBy: { select: { id: true, name: true, username: true } },
         _count: { select: { referrals: true } },
       },
@@ -291,6 +312,13 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     // Never send the PIN hash itself — just whether one exists.
     customer.hasPin = Boolean(customer.pinHash);
     delete customer.pinHash;
+    // Support sees only whether these exist (and the question to ask),
+    // never the date of birth or answer — they check what the caller
+    // says with the identity check below.
+    customer.hasDob = Boolean(customer.dateOfBirth);
+    customer.hasSecurityAnswer = Boolean(customer.securityAnswerHash);
+    delete customer.dateOfBirth;
+    delete customer.securityAnswerHash;
     customer.referralCount = customer._count.referrals;
     delete customer._count;
 
@@ -373,6 +401,55 @@ router.post('/admin/customers/:id/reset-password', requireAdminAuth, async (req,
   } catch (error) {
     console.error('POST /admin/customers/:id/reset-password failed:', error);
     res.status(500).json({ error: 'Could not reset password.' });
+  }
+});
+
+// Identity check before helping someone on WhatsApp/phone: support types
+// what the caller says and gets match / no match back. At most 5 checks
+// per customer per 15 minutes so it can't be used to guess.
+const idChecks = new Map();
+router.post('/admin/customers/:id/verify-identity', requireAdminAuth, async (req, res) => {
+  try {
+    const identity = require('../lib/identity');
+    const key = req.params.id;
+    const now = Date.now();
+    const recent = (idChecks.get(key) || []).filter((t) => now - t < 15 * 60 * 1000);
+    if (recent.length >= 5) return res.status(429).json({ error: 'Too many checks for this customer. Wait 15 minutes.' });
+    recent.push(now);
+    idChecks.set(key, recent);
+    if (idChecks.size > 5000) idChecks.clear();
+
+    const c = await prisma.customer.findUnique({ where: { id: key }, select: { id: true, name: true, dateOfBirth: true, securityAnswerHash: true } });
+    if (!c) return res.status(404).json({ error: 'Customer not found.' });
+    const result = {};
+    if (req.body.dateOfBirth) {
+      const dob = identity.parseDob(req.body.dateOfBirth);
+      result.dob = !c.dateOfBirth ? 'NOT_SET' : dob.error ? 'NO_MATCH' : identity.sameDay(dob.date, c.dateOfBirth) ? 'MATCH' : 'NO_MATCH';
+    }
+    if (req.body.answer) {
+      const ok = await identity.answerMatches(c, req.body.answer);
+      result.answer = ok === null ? 'NOT_SET' : ok ? 'MATCH' : 'NO_MATCH';
+    }
+    if (!Object.keys(result).length) return res.status(400).json({ error: 'Enter the date of birth or answer the caller gave.' });
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'IDENTITY_CHECK', details: { customerId: c.id, name: c.name, ...result } } }).catch(() => {});
+    res.json({ result, checksLeft: 5 - recent.length });
+  } catch (error) {
+    console.error('POST /admin/customers/:id/verify-identity failed:', error);
+    res.status(500).json({ error: 'Could not check identity.' });
+  }
+});
+
+// Clears date of birth + security question (e.g. customer typed a wrong
+// date at signup). They'll be asked to set them again.
+router.post('/admin/customers/:id/clear-security-details', requireAdminAuth, async (req, res) => {
+  try {
+    const c = await prisma.customer.update({ where: { id: req.params.id }, data: { dateOfBirth: null, securityQuestion: null, securityAnswerHash: null }, select: { id: true, name: true } });
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'SECURITY_DETAILS_CLEARED', details: { customerId: c.id, name: c.name } } }).catch(() => {});
+    notify(c.id, 'Security Details Reset', 'Support reset your date of birth and security question. Please set them again in Profile → Security details.');
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('POST /admin/customers/:id/clear-security-details failed:', error);
+    res.status(500).json({ error: 'Could not reset security details.' });
   }
 });
 

@@ -28,11 +28,11 @@ router.get('/app/info', async (req, res) => {
       getSettings(),
       prisma.serviceNotice.findMany({ where: activeNoticeWhere(), orderBy: { createdAt: 'desc' }, take: 10 }),
     ]);
+    const manualList = require('../lib/funding').activeManualAccounts(settings);
     res.json({
       supportWhatsapp: settings.supportWhatsapp || null,
-      manualFunding: settings.manualFundingEnabled && settings.manualAccountNumber
-        ? { bankName: settings.manualBankName, accountNumber: settings.manualAccountNumber, accountName: settings.manualAccountName }
-        : null,
+      manualFunding: manualList[0] ? { bankName: manualList[0].bankName, accountNumber: manualList[0].accountNumber, accountName: manualList[0].accountName } : null,
+      manualAccounts: manualList.map((m) => ({ id: m.id, bankName: m.bankName, accountNumber: m.accountNumber, accountName: m.accountName })),
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
       cashback: settings.cashbackEnabled ? settings.cashbackPercentByService || {} : {},
     });
@@ -102,7 +102,7 @@ router.get('/agent/info', requireCustomerAuth, async (req, res) => {
   try {
     const [settings, customer] = await Promise.all([
       getSettings(),
-      prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true, agentRequestedAt: true, agentBusinessName: true } }),
+      prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true } }),
     ]);
     res.json({ enabled: Boolean(settings.agentPricingEnabled), rates: settings.agentPricingEnabled ? settings.agentDiscountPercentByService || {} : {}, ...customer });
   } catch (error) {
@@ -117,7 +117,15 @@ router.post('/agent/request', requireCustomerAuth, async (req, res) => {
     if (!settings.agentPricingEnabled) return res.status(400).json({ error: 'Agent accounts are not open right now.' });
     const businessName = String(req.body?.businessName || '').trim().slice(0, 80);
     if (!businessName) return res.status(400).json({ error: 'Enter your business or shop name.' });
-    await prisma.customer.update({ where: { id: req.customer.customerId }, data: { agentRequestedAt: new Date(), agentBusinessName: businessName } });
+    const shopAddress = String(req.body?.shopAddress || '').trim().replace(/\s+/g, ' ').slice(0, 200);
+    if (shopAddress.length < 10) return res.status(400).json({ error: 'Enter your full shop address (street, area, town, state).' });
+    const me = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true, agentRequestedAt: true, agentRejectedAt: true } });
+    if (me.isAgent) return res.status(400).json({ error: 'You are already an agent.' });
+    if (me.agentRequestedAt) return res.status(400).json({ error: 'Your application is already being reviewed.' });
+    if (me.agentRejectedAt && Date.now() - new Date(me.agentRejectedAt).getTime() < 7 * 24 * 3600 * 1000) {
+      return res.status(400).json({ error: 'You can apply again 7 days after your last application was declined.' });
+    }
+    await prisma.customer.update({ where: { id: req.customer.customerId }, data: { agentRequestedAt: new Date(), agentBusinessName: businessName, agentShopAddress: shopAddress, agentRejectedAt: null, agentRejectReason: null } });
     require('../lib/adminAlert').alertAdmins('New agent application', `${businessName || 'A customer'} applied to become an agent. Review it on the Overview page.`, '/admin');
     res.json({ ok: true });
   } catch (error) {
@@ -130,7 +138,7 @@ router.get('/admin/agent-requests', requireAdminAuth, async (req, res) => {
   try {
     const customers = await prisma.customer.findMany({
       where: { agentRequestedAt: { not: null }, isAgent: false, deletedAt: null },
-      select: { id: true, name: true, phone: true, agentBusinessName: true, agentRequestedAt: true, kycType: true },
+      select: { id: true, name: true, phone: true, agentBusinessName: true, agentShopAddress: true, agentRequestedAt: true, kycType: true },
       orderBy: { agentRequestedAt: 'asc' },
     });
     res.json({ customers });
@@ -156,6 +164,61 @@ router.post('/admin/customers/:id/agent', requireAdminAuth, async (req, res) => 
   }
 });
 
+// Decline an agent application (with a reason the customer sees).
+router.post('/admin/customers/:id/agent-reject', requireAdminAuth, async (req, res) => {
+  try {
+    const reason = String(req.body?.reason || '').trim().slice(0, 300);
+    const r = await prisma.customer.updateMany({
+      where: { id: req.params.id, isAgent: false, agentRequestedAt: { not: null } },
+      data: { agentRequestedAt: null, agentRejectedAt: new Date(), agentRejectReason: reason || null },
+    });
+    if (r.count !== 1) return res.status(400).json({ error: 'There is no agent application waiting for this customer.' });
+    const c = await prisma.customer.findUnique({ where: { id: req.params.id }, select: { id: true, name: true, agentBusinessName: true } });
+    await audit(req, 'AGENT_REJECTED', { customerId: c.id, name: c.name, reason });
+    require('../lib/notify').notify(c.id, 'Agent Application', `Your agent application was not approved this time.${reason ? ` Reason: ${reason}` : ''} You can apply again after 7 days.`);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('POST /admin/customers/:id/agent-reject failed:', error);
+    res.status(500).json({ error: 'Could not decline the application.' });
+  }
+});
+
+// Bank names used by customers' automatic funding accounts, so the
+// admin can pause one that's having network problems.
+router.get('/admin/funding-banks', requireAdminAuth, async (req, res) => {
+  try {
+    const rows = await prisma.customer.findMany({ where: { bankAccountRef: { not: null } }, select: { bankAccounts: true }, orderBy: { bankAccountAt: 'desc' }, take: 300 });
+    const counts = {};
+    for (const r of rows) for (const a of Array.isArray(r.bankAccounts) ? r.bankAccounts : []) if (a?.bankName) counts[a.bankName] = (counts[a.bankName] || 0) + 1;
+    res.json({ banks: Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, customers]) => ({ name, customers })) });
+  } catch (error) {
+    console.error('GET /admin/funding-banks failed:', error);
+    res.status(500).json({ error: 'Could not load banks.' });
+  }
+});
+
+const couponTries = new Map();
+router.post('/wallet/coupon', requireCustomerAuth, async (req, res) => {
+  try {
+    // Stops guessing codes: 10 tries per 10 minutes.
+    const now = Date.now();
+    const tries = (couponTries.get(req.customer.customerId) || []).filter((t) => now - t < 10 * 60 * 1000);
+    if (tries.length >= 10) return res.status(429).json({ error: 'Too many tries. Please wait a few minutes.' });
+    tries.push(now);
+    couponTries.set(req.customer.customerId, tries);
+    if (couponTries.size > 5000) couponTries.clear();
+    const r = await promoLib.redeemCredit(req.customer.customerId, req.body?.code);
+    require('../lib/notify').notify(req.customer.customerId, 'Coupon Redeemed', `₦${r.amount.toLocaleString()} from coupon ${r.code} was added to your wallet.`);
+    res.json(r);
+  } catch (error) {
+    if (!error.message || error.code) {
+      console.error('POST /wallet/coupon failed:', error);
+      return res.status(500).json({ error: 'Could not redeem the coupon.' });
+    }
+    res.status(400).json({ error: error.message });
+  }
+});
+
 router.get('/promo/check', requireCustomerAuth, async (req, res) => {
   try {
     const amount = Number(req.query.amount || 0);
@@ -178,13 +241,14 @@ function promoData(body, partial) {
   }
   if (has('description')) data.description = String(body.description || '').slice(0, 120) || null;
   if (has('type') || !partial) {
-    if (!['FLAT', 'PERCENT'].includes(body.type)) throw new Error('Type must be FLAT (₦) or PERCENT (%).');
+    if (!['FLAT', 'PERCENT', 'CREDIT'].includes(body.type)) throw new Error('Type must be FLAT (₦), PERCENT (%) or CREDIT (wallet gift).');
     data.type = body.type;
   }
   if (has('value') || !partial) {
     const v = Number(body.value);
     if (!(v > 0)) throw new Error('Value must be more than 0.');
     if ((body.type || 'FLAT') === 'PERCENT' && v > 100) throw new Error('A percentage must be 100 or less.');
+    if (body.type === 'CREDIT' && v > 100000) throw new Error('A wallet coupon can be at most ₦100,000.');
     data.value = v;
   }
   if (has('maxDiscount')) data.maxDiscount = body.maxDiscount === '' || body.maxDiscount == null ? null : Number(body.maxDiscount);
@@ -195,6 +259,12 @@ function promoData(body, partial) {
   if (has('newCustomersOnly')) data.newCustomersOnly = Boolean(body.newCustomersOnly);
   if (has('active')) data.active = Boolean(body.active);
   if (has('expiresAt')) data.expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
+  if (!partial && data.type === 'CREDIT') {
+    // Wallet gifts cost real money on every use, so a cap is required.
+    if (!data.usageLimit) throw new Error('Set “Total uses allowed” for a wallet gift coupon.');
+    data.services = [];
+    data.minAmount = 0;
+  }
   return data;
 }
 

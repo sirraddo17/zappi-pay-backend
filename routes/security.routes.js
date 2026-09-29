@@ -52,12 +52,22 @@ router.post('/security/pin', requireCustomerAuth, async (req, res) => {
   try {
     const { password, pin } = req.body;
     if (!sec.isValidPinFormat(pin)) return res.status(400).json({ error: 'PIN must be exactly 4 digits.' });
-    if (/^(\d)\1{3}$/.test(pin) || ['1234', '4321', '0123', '9876'].includes(pin)) {
+    const seq = '0123456789012';
+    if (/^(\d)\1{3}$/.test(pin) || seq.includes(pin) || seq.split('').reverse().join('').includes(pin) || /^(\d\d)\1$/.test(pin)) {
       return res.status(400).json({ error: 'That PIN is too easy to guess. Please choose another.' });
     }
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     if (!password || !(await comparePassword(password, customer.passwordHash))) {
       return res.status(401).json({ error: 'Your password is incorrect.' });
+    }
+    if (customer.dateOfBirth) {
+      const d = new Date(customer.dateOfBirth).toISOString();
+      if ([d.slice(0, 4), d.slice(5, 7) + d.slice(8, 10), d.slice(8, 10) + d.slice(5, 7)].includes(pin)) {
+        return res.status(400).json({ error: "Don't use your birth year or birthday as your PIN. Please choose another." });
+      }
+    }
+    if (customer.phone && String(customer.phone).replace(/\D/g, '').endsWith(pin)) {
+      return res.status(400).json({ error: "Don't use the last 4 digits of your phone number as your PIN." });
     }
     const hadPin = Boolean(customer.pinHash);
     await prisma.customer.update({

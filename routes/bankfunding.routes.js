@@ -3,6 +3,14 @@ const prisma = require('../lib/prisma');
 const { requireCustomerAuth } = require('../lib/auth');
 const { getSettings } = require('../lib/vtpass');
 const monnify = require('../lib/monnify');
+const { visibleReservedAccounts } = require('../lib/funding');
+
+// Hides banks the admin has paused (network problems) and says how many.
+async function shown(accounts) {
+  if (!Array.isArray(accounts)) return { accounts: accounts || null, pausedCount: 0 };
+  const visible = visibleReservedAccounts(accounts, await getSettings());
+  return { accounts: visible, pausedCount: accounts.length - visible.length };
+}
 
 // Automatic wallet funding by bank transfer: each customer gets their
 // own account number; money sent to it lands in their wallet.
@@ -23,7 +31,7 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     res.json({
       available: await monnify.isConfigured(),
-      accounts: customer.bankAccounts || null,
+      ...(await shown(customer.bankAccounts)),
       kycType: customer.kycType || null,
       ...(await feeInfo()),
     });
@@ -42,7 +50,7 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     if (idNumber.length !== 11) return res.status(400).json({ error: `Your ${idType} must be 11 digits.` });
 
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
-    if (customer.bankAccounts) return res.json({ accounts: customer.bankAccounts, kycType: customer.kycType });
+    if (customer.bankAccounts) return res.json({ ...(await shown(customer.bankAccounts)), kycType: customer.kycType });
 
     // One BVN/NIN = one ZAPPI PAY account. Only a keyed hash is kept,
     // never the number. Claim it first so two sign-ups can't race.
@@ -65,7 +73,7 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
       throw error;
     }
-    res.status(201).json({ accounts: updated.bankAccounts, kycType: updated.kycType });
+    res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType });
   } catch (error) {
     console.error('POST /wallet/bank-account failed:', error.message, JSON.stringify(error.body || {}));
     if (error instanceof monnify.MonnifyError && error.status && error.status < 500) {
