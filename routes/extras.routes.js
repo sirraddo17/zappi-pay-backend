@@ -31,6 +31,10 @@ router.get('/app/info', async (req, res) => {
     const manualList = require('../lib/funding').activeManualAccounts(settings);
     res.json({
       supportWhatsapp: settings.supportWhatsapp || null,
+      // True while VTpass or Monnify is still on sandbox (test) keys —
+      // customers see a "test mode, no real money" banner. It turns off
+      // by itself once both are switched to live.
+      testMode: settings.vtpassMode !== 'live' || (await require('../lib/monnify').getConfig().then((c) => c.mode !== 'live').catch(() => true)),
       manualFunding: manualList[0] ? { bankName: manualList[0].bankName, accountNumber: manualList[0].accountNumber, accountName: manualList[0].accountName } : null,
       manualAccounts: manualList.map((m) => ({ id: m.id, bankName: m.bankName, accountNumber: m.accountNumber, accountName: m.accountName })),
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
@@ -222,7 +226,22 @@ router.post('/wallet/coupon', requireCustomerAuth, async (req, res) => {
 router.get('/promo/check', requireCustomerAuth, async (req, res) => {
   try {
     const amount = Number(req.query.amount || 0);
-    const { promo, discount } = await promoLib.evaluatePromo(req.customer.customerId, req.query.code, String(req.query.service || ''), amount);
+    const service = String(req.query.service || '');
+    const evaluated = await promoLib.evaluatePromo(req.customer.customerId, req.query.code, service, amount);
+    const { promo } = evaluated;
+    let { discount } = evaluated;
+    // Same safety limit as the purchase itself, when the Buy page sends
+    // the plan's face value and provider.
+    const base = Number(req.query.base || 0);
+    if (base > 0) {
+      const { computePrice, settingsForCustomer } = require('../lib/pricing');
+      const buyer = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true } });
+      const s = settingsForCustomer(await getSettings(), buyer);
+      const priced = computePrice(base, service, s);
+      const left = require('../lib/rewardGuard').room({ service, provider: String(req.query.provider || ''), face: base, markedUp: priced.markedUp, alreadyGiven: priced.discountAmount }, s);
+      if (left !== null && discount > left) discount = Math.floor(left);
+      if (!(discount > 0)) throw new Error("That promo code can't be used on this purchase.");
+    }
     res.json({ code: promo.code, discount, description: promo.description });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -368,6 +387,9 @@ router.post('/admin/customers/:id/delete-account', requireAdminAuth, async (req,
     if (c.deletedAt) return res.status(400).json({ error: 'This account is already deleted.' });
     if (Number(c.walletBalance) > 0) {
       return res.status(400).json({ error: `This customer still has ₦${Number(c.walletBalance).toLocaleString()} in their wallet. Pay it out or ask them to spend it first.` });
+    }
+    if (Number(c.savingsBalance) > 0) {
+      return res.status(400).json({ error: `This customer still has ₦${Number(c.savingsBalance).toLocaleString()} in savings. Ask them to move it to their wallet and spend or withdraw it first.` });
     }
     const tag = `deleted-${c.id.slice(-8)}`;
     await prisma.$transaction([

@@ -30,7 +30,11 @@ const { startDailySummary } = require('./lib/dailySummary');
 
 const app = express();
 
+app.disable('x-powered-by');
 app.use(cors());
+// Security headers and request limits (lib/protect.js).
+app.use(require('./lib/protect').securityHeaders);
+app.use(require('./lib/protect').rateLimit);
 // Gzip API responses — lists of plans, orders and transactions shrink
 // by 70-80%, which matters most on slow mobile data.
 app.use(require('compression')());

@@ -204,7 +204,7 @@ async function execute(esc, req) {
     case 'PASSWORD_RESET': {
       const temporaryPassword = tempPassword();
       const expiresAt = new Date(Date.now() + 24 * 3600 * 1000);
-      await prisma.customer.update({ where: { id: esc.customerId }, data: { passwordHash: await hashPassword(temporaryPassword), mustChangePassword: true, tempPasswordExpiresAt: expiresAt } });
+      await prisma.customer.update({ where: { id: esc.customerId }, data: { passwordHash: await hashPassword(temporaryPassword), mustChangePassword: true, tempPasswordExpiresAt: expiresAt, loginFailedAttempts: 0, loginLockedUntil: null } });
       notify(esc.customerId, 'Password Reset Approved', 'Your password reset was approved. Support will send you a temporary password — log in with it and choose a new one.');
       return { summary: 'Temporary password issued', secret: { temporaryPassword, expiresAt } };
     }
@@ -322,6 +322,7 @@ router.post('/admin/customers/:id/account-tool', requireAdminAuth, async (req, r
     let summary;
     if (action === 'RESET_PIN') summary = await tools.resetPin(id);
     else if (action === 'UNLOCK_PIN') summary = await tools.unlockPin(id);
+    else if (action === 'UNLOCK_LOGIN') summary = await tools.unlockLogin(id);
     else if (action === 'REMOVE_DEVICES') summary = await tools.removeDevices(id);
     else if (action === 'CHANGE_CONTACT') {
       try {

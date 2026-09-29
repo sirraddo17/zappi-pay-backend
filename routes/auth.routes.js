@@ -105,6 +105,9 @@ router.post('/auth/signup', async (req, res) => {
   }
 });
 
+const LOGIN_MAX_TRIES = 5;
+const LOGIN_LOCK_MINUTES = 15;
+
 router.post('/auth/login', async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -116,8 +119,28 @@ router.post('/auth/login', async (req, res) => {
     const customer = await prisma.customer.findFirst({
       where: { OR: [{ phone: trimmedIdentifier }, { username: trimmedIdentifier.toLowerCase() }] },
     });
+    // Locked after too many wrong passwords (checked before the
+    // password, so guessing during the lock gets nowhere).
+    if (customer?.loginLockedUntil && customer.loginLockedUntil > new Date()) {
+      const mins = Math.max(1, Math.ceil((customer.loginLockedUntil - Date.now()) / 60000));
+      return res.status(429).json({ error: `Too many wrong passwords. For your safety this account is locked for ${mins} more minute${mins === 1 ? '' : 's'}. Use "Forgot password" if you can't remember it.`, code: 'LOGIN_LOCKED' });
+    }
     if (!customer || !(await comparePassword(password, customer.passwordHash))) {
+      if (customer) {
+        const fails = (customer.loginFailedAttempts || 0) + 1;
+        if (fails >= LOGIN_MAX_TRIES) {
+          await prisma.customer.update({ where: { id: customer.id }, data: { loginFailedAttempts: 0, loginLockedUntil: new Date(Date.now() + LOGIN_LOCK_MINUTES * 60000) } });
+          notify(customer.id, 'Login Locked', `Someone entered the wrong password for your ZAPPI PAY account ${LOGIN_MAX_TRIES} times, so we locked password login for ${LOGIN_LOCK_MINUTES} minutes. If this wasn't you, change your password and contact support.`);
+          return res.status(429).json({ error: `Too many wrong passwords. For your safety this account is locked for ${LOGIN_LOCK_MINUTES} minutes. Use "Forgot password" if you can't remember it.`, code: 'LOGIN_LOCKED' });
+        }
+        await prisma.customer.update({ where: { id: customer.id }, data: { loginFailedAttempts: fails } });
+        const left = LOGIN_MAX_TRIES - fails;
+        if (left <= 2) return res.status(401).json({ error: `Invalid phone/username or password. ${left} tr${left === 1 ? 'y' : 'ies'} left before the account is locked for ${LOGIN_LOCK_MINUTES} minutes.` });
+      }
       return res.status(401).json({ error: 'Invalid phone/username or password.' });
+    }
+    if (customer.loginFailedAttempts || customer.loginLockedUntil) {
+      await prisma.customer.update({ where: { id: customer.id }, data: { loginFailedAttempts: 0, loginLockedUntil: null } });
     }
     if (!customer.active) {
       return res.status(403).json({ error: 'This account has been deactivated.' });
@@ -273,7 +296,7 @@ router.post('/admin/login', async (req, res) => {
     }
 
     const token = signAdminToken(admin);
-    res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email } });
+    res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role || 'OWNER' } });
   } catch (error) {
     console.error('POST /admin/login failed:', error);
     res.status(500).json({ error: 'Could not log in.' });
@@ -309,7 +332,7 @@ router.post('/admin/login/verify', async (req, res) => {
     if (!admin.active) return res.status(403).json({ error: 'This admin account has been deactivated.' });
     const token = signAdminToken(admin);
     const rememberToken = remember ? require('jsonwebtoken').sign({ sub: admin.id, kind: 'admin2fa' }, process.env.JWT_SECRET, { expiresIn: '30d' }) : undefined;
-    res.json({ token, rememberToken, admin: { id: admin.id, name: admin.name, email: admin.email } });
+    res.json({ token, rememberToken, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role || 'OWNER' } });
   } catch (error) {
     console.error('POST /admin/login/verify failed:', error);
     res.status(500).json({ error: 'Could not verify the code.' });
@@ -338,7 +361,7 @@ router.patch('/auth/password', requireCustomerAuth, async (req, res) => {
     const passwordHash = await hashPassword(newPassword);
     await prisma.customer.update({
       where: { id: customer.id },
-      data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null, securityChangedAt: new Date() },
+      data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null, securityChangedAt: new Date(), loginFailedAttempts: 0, loginLockedUntil: null },
     });
 
     res.json({ success: true });
@@ -424,7 +447,7 @@ router.post('/auth/reset-password', async (req, res) => {
     await prisma.$transaction([
       prisma.customer.update({
         where: { id: record.customerId },
-        data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null, securityChangedAt: new Date() },
+        data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null, securityChangedAt: new Date(), loginFailedAttempts: 0, loginLockedUntil: null },
       }),
       // Burn this link and any other outstanding ones for the account.
       prisma.passwordResetToken.updateMany({
