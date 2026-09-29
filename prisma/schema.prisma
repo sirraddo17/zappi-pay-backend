@@ -482,6 +482,10 @@ model Settings {
   monnifyWalletAccount  String?
   bankTransferEnabled   Boolean @default(false)
   bankTransferFee       Decimal @default(0) @db.Decimal(14, 2)
+  // Fee by amount, matching Monnify's own bands. Empty = same as
+  // bankTransferFee. Mid = ₦10,000–₦49,999.99, High = ₦50,000 and above.
+  bankTransferFeeMid    Decimal? @db.Decimal(14, 2)
+  bankTransferFeeHigh   Decimal? @db.Decimal(14, 2)
   bankTransferMin       Decimal @default(100) @db.Decimal(14, 2)
   bankTransferMax       Decimal @default(50000) @db.Decimal(14, 2)
   bankTransferDailyMax  Decimal @default(200000) @db.Decimal(14, 2)

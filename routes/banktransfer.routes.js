@@ -24,7 +24,7 @@ router.get('/wallet/bank-transfer/config', requireCustomerAuth, async (req, res)
   try {
     const cfg = await d.transferSettings();
     const available = cfg.enabled && Boolean(cfg.walletAccount) && (await monnify.isConfigured());
-    res.json({ available, fee: cfg.fee, min: cfg.min, max: cfg.max, dailyMax: cfg.dailyMax });
+    res.json({ available, fee: cfg.fee, feeTiers: cfg.feeTiers, min: cfg.min, max: cfg.max, dailyMax: cfg.dailyMax });
   } catch (error) {
     fail(res, error, 'Could not load transfer settings.');
   }

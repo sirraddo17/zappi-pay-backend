@@ -483,7 +483,7 @@ function adminHandlers(settings) {
         monnifyMode: s.monnifyMode,
         markupPercentByService: s.markupPercentByService,
         discountPercentByService: s.discountPercentByService,
-        sendToBank: s.bankTransferEnabled ? { fee: naira(s.bankTransferFee), min: naira(s.bankTransferMin), max: naira(s.bankTransferMax), dailyMax: naira(s.bankTransferDailyMax) } : 'off',
+        sendToBank: s.bankTransferEnabled ? { fee: `${naira(s.bankTransferFee)} under ₦10k, ${naira(s.bankTransferFeeMid ?? s.bankTransferFee)} ₦10k–₦49,999, ${naira(s.bankTransferFeeHigh ?? s.bankTransferFee)} from ₦50k`, min: naira(s.bankTransferMin), max: naira(s.bankTransferMax), dailyMax: naira(s.bankTransferDailyMax) } : 'off',
         fraudHold: s.fraudHoldEnabled ? `transfers ≥ ${naira(s.fraudHoldAmount)} within ${s.fraudHoldHours}h of signup/security change` : 'off',
         kycLimits: s.kycLimitsEnabled ? { unverified: naira(s.dailyLimitUnverified), verified: naira(s.dailyLimitVerified) } : 'off',
         referral: s.referralEnabled ? `${naira(s.referralBonusAmount)} after ${naira(s.referralMinPurchase)} first purchase` : 'off',

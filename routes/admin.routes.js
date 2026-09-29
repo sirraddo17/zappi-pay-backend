@@ -37,7 +37,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
-      monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
+      monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
@@ -140,6 +140,12 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (monnifyWalletAccount !== undefined) data.monnifyWalletAccount = String(monnifyWalletAccount).replace(/\D/g, '') || null;
     if (bankTransferEnabled !== undefined) data.bankTransferEnabled = Boolean(bankTransferEnabled);
     if (bankTransferFee !== undefined) data.bankTransferFee = Number(bankTransferFee);
+    for (const [key, v] of [['bankTransferFeeMid', bankTransferFeeMid], ['bankTransferFeeHigh', bankTransferFeeHigh]]) {
+      if (v === undefined) continue;
+      if (v === null || v === '') { data[key] = null; continue; }
+      if (!Number.isFinite(Number(v)) || Number(v) < 0) return res.status(400).json({ error: 'Transfer fees must be 0 or more.' });
+      data[key] = Number(v);
+    }
     if (bankTransferMin !== undefined) data.bankTransferMin = Number(bankTransferMin);
     if (bankTransferMax !== undefined) data.bankTransferMax = Number(bankTransferMax);
     if (bankTransferDailyMax !== undefined) data.bankTransferDailyMax = Number(bankTransferDailyMax);
