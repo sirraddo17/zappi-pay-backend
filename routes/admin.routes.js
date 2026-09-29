@@ -33,7 +33,7 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 // to sandbox or back).
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
-    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
+    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, markupCapByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
@@ -118,6 +118,10 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (vtpassSecretKey !== undefined) data.vtpassSecretKey = vtpassSecretKey;
     if (vtpassPublicKey !== undefined) data.vtpassPublicKey = vtpassPublicKey;
     if (markupPercentByService !== undefined) data.markupPercentByService = markupPercentByService;
+    if (markupCapByService !== undefined) {
+      if (!markupCapByService || typeof markupCapByService !== 'object') return res.status(400).json({ error: 'Invalid markup maximums.' });
+      data.markupCapByService = Object.fromEntries(Object.entries(markupCapByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => Number.isFinite(v) && v > 0));
+    }
     if (discountPercentByService !== undefined) {
       data.discountPercentByService = Object.fromEntries(
         Object.entries(discountPercentByService).map(([svc, pct]) => [svc, Number(pct)])
