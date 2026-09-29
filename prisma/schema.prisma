@@ -17,40 +17,8 @@ model AdminUser {
   // in code so a mistake here can never lock everyone out of the
   // admin panel entirely.
   active       Boolean  @default(true)
-  // OWNER = full access. SUPPORT = customer care only: can look up
-  // customers, check identity, answer tickets and re-check orders, but
-  // money, passwords and settings go to an OWNER as an Escalation.
-  role         String   @default("OWNER")
   createdAt    DateTime @default(now())
   loginCodes   AdminLoginCode[]
-}
-
-// A support staff request that needs an owner's approval (password
-// reset, refund, wallet correction...). The customer is told it was
-// escalated and when to expect an answer (dueAt).
-model Escalation {
-  id             String    @id @default(cuid())
-  ref            String    @unique
-  type           String
-  status         String    @default("PENDING") // PENDING, PROCESSING, APPROVED, REJECTED
-  customerId     String
-  orderId        String?
-  transferId     String?
-  amount         Decimal?  @db.Decimal(14, 2)
-  reason         String
-  checks         Json      @default("{}")
-  createdById    String
-  createdByName  String
-  reviewedById   String?
-  reviewedByName String?
-  reviewNote     String?
-  result         String?
-  dueAt          DateTime
-  reviewedAt     DateTime?
-  createdAt      DateTime  @default(now())
-
-  @@index([status, createdAt])
-  @@index([customerId])
 }
 
 // One-time email code for admin two-step login.
@@ -79,13 +47,6 @@ model Customer {
   email         String?  @unique
   passwordHash  String
   walletBalance Decimal  @default(0) @db.Decimal(14, 2)
-  // Savings pocket (off until the owner turns it on in Settings).
-  // savingsLowBalance is the lowest the pocket has been since the last
-  // interest run, so money moved in just before the run and out after
-  // it earns nothing.
-  savingsBalance    Decimal @default(0) @db.Decimal(14, 2)
-  savingsLowBalance Decimal @default(0) @db.Decimal(14, 2)
-  savingsEarned     Decimal @default(0) @db.Decimal(14, 2)
   // Stored as a data: URI (base64-encoded image) rather than a file
   // path — there's no separate file storage set up for this app, so
   // the picture just lives on the row itself. @db.Text since a
@@ -226,10 +187,6 @@ enum WalletTxType {
   LOYALTY
   CONTEST_PRIZE
   COUPON
-  SAVINGS_IN
-  SAVINGS_OUT
-  INTEREST
-  CHALLENGE_REWARD
 }
 
 enum WalletTxStatus {
@@ -318,8 +275,6 @@ model Order {
   vtpassStatus    String?
   status          OrderStatus  @default(PENDING)
   responsePayload Json?
-  // Last time the order was reported to VTpass support by email.
-  vtpassEscalatedAt  DateTime?
   createdAt       DateTime     @default(now())
 
   supportTickets SupportTicket[]
@@ -486,9 +441,6 @@ model Settings {
   // 0% for that service, computed in the purchase route in
   // vtpass.routes.js rather than stored redundantly here.
   markupPercentByService Json    @default("{}")
-  // Most markup (₦) added to one purchase, e.g. { "CABLE": 100 } —
-  // 1% but never more than ₦100. Missing/0 = no maximum.
-  markupCapByService     Json    @default("{}")
   // Per-service discount, e.g. { "DATA": 5 } — percent taken OFF the
   // marked-up price, applied automatically to every purchase of that
   // service. Same shape and fallback as markup (missing = 0%). Shown
@@ -530,10 +482,6 @@ model Settings {
   monnifyWalletAccount  String?
   bankTransferEnabled   Boolean @default(false)
   bankTransferFee       Decimal @default(0) @db.Decimal(14, 2)
-  // Fee by amount, matching Monnify's own bands. Empty = same as
-  // bankTransferFee. Mid = ₦10,000–₦49,999.99, High = ₦50,000 and above.
-  bankTransferFeeMid    Decimal? @db.Decimal(14, 2)
-  bankTransferFeeHigh   Decimal? @db.Decimal(14, 2)
   bankTransferMin       Decimal @default(100) @db.Decimal(14, 2)
   bankTransferMax       Decimal @default(50000) @db.Decimal(14, 2)
   bankTransferDailyMax  Decimal @default(200000) @db.Decimal(14, 2)
@@ -602,24 +550,6 @@ model Settings {
   // After a successful purchase, ask how it went and invite happy
   // customers to share their referral link.
   feedbackPromptEnabled    Boolean @default(true)
-  // Safety limit: discounts + promo + cashback + loyalty on one purchase
-  // may use at most this % of what we earn on it (lib/rewardGuard.js).
-  rewardGuardEnabled       Boolean @default(true)
-  rewardGuardPercent       Int     @default(50)
-  // Savings with daily interest (lib/savings.js). Off by default and
-  // can only be turned on once savingsPartnerNote says which licence or
-  // licensed partner it runs under.
-  savingsEnabled           Boolean @default(false)
-  savingsRatePct           Decimal @default(10) @db.Decimal(5, 2)
-  savingsMinBalance        Int     @default(1000)
-  savingsMaxBalance        Int     @default(500000)
-  savingsDailyBudget       Int     @default(5000)
-  savingsPartnerNote       String?
-  savingsLastRunDate       String?
-  // Hours an escalated request should be answered in (told to the
-  // customer), and where "Report to VTpass" emails go.
-  escalationHours          Int     @default(24)
-  vtpassSupportEmail       String?
   updatedAt              DateTime @updatedAt
 }
 
@@ -877,62 +807,4 @@ model TicketAttachment {
   createdAt DateTime      @default(now())
 
   @@index([ticketId])
-}
-
-// Activity rewards (lib/challenges.js): "buy data 5 times this month,
-// get ₦50", "spend ₦10,000 on electricity", "buy something 7 days in a
-// row". Paid from earnings and limited by the giveaway safety limit —
-// tied to purchases, never to how much sits in a wallet.
-model Challenge {
-  id          String        @id @default(cuid())
-  title       String
-  description String?
-  kind        ChallengeKind
-  // null = any service
-  service     OrderService?
-  // COUNT: number of purchases · SPEND: ₦ total · STREAK: days in a row
-  target      Int
-  // Each purchase must be at least this much to count.
-  minAmount   Int           @default(0)
-  reward      Decimal       @db.Decimal(14, 2)
-  period      ChallengePeriod
-  // For ONCE: the challenge window. For WEEKLY/MONTHLY: optional start
-  // and end of the whole campaign.
-  startsAt    DateTime?
-  endsAt      DateTime?
-  active      Boolean       @default(true)
-  // Most the challenge may pay out in total (null = no limit).
-  budget      Decimal?      @db.Decimal(14, 2)
-  paidTotal   Decimal       @default(0) @db.Decimal(14, 2)
-  createdAt   DateTime      @default(now())
-  rewards     ChallengeReward[]
-}
-
-enum ChallengeKind {
-  COUNT
-  SPEND
-  STREAK
-}
-
-enum ChallengePeriod {
-  WEEKLY
-  MONTHLY
-  ONCE
-}
-
-// One row per customer per challenge per period — the unique key is
-// what stops a reward ever being paid twice.
-model ChallengeReward {
-  id          String    @id @default(cuid())
-  challengeId String
-  challenge   Challenge @relation(fields: [challengeId], references: [id])
-  customerId  String
-  periodKey   String
-  amount      Decimal   @db.Decimal(14, 2)
-  // Full reward before the safety limit trimmed it (if it did).
-  fullAmount  Decimal   @db.Decimal(14, 2)
-  createdAt   DateTime  @default(now())
-
-  @@unique([challengeId, customerId, periodKey])
-  @@index([customerId, createdAt])
 }

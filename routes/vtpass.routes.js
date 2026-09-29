@@ -102,7 +102,6 @@ router.get('/pricing', requireCustomerAuth, async (req, res) => {
     const settings = require('../lib/pricing').settingsForCustomer(raw, customer);
     res.json({
       markupPercentByService: settings.markupPercentByService || {},
-      markupCapByService: settings.markupCapByService || {},
       discountPercentByService: settings.discountPercentByService || {},
       agentPricing: settings !== raw,
     });

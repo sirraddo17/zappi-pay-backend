@@ -23,7 +23,7 @@ function identityHash(idType, idNumber) {
 
 async function feeInfo() {
   const s = await getSettings();
-  return { feePercent: Number(s.bankFundingFeePercent || 0), feeCap: Number(s.bankFundingFeeCap || 0), feeIsPassThrough: require('../lib/earnings').fundingFeeIsPassThrough(s) };
+  return { feePercent: Number(s.bankFundingFeePercent || 0), feeCap: Number(s.bankFundingFeeCap || 0) };
 }
 
 router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {

@@ -273,7 +273,7 @@ router.post('/admin/login', async (req, res) => {
     }
 
     const token = signAdminToken(admin);
-    res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role || 'OWNER' } });
+    res.json({ token, admin: { id: admin.id, name: admin.name, email: admin.email } });
   } catch (error) {
     console.error('POST /admin/login failed:', error);
     res.status(500).json({ error: 'Could not log in.' });
@@ -309,7 +309,7 @@ router.post('/admin/login/verify', async (req, res) => {
     if (!admin.active) return res.status(403).json({ error: 'This admin account has been deactivated.' });
     const token = signAdminToken(admin);
     const rememberToken = remember ? require('jsonwebtoken').sign({ sub: admin.id, kind: 'admin2fa' }, process.env.JWT_SECRET, { expiresIn: '30d' }) : undefined;
-    res.json({ token, rememberToken, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role || 'OWNER' } });
+    res.json({ token, rememberToken, admin: { id: admin.id, name: admin.name, email: admin.email } });
   } catch (error) {
     console.error('POST /admin/login/verify failed:', error);
     res.status(500).json({ error: 'Could not verify the code.' });

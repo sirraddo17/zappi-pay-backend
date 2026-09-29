@@ -33,14 +33,14 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 // to sandbox or back).
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
-    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, markupCapByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
+    const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
-      monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
+      monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -112,17 +112,12 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
 
     const existing = await getSettings();
-    const wasSavingsOn = Boolean(existing.savingsEnabled);
     const data = {};
     if (vtpassMode !== undefined) data.vtpassMode = vtpassMode;
     if (vtpassApiKey !== undefined) data.vtpassApiKey = vtpassApiKey;
     if (vtpassSecretKey !== undefined) data.vtpassSecretKey = vtpassSecretKey;
     if (vtpassPublicKey !== undefined) data.vtpassPublicKey = vtpassPublicKey;
     if (markupPercentByService !== undefined) data.markupPercentByService = markupPercentByService;
-    if (markupCapByService !== undefined) {
-      if (!markupCapByService || typeof markupCapByService !== 'object') return res.status(400).json({ error: 'Invalid markup maximums.' });
-      data.markupCapByService = Object.fromEntries(Object.entries(markupCapByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => Number.isFinite(v) && v > 0));
-    }
     if (discountPercentByService !== undefined) {
       data.discountPercentByService = Object.fromEntries(
         Object.entries(discountPercentByService).map(([svc, pct]) => [svc, Number(pct)])
@@ -145,12 +140,6 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (monnifyWalletAccount !== undefined) data.monnifyWalletAccount = String(monnifyWalletAccount).replace(/\D/g, '') || null;
     if (bankTransferEnabled !== undefined) data.bankTransferEnabled = Boolean(bankTransferEnabled);
     if (bankTransferFee !== undefined) data.bankTransferFee = Number(bankTransferFee);
-    for (const [key, v] of [['bankTransferFeeMid', bankTransferFeeMid], ['bankTransferFeeHigh', bankTransferFeeHigh]]) {
-      if (v === undefined) continue;
-      if (v === null || v === '') { data[key] = null; continue; }
-      if (!Number.isFinite(Number(v)) || Number(v) < 0) return res.status(400).json({ error: 'Transfer fees must be 0 or more.' });
-      data[key] = Number(v);
-    }
     if (bankTransferMin !== undefined) data.bankTransferMin = Number(bankTransferMin);
     if (bankTransferMax !== undefined) data.bankTransferMax = Number(bankTransferMax);
     if (bankTransferDailyMax !== undefined) data.bankTransferDailyMax = Number(bankTransferDailyMax);
@@ -213,41 +202,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (adminAlertPush !== undefined) data.adminAlertPush = Boolean(adminAlertPush);
     if (adminAlertEmail !== undefined) data.adminAlertEmail = Boolean(adminAlertEmail);
     if (feedbackPromptEnabled !== undefined) data.feedbackPromptEnabled = Boolean(feedbackPromptEnabled);
-    if (rewardGuardEnabled !== undefined) data.rewardGuardEnabled = Boolean(rewardGuardEnabled);
-    if (escalationHours !== undefined) data.escalationHours = Math.min(168, Math.max(1, parseInt(escalationHours, 10) || 24));
-    if (vtpassSupportEmail !== undefined) {
-      const e = String(vtpassSupportEmail || '').trim();
-      if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return res.status(400).json({ error: 'Enter a valid VTpass support email.' });
-      data.vtpassSupportEmail = e || null;
-    }
-    if (rewardGuardPercent !== undefined) {
-      const p = parseInt(rewardGuardPercent, 10);
-      if (!(p >= 0 && p <= 100)) return res.status(400).json({ error: 'Safety limit must be between 0 and 100%.' });
-      data.rewardGuardPercent = p;
-    }
-    // Savings with daily interest (lib/savings.js).
-    if (savingsPartnerNote !== undefined) data.savingsPartnerNote = String(savingsPartnerNote || '').trim().slice(0, 300) || null;
-    if (savingsRatePct !== undefined) {
-      const r = Math.round(Number(savingsRatePct) * 100) / 100;
-      if (!(r > 0 && r <= 30)) return res.status(400).json({ error: 'Savings interest must be more than 0% and at most 30% a year.' });
-      data.savingsRatePct = r;
-    }
-    for (const [field, value, lo, hi] of [['savingsMinBalance', savingsMinBalance, 0, 10000000], ['savingsMaxBalance', savingsMaxBalance, 1, 100000000], ['savingsDailyBudget', savingsDailyBudget, 0, 100000000]]) {
-      if (value === undefined) continue;
-      const n = parseInt(value, 10);
-      if (!(n >= lo && n <= hi)) return res.status(400).json({ error: `${field} must be between ${lo} and ${hi}.` });
-      data[field] = n;
-    }
-    if ((data.savingsMinBalance ?? existing.savingsMinBalance) > (data.savingsMaxBalance ?? existing.savingsMaxBalance)) {
-      return res.status(400).json({ error: 'The minimum savings balance can’t be more than the maximum.' });
-    }
-    if (savingsEnabled !== undefined) data.savingsEnabled = Boolean(savingsEnabled);
-    if (data.savingsEnabled && !wasSavingsOn) {
-      const note = data.savingsPartnerNote !== undefined ? data.savingsPartnerNote : existing.savingsPartnerNote;
-      if (!note || note.length < 5) {
-        return res.status(400).json({ error: 'Paying interest on customer money needs a CBN licence or a licensed partner. Enter which one before turning savings on.' });
-      }
-    }
+    // AI assistant. An empty key box means "keep the saved key".
     if (aiApiKeyClear) data.aiApiKey = null;
     else if (aiApiKey !== undefined && String(aiApiKey).trim()) {
       const k = String(aiApiKey).trim();
@@ -297,9 +252,6 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       },
     });
 
-    if (data.savingsEnabled === false && wasSavingsOn) {
-      require('../lib/savings').tellSaversItIsOff().catch(() => {});
-    }
     res.json({ settings });
   } catch (error) {
     console.error('PATCH /admin/settings failed:', error);
@@ -353,8 +305,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
         pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true, dateOfBirth: true, securityQuestion: true, securityAnswerHash: true,
         referredBy: { select: { id: true, name: true, username: true } },
-        pinLockedUntil: true,
-        _count: { select: { referrals: true, trustedDevices: true, webauthnCredentials: true } },
+        _count: { select: { referrals: true } },
       },
     });
     if (!customer) return res.status(404).json({ error: 'Customer not found.' });
@@ -369,9 +320,6 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     delete customer.dateOfBirth;
     delete customer.securityAnswerHash;
     customer.referralCount = customer._count.referrals;
-    customer.quickLoginDevices = customer._count.trustedDevices;
-    customer.fingerprintLogins = customer._count.webauthnCredentials;
-    customer.pinLocked = Boolean(customer.pinLockedUntil && new Date(customer.pinLockedUntil) > new Date());
     delete customer._count;
 
     const [orders, walletTransactions] = await Promise.all([
@@ -590,7 +538,7 @@ router.get('/admin/admins', requireAdminAuth, async (req, res) => {
   try {
     const admins = await prisma.adminUser.findMany({
       orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, email: true, active: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, active: true, createdAt: true },
     });
     res.json({ admins });
   } catch (error) {
@@ -630,7 +578,6 @@ router.patch('/admin/admins/:id/active', requireAdminAuth, async (req, res) => {
       },
     });
 
-    require('../lib/staffAccess').forget(id);
     res.json({ admin });
   } catch (error) {
     console.error('PATCH /admin/admins/:id/active failed:', error);
@@ -670,32 +617,9 @@ router.post('/admin/admins/:id/reset-password', requireAdminAuth, async (req, re
   }
 });
 
-// Change a staff member's access: OWNER (everything) or SUPPORT
-// (customer care only). There must always be at least one active owner.
-router.patch('/admin/admins/:id/role', requireAdminAuth, async (req, res) => {
-  try {
-    const role = req.body?.role === 'OWNER' ? 'OWNER' : req.body?.role === 'SUPPORT' ? 'SUPPORT' : null;
-    if (!role) return res.status(400).json({ error: 'role must be OWNER or SUPPORT.' });
-    const target = await prisma.adminUser.findUnique({ where: { id: req.params.id } });
-    if (!target) return res.status(404).json({ error: 'Staff member not found.' });
-    if (role === 'SUPPORT') {
-      const owners = await prisma.adminUser.count({ where: { active: true, role: 'OWNER', id: { not: target.id } } });
-      if (owners < 1) return res.status(400).json({ error: 'You need at least one other active owner first.' });
-    }
-    const admin = await prisma.adminUser.update({ where: { id: target.id }, data: { role }, select: { id: true, name: true, email: true, role: true, active: true } });
-    require('../lib/staffAccess').forget(target.id);
-    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'ADMIN_ROLE_CHANGED', details: { targetAdminId: target.id, name: target.name, role } } });
-    res.json({ admin });
-  } catch (error) {
-    console.error('PATCH /admin/admins/:id/role failed:', error);
-    res.status(500).json({ error: 'Could not change access.' });
-  }
-});
-
 router.post('/admin/admins', requireAdminAuth, async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const role = req.body.role === 'OWNER' ? 'OWNER' : 'SUPPORT';
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email, and password are required.' });
     }
@@ -709,15 +633,15 @@ router.post('/admin/admins', requireAdminAuth, async (req, res) => {
 
     const passwordHash = await hashPassword(password);
     const admin = await prisma.adminUser.create({
-      data: { name: name.trim(), email: normalizedEmail, passwordHash, role },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      data: { name: name.trim(), email: normalizedEmail, passwordHash },
+      select: { id: true, name: true, email: true, createdAt: true },
     });
 
     await prisma.auditLog.create({
       data: {
         actorAdminId: req.admin.adminId,
         action: 'ADMIN_CREATED',
-        details: { newAdminId: admin.id, email: admin.email, role },
+        details: { newAdminId: admin.id, email: admin.email },
       },
     });
 
