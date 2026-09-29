@@ -18,6 +18,8 @@ const TYPES = {
   WALLET_DEBIT: 'Debit wallet',
   SECURITY_RESET: 'Reset date of birth & security question',
   REACTIVATE: 'Reactivate account',
+  FUNDING_MISSING: 'Bank funding not credited',
+  TRANSFER_ISSUE: 'Send-to-bank problem',
   OTHER: 'Other',
 };
 const naira = (n) => `₦${Number(n || 0).toLocaleString()}`;
@@ -100,14 +102,42 @@ router.post('/admin/escalations', requireAdminAuth, async (req, res) => {
       amount = Number(order.amount);
     }
 
-    const dup = await prisma.escalation.findFirst({ where: { customerId: customer.id, type, status: { in: ['PENDING', 'PROCESSING'] }, ...(order ? { orderId: order.id } : {}) } });
+    let transfer = null;
+    if (type === 'FUNDING_MISSING') {
+      amount = Math.round(Number(b.amount) * 100) / 100;
+      if (!(amount > 0) || amount > 1000000) return res.status(400).json({ error: 'Enter the amount the customer sent.' });
+      checks.bankReference = String(b.bankReference || '').trim().slice(0, 80) || null;
+      // Ask Monnify first — most "not credited" payments land here on their own.
+      const full = await prisma.customer.findUnique({ where: { id: customer.id } });
+      if (full.bankAccountRef && (await require('../lib/monnify').isConfigured())) {
+        const r = await require('../lib/monnify').syncCustomerPayments(full).catch(() => null);
+        if (r?.credited > 0) return res.json({ resolved: true, message: `Found it — ${naira(r.amount)} was just added to the customer's wallet. No approval needed.` });
+        checks.monnifySync = 'No uncredited payment found at Monnify';
+      }
+    }
+    if (type === 'TRANSFER_ISSUE') {
+      transfer = await prisma.bankTransfer.findUnique({ where: { id: String(b.transferId || '') } });
+      if (!transfer || transfer.customerId !== customer.id) return res.status(400).json({ error: 'Pick the transfer this is about.' });
+      if (['PROCESSING', 'PENDING_AUTHORIZATION', 'SUCCESS'].includes(transfer.status)) {
+        const r = await require('../lib/disbursement').refreshStatus(transfer).catch(() => null);
+        const fresh = await prisma.bankTransfer.findUnique({ where: { id: transfer.id } });
+        if (['FAILED', 'REVERSED', 'CANCELLED'].includes(fresh.status)) {
+          return res.json({ resolved: true, message: 'Monnify confirmed the transfer failed — the customer has been refunded automatically.' });
+        }
+        checks.monnifyStatus = r?.status || fresh.status;
+        transfer = fresh;
+      }
+      amount = Number(transfer.amount);
+    }
+
+    const dup = await prisma.escalation.findFirst({ where: { customerId: customer.id, type, status: { in: ['PENDING', 'PROCESSING'] }, ...(order ? { orderId: order.id } : {}), ...(transfer ? { transferId: transfer.id } : {}) } });
     if (dup) return res.status(409).json({ error: `There's already a pending request for this (${dup.ref}).` });
 
     const settings = await getSettings();
     const hours = Math.min(168, Math.max(1, Number(settings.escalationHours || 24)));
     const esc = await prisma.escalation.create({
       data: {
-        ref: newRef(), type, customerId: customer.id, orderId: order?.id || null, amount, reason, checks,
+        ref: newRef(), type, customerId: customer.id, orderId: order?.id || null, transferId: transfer?.id || null, amount, reason, checks,
         createdById: staff.id, createdByName: staff.name, dueAt: new Date(Date.now() + hours * 3600 * 1000),
       },
     });
@@ -135,10 +165,12 @@ router.get('/admin/escalations', requireAdminAuth, async (req, res) => {
     const rows = await prisma.escalation.findMany({ where, orderBy: { createdAt: status === 'PENDING' ? 'asc' : 'desc' }, take: 200 });
     const customers = await prisma.customer.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.customerId))] } }, select: { id: true, name: true, phone: true, walletBalance: true } });
     const orders = await prisma.order.findMany({ where: { id: { in: rows.map((r) => r.orderId).filter(Boolean) } }, select: { id: true, service: true, recipient: true, amount: true, status: true, createdAt: true, vtpassRequestId: true } });
+    const transfers = await prisma.bankTransfer.findMany({ where: { id: { in: rows.map((r) => r.transferId).filter(Boolean) } }, select: { id: true, amount: true, fee: true, bankName: true, accountNumber: true, accountName: true, status: true, reference: true, createdAt: true } });
+    const tMap = Object.fromEntries(transfers.map((t) => [t.id, t]));
     const cMap = Object.fromEntries(customers.map((c) => [c.id, c]));
     const oMap = Object.fromEntries(orders.map((o) => [o.id, o]));
     const pendingCount = await prisma.escalation.count({ where: { status: { in: ['PENDING', 'PROCESSING'] }, ...(role === 'SUPPORT' ? { createdById: req.admin.adminId } : {}) } });
-    res.json({ role, types: TYPES, pendingCount, escalations: rows.map((r) => ({ ...r, customer: cMap[r.customerId] || null, order: r.orderId ? oMap[r.orderId] || null : null })) });
+    res.json({ role, types: TYPES, pendingCount, escalations: rows.map((r) => ({ ...r, customer: cMap[r.customerId] || null, order: r.orderId ? oMap[r.orderId] || null : null, transfer: r.transferId ? tMap[r.transferId] || null : null })) });
   } catch (error) {
     console.error('GET /admin/escalations failed:', error);
     res.status(500).json({ error: 'Could not load requests.' });
@@ -184,6 +216,23 @@ async function execute(esc, req) {
       });
       notify(esc.customerId, credit ? 'Wallet Credited' : 'Wallet Debited', `${naira(amt)} was ${credit ? 'added to' : 'taken from'} your wallet (request ${esc.ref}).`);
       return { summary: `${naira(amt)} ${credit ? 'credited' : 'debited'}` };
+    }
+    case 'FUNDING_MISSING': {
+      // The owner confirmed the money arrived (Monnify dashboard / bank).
+      const amt = Number(esc.amount);
+      await prisma.$transaction([
+        prisma.customer.update({ where: { id: esc.customerId }, data: { walletBalance: { increment: amt } } }),
+        prisma.walletTransaction.create({ data: { customerId: esc.customerId, type: 'FUND', amount: amt, status: 'APPROVED', note: `Bank funding credited after review (${esc.ref})`, reviewedByAdminId: req.admin.adminId, reviewedAt: new Date() } }),
+      ]);
+      notify(esc.customerId, 'Wallet Funded', `${naira(amt)} from your bank transfer has been added to your wallet (request ${esc.ref}).`);
+      return { summary: `${naira(amt)} credited` };
+    }
+    case 'TRANSFER_ISSUE': {
+      const t = await prisma.bankTransfer.findUnique({ where: { id: esc.transferId } });
+      let status = t?.status;
+      if (t && ['PROCESSING', 'PENDING_AUTHORIZATION', 'SUCCESS'].includes(t.status)) status = (await require('../lib/disbursement').refreshStatus(t).catch(() => ({ status: t.status }))).status;
+      notify(esc.customerId, 'Transfer Update', `We've reviewed your bank transfer (request ${esc.ref}). ${['FAILED', 'REVERSED', 'CANCELLED'].includes(status) ? 'It did not go through, and the money is back in your wallet.' : 'We are following up with our payment partner and will update you.'}`);
+      return { summary: `Reviewed — transfer status ${String(status || 'unknown').toLowerCase()}` };
     }
     case 'SECURITY_RESET':
       await prisma.customer.update({ where: { id: esc.customerId }, data: { dateOfBirth: null, securityQuestion: null, securityAnswerHash: null } });
@@ -239,6 +288,43 @@ router.post('/admin/escalations/:id/reject', requireAdminAuth, async (req, res) 
   } catch (error) {
     console.error('POST /admin/escalations/:id/reject failed:', error);
     res.status(500).json({ error: 'Could not reject this request.' });
+  }
+});
+
+// --- Missing bank funding: ask Monnify for this customer's payments ------
+// Safe for support staff: only credits payments Monnify itself confirms
+// were paid into this customer's account, and never the same one twice.
+router.post('/admin/customers/:id/check-funding', requireAdminAuth, async (req, res) => {
+  try {
+    const monnify = require('../lib/monnify');
+    const customer = await prisma.customer.findUnique({ where: { id: req.params.id } });
+    if (!customer) return res.status(404).json({ error: 'Customer not found.' });
+    if (!customer.bankAccountRef) return res.json({ credited: 0, message: 'This customer has no personal account number yet, so bank funding can’t reach their wallet. For manual funding, the owner approves it under Pending Funding.' });
+    if (!(await monnify.isConfigured())) return res.status(503).json({ error: 'Monnify isn’t connected.' });
+    const reference = String(req.body?.reference || '').trim();
+    let credited = 0;
+    let amount = 0;
+    let note = '';
+    if (reference) {
+      const r = await monnify.creditFromTransaction(reference).catch((e) => ({ credited: false, reason: e.message }));
+      if (r.credited && r.customerId !== customer.id) note = ' (it belonged to a different customer’s account and was credited to them)';
+      if (r.credited && r.customerId === customer.id) { credited += 1; amount += r.amount; }
+      if (!r.credited) note = r.reason === 'already credited' ? ' That reference was already credited earlier — check their wallet history.' : ` Monnify didn’t confirm that reference (${r.reason || 'not found'}).`;
+    }
+    const s = await monnify.syncCustomerPayments(customer);
+    credited += s.credited;
+    amount += s.amount;
+    await audit(req, 'FUNDING_CHECKED', { customerId: customer.id, reference: reference || undefined, credited, amount });
+    res.json({
+      credited,
+      amount,
+      message: credited > 0
+        ? `Found ${credited} payment${credited === 1 ? '' : 's'} — ${naira(amount)} added to the wallet. The customer was notified.${note}`
+        : `Monnify shows no uncredited payment into this customer’s account.${note} If they have a debit alert, ask for the bank's session ID and send it for approval.`,
+    });
+  } catch (error) {
+    console.error('POST /admin/customers/:id/check-funding failed:', error);
+    res.status(500).json({ error: 'Could not check with Monnify.' });
   }
 });
 

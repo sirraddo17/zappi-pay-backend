@@ -35,6 +35,7 @@ model Escalation {
   status         String    @default("PENDING") // PENDING, PROCESSING, APPROVED, REJECTED
   customerId     String
   orderId        String?
+  transferId     String?
   amount         Decimal?  @db.Decimal(14, 2)
   reason         String
   checks         Json      @default("{}")
