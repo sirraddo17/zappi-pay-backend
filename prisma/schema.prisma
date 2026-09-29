@@ -229,6 +229,7 @@ enum WalletTxType {
   SAVINGS_IN
   SAVINGS_OUT
   INTEREST
+  CHALLENGE_REWARD
 }
 
 enum WalletTxStatus {
@@ -876,4 +877,62 @@ model TicketAttachment {
   createdAt DateTime      @default(now())
 
   @@index([ticketId])
+}
+
+// Activity rewards (lib/challenges.js): "buy data 5 times this month,
+// get ₦50", "spend ₦10,000 on electricity", "buy something 7 days in a
+// row". Paid from earnings and limited by the giveaway safety limit —
+// tied to purchases, never to how much sits in a wallet.
+model Challenge {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  kind        ChallengeKind
+  // null = any service
+  service     OrderService?
+  // COUNT: number of purchases · SPEND: ₦ total · STREAK: days in a row
+  target      Int
+  // Each purchase must be at least this much to count.
+  minAmount   Int           @default(0)
+  reward      Decimal       @db.Decimal(14, 2)
+  period      ChallengePeriod
+  // For ONCE: the challenge window. For WEEKLY/MONTHLY: optional start
+  // and end of the whole campaign.
+  startsAt    DateTime?
+  endsAt      DateTime?
+  active      Boolean       @default(true)
+  // Most the challenge may pay out in total (null = no limit).
+  budget      Decimal?      @db.Decimal(14, 2)
+  paidTotal   Decimal       @default(0) @db.Decimal(14, 2)
+  createdAt   DateTime      @default(now())
+  rewards     ChallengeReward[]
+}
+
+enum ChallengeKind {
+  COUNT
+  SPEND
+  STREAK
+}
+
+enum ChallengePeriod {
+  WEEKLY
+  MONTHLY
+  ONCE
+}
+
+// One row per customer per challenge per period — the unique key is
+// what stops a reward ever being paid twice.
+model ChallengeReward {
+  id          String    @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  customerId  String
+  periodKey   String
+  amount      Decimal   @db.Decimal(14, 2)
+  // Full reward before the safety limit trimmed it (if it did).
+  fullAmount  Decimal   @db.Decimal(14, 2)
+  createdAt   DateTime  @default(now())
+
+  @@unique([challengeId, customerId, periodKey])
+  @@index([customerId, createdAt])
 }

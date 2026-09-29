@@ -23,6 +23,7 @@ const aiRouter = require('./routes/ai.routes');
 const engageRouter = require('./routes/engage.routes');
 const escalationsRouter = require('./routes/escalations.routes');
 const savingsRouter = require('./routes/savings.routes');
+const challengesRouter = require('./routes/challenges.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -48,6 +49,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-ba
 app.use('/api', require('./lib/staffAccess').staffGate);
 app.use('/api', escalationsRouter);
 app.use('/api', savingsRouter);
+app.use('/api', challengesRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
