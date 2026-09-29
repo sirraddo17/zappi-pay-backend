@@ -226,7 +226,22 @@ router.post('/wallet/coupon', requireCustomerAuth, async (req, res) => {
 router.get('/promo/check', requireCustomerAuth, async (req, res) => {
   try {
     const amount = Number(req.query.amount || 0);
-    const { promo, discount } = await promoLib.evaluatePromo(req.customer.customerId, req.query.code, String(req.query.service || ''), amount);
+    const service = String(req.query.service || '');
+    const evaluated = await promoLib.evaluatePromo(req.customer.customerId, req.query.code, service, amount);
+    const { promo } = evaluated;
+    let { discount } = evaluated;
+    // Same safety limit as the purchase itself, when the Buy page sends
+    // the plan's face value and provider.
+    const base = Number(req.query.base || 0);
+    if (base > 0) {
+      const { computePrice, settingsForCustomer } = require('../lib/pricing');
+      const buyer = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true } });
+      const s = settingsForCustomer(await getSettings(), buyer);
+      const priced = computePrice(base, service, s);
+      const left = require('../lib/rewardGuard').room({ service, provider: String(req.query.provider || ''), face: base, markedUp: priced.markedUp, alreadyGiven: priced.discountAmount }, s);
+      if (left !== null && discount > left) discount = Math.floor(left);
+      if (!(discount > 0)) throw new Error("That promo code can't be used on this purchase.");
+    }
     res.json({ code: promo.code, discount, description: promo.description });
   } catch (error) {
     res.status(400).json({ error: error.message });

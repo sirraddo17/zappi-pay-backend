@@ -557,6 +557,10 @@ model Settings {
   // After a successful purchase, ask how it went and invite happy
   // customers to share their referral link.
   feedbackPromptEnabled    Boolean @default(true)
+  // Safety limit: discounts + promo + cashback + loyalty on one purchase
+  // may use at most this % of what we earn on it (lib/rewardGuard.js).
+  rewardGuardEnabled       Boolean @default(true)
+  rewardGuardPercent       Int     @default(50)
   updatedAt              DateTime @updatedAt
 }
 
