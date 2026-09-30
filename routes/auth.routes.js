@@ -194,8 +194,9 @@ router.get('/auth/me', requireCustomerAuth, async (req, res) => {
 
 router.patch('/auth/me', requireCustomerAuth, async (req, res) => {
   try {
-    const { name, email, avatarUrl } = req.body;
+    const { name, email, avatarUrl, language } = req.body;
     const data = {};
+    if (language !== undefined) data.language = ['en', 'pcm', 'yo', 'ha', 'ig'].includes(language) ? language : null;
     if (name !== undefined) data.name = name.trim();
     if (email !== undefined) data.email = email.trim() || null;
     if (avatarUrl !== undefined) {

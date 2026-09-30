@@ -36,9 +36,12 @@ router.post('/admin/broadcasts', requireAdminAuth, async (req, res) => {
 
     const aud = require('../lib/audience');
     const audience = aud.clean(req.body.audience);
-    const customers = await prisma.customer.findMany({ where: aud.where(audience), select: { id: true } });
+    const customers = await prisma.customer.findMany({ where: aud.where(audience), select: { id: true, language: true } });
     if (!customers.length) return res.status(400).json({ error: 'No customers are in that group right now.' });
     const notificationTitle = `${TYPE_LABELS[type]}${title}`;
+    // Each customer gets it in their app language (lib/translate.js).
+    const tr = await require('../lib/translate').translateMessage(title, message, customers.map((c) => c.language).filter(Boolean));
+    const forCustomer = (c) => (tr[c.language] ? { customerId: c.id, title: `${TYPE_LABELS[type]}${tr[c.language].title}`, message: tr[c.language].message } : { customerId: c.id, title: notificationTitle, message });
 
     const [broadcast] = await prisma.$transaction([
       prisma.broadcast.create({
@@ -54,7 +57,7 @@ router.post('/admin/broadcasts', requireAdminAuth, async (req, res) => {
         },
       }),
       prisma.notification.createMany({
-        data: customers.map((c) => ({ customerId: c.id, title: notificationTitle, message })),
+        data: customers.map(forCustomer),
       }),
       prisma.auditLog.create({
         data: {

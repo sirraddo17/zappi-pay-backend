@@ -172,6 +172,12 @@ model Customer {
   deletedAt           DateTime?
   // Customer turned off "your DStv expires soon" style reminders.
   billRemindersOff    Boolean  @default(false)
+  // Customer froze their own account (e.g. lost phone). Support checks
+  // who they are before switching it back on.
+  selfFrozenAt        DateTime?
+  // App language chosen in Profile (en, pcm, yo, ha, ig) — broadcasts
+  // are translated into it when AI translation is on.
+  language            String?
   createdAt     DateTime @default(now())
 
   walletTransactions WalletTransaction[]
@@ -614,6 +620,10 @@ model Settings {
   aiCustomerEnabled        Boolean @default(false)
   // Let the customer assistant prepare purchases (paid with PIN).
   aiChatBuyEnabled         Boolean @default(true)
+  // AI-written morning briefing on top of the daily summary, and AI
+  // translation of broadcasts into each customer's app language.
+  aiBriefingEnabled        Boolean @default(true)
+  aiTranslateBroadcasts    Boolean @default(true)
   aiAdminEnabled           Boolean @default(false)
   aiCustomerModel          String  @default("claude-haiku-4-5")
   aiAdminModel             String  @default("claude-sonnet-5")
@@ -918,6 +928,8 @@ model AppAd {
   endsAt     DateTime?
   sortOrder  Int       @default(0)
   clicks     Int       @default(0)
+  // Times it was shown (once per app open), for tap rate.
+  views      Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 }
@@ -1134,4 +1146,45 @@ model AdminAction {
   appliedAt DateTime?
 
   @@index([adminId, createdAt])
+}
+
+// Last known VTpass price of each plan, to spot price changes.
+model PriceSnapshot {
+  id            String   @id @default(cuid())
+  serviceID     String
+  variationCode String
+  name          String
+  amount        Decimal  @db.Decimal(14, 2)
+  previous      Decimal? @db.Decimal(14, 2)
+  changedAt     DateTime?
+  seenAt        DateTime @default(now())
+
+  @@unique([serviceID, variationCode])
+  @@index([changedAt])
+}
+
+// A fraud / abuse pattern already raised, so the owner is alerted once.
+model RiskFlag {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  severity  String
+  title     String
+  detail    String
+  customerIds Json?
+  status    String   @default("OPEN") // OPEN, DISMISSED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+// Help Centre answers added from the admin (on top of the built-in ones).
+model FaqEntry {
+  id        String   @id @default(cuid())
+  topic     String
+  question  String
+  answer    String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
