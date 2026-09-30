@@ -26,6 +26,9 @@ const savingsRouter = require('./routes/savings.routes');
 const challengesRouter = require('./routes/challenges.routes');
 const moneyRouter = require('./routes/money.routes');
 const statusRouter = require('./routes/status.routes');
+const remindersRouter = require('./routes/reminders.routes');
+const giftsRouter = require('./routes/gifts.routes');
+const promiseRouter = require('./routes/promise.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -61,6 +64,9 @@ app.use('/api', savingsRouter);
 app.use('/api', challengesRouter);
 app.use('/api', moneyRouter);
 app.use('/api', statusRouter);
+app.use('/api', remindersRouter);
+app.use('/api', giftsRouter);
+app.use('/api', promiseRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
@@ -97,4 +103,5 @@ app.listen(PORT, () => {
   startDailySummary();
   require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();
+  require('./lib/reminders').startReminders();
 });

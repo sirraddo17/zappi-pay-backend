@@ -165,6 +165,8 @@ model Customer {
   deletionRequestedAt DateTime?
   deletionReason      String?
   deletedAt           DateTime?
+  // Customer turned off "your DStv expires soon" style reminders.
+  billRemindersOff    Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   walletTransactions WalletTransaction[]
@@ -236,6 +238,7 @@ enum WalletTxType {
   SAVINGS_OUT
   INTEREST
   CHALLENGE_REWARD
+  DELIVERY_BONUS
 }
 
 enum WalletTxStatus {
@@ -637,6 +640,13 @@ model Settings {
   // customer), and where "Report to VTpass" emails go.
   escalationHours          Int     @default(24)
   vtpassSupportEmail       String?
+  // "Delivered in 60 seconds or ₦20 back" (lib/deliveryPromise.js).
+  deliveryPromiseEnabled   Boolean @default(false)
+  deliveryPromiseSeconds   Int     @default(60)
+  deliveryPromiseBonus     Int     @default(20)
+  deliveryPromiseMinAmount Int     @default(100)
+  deliveryPromiseDailyBudget Int   @default(2000)
+  deliveryPromiseServices  Json    @default("[\"AIRTIME\",\"DATA\"]")
   updatedAt              DateTime @updatedAt
 }
 
@@ -974,4 +984,45 @@ model LoginSession {
   revokedAt  DateTime?
 
   @@index([customerId, lastSeenAt])
+}
+
+// "Your DStv expires in 3 days" / "Your MTN 10GB plan ends tomorrow".
+// Created after a successful cable or data purchase: cable due dates
+// come from VTpass's smartcard check, data from the plan length.
+model BillReminder {
+  id              String       @id @default(cuid())
+  customerId      String
+  service         OrderService
+  serviceID       String
+  billersCode     String
+  variationCode   String?
+  label           String
+  dueDate         DateTime
+  // Due date we last reminded about, so each renewal is reminded once.
+  lastRemindedFor DateTime?
+  active          Boolean      @default(true)
+  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime     @default(now())
+
+  @@unique([customerId, service, serviceID, billersCode])
+  @@index([active, dueDate])
+}
+
+// "Ridwan sent you ₦1,000 MTN airtime 🎁 Happy birthday!" — a shareable
+// card for an airtime or data purchase made for someone else. The link
+// (/gift/<token>) is public, so it shows only a first name, the message
+// and the last 4 digits of the number.
+model Gift {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  orderId    String    @unique
+  customerId String
+  fromName   String
+  message    String?
+  theme      String    @default("JUST_BECAUSE")
+  viewCount  Int       @default(0)
+  firstViewedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId, createdAt])
 }

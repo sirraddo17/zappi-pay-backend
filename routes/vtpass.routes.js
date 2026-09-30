@@ -119,7 +119,7 @@ router.get('/pricing', requireCustomerAuth, async (req, res) => {
 // repeat automatically — both only after a successful purchase, so a
 // failed first payment never leaves a schedule behind.
 router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
-  const { service, serviceID, variationCode, billersCode, phone, amount, meterType, saveBeneficiary, repeat, promoCode } = req.body;
+  const { service, serviceID, variationCode, billersCode, phone, amount, meterType, saveBeneficiary, repeat, promoCode, gift } = req.body;
   if (!service || !serviceID || !billersCode || !phone) {
     return res.status(400).json({ error: 'service, serviceID, billersCode, and phone are required.' });
   }
@@ -143,6 +143,12 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     if (repeat) {
       extras.schedule = await createSchedule(req.customer.customerId, { ...input, frequency: repeat.frequency, nickname: repeat.nickname })
         .catch((e) => { console.error('create schedule failed:', e); return null; });
+    }
+    // "Send as a gift" — a shareable card with the customer's message.
+    if (gift && result.body.order?.id) {
+      extras.gift = await require('../lib/gifts').createGift(req.customer.customerId, result.body.order.id, gift)
+        .then(() => require('../lib/gifts').forOrder(req.customer.customerId, result.body.order.id))
+        .catch((e) => { console.error('create gift failed:', e.message); return null; });
     }
     return res.status(result.status).json({ ...result.body, ...extras });
   }
