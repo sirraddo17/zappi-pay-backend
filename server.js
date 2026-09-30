@@ -36,6 +36,7 @@ const familyRouter = require('./routes/family.routes');
 const rewardSplitRouter = require('./routes/rewardsplit.routes');
 const selfProtectRouter = require('./routes/selfprotect.routes');
 const insightsRouter = require('./routes/insights.routes');
+const epinsRouter = require('./routes/epins.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -81,6 +82,7 @@ app.use('/api', familyRouter);
 app.use('/api', rewardSplitRouter);
 app.use('/api', selfProtectRouter);
 app.use('/api', insightsRouter);
+app.use('/api', epinsRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
@@ -114,6 +116,7 @@ app.listen(PORT, () => {
   // Runs scheduled top-ups when they're due (see lib/schedules.js).
   startScheduler();
   startOrderSweeper();
+  require('./lib/epins').startSweeper();
   startDailySummary();
   require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();

@@ -17,6 +17,8 @@ function safeSettings(settings) {
   out.openaiApiKeySet = Boolean(out.openaiApiKey);
   out.openaiApiKeyHint = out.openaiApiKey ? `…${out.openaiApiKey.slice(-4)}` : null;
   delete out.openaiApiKey;
+  out.ckApiKeySet = Boolean(out.ckApiKey);
+  delete out.ckApiKey;
   return out;
 }
 

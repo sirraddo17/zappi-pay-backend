@@ -183,6 +183,7 @@ model Customer {
   walletTransactions WalletTransaction[]
   passwordResetTokens PasswordResetToken[]
   orders             Order[]
+  pinBatches         PinBatch[]
   loginSessions      LoginSession[]
   supportTickets     SupportTicket[]
   notifications      Notification[]
@@ -635,6 +636,16 @@ model Settings {
   openaiApiKey             String?
   voiceMonthlyBudgetUsd    Decimal @default(5) @db.Decimal(10, 2)
   voiceDailyLimit          Int     @default(20)
+  // Recharge card printing (ClubKonnect / Nellobytes e-PINs). The key
+  // never goes back to the browser. Discounts are % off the card value;
+  // the supplier discount is what ClubKonnect gives us (for profit).
+  ckEnabled                Boolean @default(false)
+  ckUserId                 String?
+  ckApiKey                 String?
+  epinCustomerDiscountPct  Decimal @default(0) @db.Decimal(5, 2)
+  epinAgentDiscountPct     Decimal @default(2) @db.Decimal(5, 2)
+  epinSupplierDiscountPct  Decimal @default(5) @db.Decimal(5, 2)
+  epinDailyCards           Int     @default(300)
   // Admin alerts for things waiting on you (new support message, OTP
   // needed, funding request...), by push to the admin app and email.
   adminAlertPush           Boolean @default(true)
@@ -1193,4 +1204,48 @@ model FaqEntry {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Recharge card printing: one row per order of printable airtime PINs
+// from ClubKonnect. amount is what left the wallet; cards are stored
+// once delivered. Settles exactly once (PENDING → SUCCESS / FAILED).
+model PinBatch {
+  id              String      @id @default(cuid())
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  network         String
+  value           Int
+  quantity        Int
+  delivered       Int         @default(0)
+  unitPrice       Decimal     @db.Decimal(14, 2)
+  amount          Decimal     @db.Decimal(14, 2)
+  refunded        Decimal     @default(0) @db.Decimal(14, 2)
+  costAmount      Decimal?    @db.Decimal(14, 2)
+  requestId       String      @unique
+  providerOrderId String?
+  providerStatus  String?
+  status          OrderStatus @default(PENDING)
+  businessName    String?
+  checks          Int         @default(0)
+  printedAt       DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  cards           PinCard[]
+
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+}
+
+model PinCard {
+  id        String    @id @default(cuid())
+  batchId   String
+  batch     PinBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  pin       String
+  serial    String?
+  batchNo   String?
+  soldAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([batchId, pin])
+  @@index([batchId])
 }
