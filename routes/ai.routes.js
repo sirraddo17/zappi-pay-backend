@@ -148,7 +148,7 @@ You are talking to a logged-in customer${firstName ? ` called ${firstName}` : ''
 
 Rules:
 - Be short, warm and practical: 1-4 short sentences or a few bullet points. Amounts in naira (₦). Reply in the customer's language (English, Pidgin, Yoruba, Hausa or Igbo).
-- You can only look things up and explain. You cannot buy, refund, reverse, transfer, change settings or credit anyone. Never promise a refund or timeline you cannot see in the data.
+- Apart from preparing a purchase for the customer to confirm (see below), you can only look things up and explain. You cannot refund, reverse, transfer, change settings or credit anyone. Never promise a refund or timeline you cannot see in the data.
 - Never ask for or accept a password, PIN, OTP, BVN, NIN, card or bank login. If they share one, tell them to never share it and to change it.
 - Never show an electricity token or exam PIN in chat; tell them to open the receipt instead.
 - Failed purchases are refunded to the wallet automatically. PENDING orders are being confirmed with the provider and settle on their own (success or automatic refund).
@@ -191,19 +191,23 @@ router.post('/ai/chat', requireCustomerAuth, async (req, res) => {
     }
 
     const me = await prisma.customer.findUnique({ where: { id: customerId }, select: { name: true } });
+    // Buy by chat (lib/chatBuy.js): the assistant can only PREPARE a
+    // purchase; the card it returns is paid through the normal PIN flow.
+    const chatBuy = settings.aiChatBuyEnabled !== false ? require('../lib/chatBuy') : null;
+    const collector = { purchase: null };
     const result = await ai.runAssistant({
       settings,
       kind: 'CUSTOMER',
       actorId: customerId,
       model: settings.aiCustomerModel,
-      system: customerSystemPrompt(me?.name?.split(' ')[0]),
+      system: customerSystemPrompt(me?.name?.split(' ')[0]) + (chatBuy ? chatBuy.PROMPT : ''),
       history,
-      tools: CUSTOMER_TOOLS,
-      handlers: customerHandlers(customerId, settings),
-      maxSteps: 4,
+      tools: chatBuy ? [...CUSTOMER_TOOLS, ...chatBuy.TOOLS] : CUSTOMER_TOOLS,
+      handlers: { ...customerHandlers(customerId, settings), ...(chatBuy ? chatBuy.handlers(customerId, settings, collector) : {}) },
+      maxSteps: chatBuy ? 6 : 4,
       maxTokens: 600,
     });
-    res.json({ ...extractActions(result.text), remaining: Math.max(0, settings.aiCustomerDailyLimit - used - 1) });
+    res.json({ ...extractActions(result.text), ...(collector.purchase ? { purchase: collector.purchase } : {}), remaining: Math.max(0, settings.aiCustomerDailyLimit - used - 1) });
   } catch (error) {
     fail(res, error, 'The assistant could not answer right now.');
   }

@@ -69,6 +69,9 @@ router.post('/wallet/bank-transfer', requireCustomerAuth, async (req, res) => {
     if (!bankCode || cleanNumber.length !== 10) return res.status(400).json({ error: 'Choose a bank and enter the 10-digit account number.' });
     if (!(Number(amount) > 0)) return res.status(400).json({ error: 'Enter an amount to send.' });
 
+    const familyError = await require('../lib/family').checkSend(req.customer.customerId);
+    if (familyError) return res.status(403).json({ error: familyError, code: 'FAMILY_LIMIT' });
+
     const confirmation = await confirmTransaction(req);
     if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 

@@ -196,6 +196,9 @@ router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
       return res.status(400).json({ error: 'You cannot send money to yourself.' });
     }
 
+    const familyError = await require('../lib/family').checkSend(req.customer.customerId, receiver.id);
+    if (familyError) return res.status(403).json({ error: familyError, code: 'FAMILY_LIMIT' });
+
     const confirmation = await confirmTransaction(req);
     if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
@@ -206,31 +209,23 @@ router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
     const limitError = await checkDailyLimit(sender, amountNum, await getSettings());
     if (limitError) return res.status(403).json({ error: limitError, code: 'DAILY_LIMIT' });
 
-    const [transfer] = await prisma.$transaction([
-      prisma.transfer.create({
-        data: { senderId: sender.id, receiverId: receiver.id, amount: amountNum, note: note || undefined },
-      }),
-      prisma.customer.update({ where: { id: sender.id }, data: { walletBalance: { decrement: amountNum } } }),
-      prisma.customer.update({ where: { id: receiver.id }, data: { walletBalance: { increment: amountNum } } }),
-      prisma.walletTransaction.create({
-        data: {
-          customerId: sender.id,
-          type: 'TRANSFER_OUT',
-          amount: amountNum,
-          status: 'APPROVED',
-          note: `Sent to ${receiver.name}`,
-        },
-      }),
-      prisma.walletTransaction.create({
-        data: {
-          customerId: receiver.id,
-          type: 'TRANSFER_IN',
-          amount: amountNum,
-          status: 'APPROVED',
-          note: `Received from ${sender.name}`,
-        },
-      }),
-    ]);
+    // The debit only happens if the balance still covers it, so two
+    // quick sends at once can never take the wallet below zero.
+    let transfer;
+    try {
+      transfer = await prisma.$transaction(async (tx) => {
+        const debit = await tx.customer.updateMany({ where: { id: sender.id, walletBalance: { gte: amountNum } }, data: { walletBalance: { decrement: amountNum } } });
+        if (debit.count !== 1) throw Object.assign(new Error('INSUFFICIENT'), { insufficient: true });
+        const t = await tx.transfer.create({ data: { senderId: sender.id, receiverId: receiver.id, amount: amountNum, note: note || undefined } });
+        await tx.customer.update({ where: { id: receiver.id }, data: { walletBalance: { increment: amountNum } } });
+        await tx.walletTransaction.create({ data: { customerId: sender.id, type: 'TRANSFER_OUT', amount: amountNum, status: 'APPROVED', note: `Sent to ${receiver.name}` } });
+        await tx.walletTransaction.create({ data: { customerId: receiver.id, type: 'TRANSFER_IN', amount: amountNum, status: 'APPROVED', note: `Received from ${sender.name}` } });
+        return t;
+      });
+    } catch (e) {
+      if (e.insufficient) return res.status(400).json({ error: 'Insufficient wallet balance.' });
+      throw e;
+    }
 
     notify(receiver.id, 'Money Received', `${sender.name} sent you ₦${amountNum.toLocaleString()}.`);
     notify(sender.id, 'Money Sent', `You sent ₦${amountNum.toLocaleString()} to ${receiver.name}.`);

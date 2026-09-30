@@ -40,7 +40,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, aiCustomerEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, aiCustomerEnabled, aiChatBuyEnabled, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -264,6 +264,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data.aiApiKey = k;
     }
     if (aiCustomerEnabled !== undefined) data.aiCustomerEnabled = Boolean(aiCustomerEnabled);
+    if (aiChatBuyEnabled !== undefined) data.aiChatBuyEnabled = Boolean(aiChatBuyEnabled);
     if (aiAdminEnabled !== undefined) data.aiAdminEnabled = Boolean(aiAdminEnabled);
     for (const [field, value] of [['aiCustomerModel', aiCustomerModel], ['aiAdminModel', aiAdminModel]]) {
       if (value === undefined) continue;

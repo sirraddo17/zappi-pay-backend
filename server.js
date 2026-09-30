@@ -32,6 +32,7 @@ const promiseRouter = require('./routes/promise.routes');
 const dealsRouter = require('./routes/deals.routes');
 const shopRouter = require('./routes/shop.routes');
 const profitBookRouter = require('./routes/profitbook.routes');
+const familyRouter = require('./routes/family.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -73,6 +74,7 @@ app.use('/api', promiseRouter);
 app.use('/api', dealsRouter);
 app.use('/api', shopRouter);
 app.use('/api', profitBookRouter);
+app.use('/api', familyRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
@@ -110,4 +112,5 @@ app.listen(PORT, () => {
   require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();
   require('./lib/reminders').startReminders();
+  require('./lib/family').startFamilyTimer();
 });

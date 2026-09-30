@@ -612,6 +612,8 @@ model Settings {
   // estimated usage is reached.
   aiApiKey                 String?
   aiCustomerEnabled        Boolean @default(false)
+  // Let the customer assistant prepare purchases (paid with PIN).
+  aiChatBuyEnabled         Boolean @default(true)
   aiAdminEnabled           Boolean @default(false)
   aiCustomerModel          String  @default("claude-haiku-4-5")
   aiAdminModel             String  @default("claude-sonnet-5")
@@ -1059,4 +1061,30 @@ model AgentSale {
   createdAt    DateTime  @default(now())
 
   @@index([agentId, owing])
+}
+
+// Family wallet: a parent links a family member's account (they must
+// accept) to send an automatic allowance and set spending controls.
+model FamilyLink {
+  id                 String    @id @default(cuid())
+  parentId           String
+  childId            String    @unique
+  nickname           String?
+  status             String    @default("PENDING") // PENDING, ACTIVE, ENDED
+  // Spending controls on the member's account (null = no limit / all).
+  dailyLimit         Int?
+  allowedServices    Json?
+  allowSendMoney     Boolean   @default(false)
+  // Automatic allowance from the parent's wallet.
+  allowanceAmount    Int?
+  allowanceFrequency String?   // WEEKLY, MONTHLY
+  nextAllowanceAt    DateTime?
+  lastAllowanceAt    DateTime?
+  lastAllowanceError String?
+  createdAt          DateTime  @default(now())
+  acceptedAt         DateTime?
+  endedAt            DateTime?
+
+  @@index([parentId])
+  @@index([status, nextAllowanceAt])
 }
