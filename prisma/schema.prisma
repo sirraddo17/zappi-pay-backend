@@ -1115,3 +1115,23 @@ model RewardPoolMove {
 
   @@index([pool, createdAt])
 }
+
+// A change the admin AI assistant proposed (lib/adminActions.js). Only
+// applied when the owner taps Apply; `undo` puts the old values back.
+model AdminAction {
+  id        String    @id @default(cuid())
+  adminId   String
+  kind      String
+  summary   String
+  changes   Json
+  requests  Json
+  undo      Json?
+  warnings  Json?
+  ids       Json?
+  status    String    @default("PENDING") // PENDING, APPLYING, APPLIED, UNDOING, UNDONE, DISMISSED, EXPIRED, FAILED
+  error     String?
+  createdAt DateTime  @default(now())
+  appliedAt DateTime?
+
+  @@index([adminId, createdAt])
+}
