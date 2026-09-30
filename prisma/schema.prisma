@@ -142,6 +142,11 @@ model Customer {
   agentShopAddress    String?
   agentRejectedAt     DateTime?
   agentRejectReason   String?
+  // Agent shop link (/shop/<username>): customers who buy through it
+  // earn the agent a commission.
+  shopEnabled         Boolean   @default(false)
+  shopTagline         String?
+  shopShowWhatsapp    Boolean   @default(false)
   // Identity checks for support: date of birth (set once at signup,
   // only support can clear it) and a security question whose answer
   // is stored bcrypt-hashed like a password.
@@ -239,6 +244,7 @@ enum WalletTxType {
   INTEREST
   CHALLENGE_REWARD
   DELIVERY_BONUS
+  SHOP_COMMISSION
 }
 
 enum WalletTxStatus {
@@ -323,6 +329,9 @@ model Order {
   promoDiscount   Decimal?     @db.Decimal(14, 2)
   cashbackAmount  Decimal?     @db.Decimal(14, 2)
   pointsEarned    Int?
+  // Bought through an agent's shop link: the agent and their commission.
+  shopAgentId     String?
+  shopCommission  Decimal?     @db.Decimal(14, 2)
   vtpassRequestId String?      @unique
   vtpassStatus    String?
   status          OrderStatus  @default(PENDING)
@@ -334,6 +343,7 @@ model Order {
   supportTickets SupportTicket[]
 
   @@index([customerId, createdAt])
+  @@index([shopAgentId, createdAt])
 }
 
 enum TicketStatus {
@@ -647,6 +657,12 @@ model Settings {
   deliveryPromiseMinAmount Int     @default(100)
   deliveryPromiseDailyBudget Int   @default(2000)
   deliveryPromiseServices  Json    @default("[\"AIRTIME\",\"DATA\"]")
+  // Agent shop links (lib/shop.js): commission paid to the agent on
+  // each purchase made through their link, capped per order and by the
+  // reward safety limit.
+  shopLinksEnabled         Boolean @default(false)
+  shopCommissionPct        Decimal @default(1) @db.Decimal(5, 2)
+  shopCommissionMax        Int     @default(50)
   updatedAt              DateTime @updatedAt
 }
 
@@ -1025,4 +1041,22 @@ model Gift {
   createdAt  DateTime  @default(now())
 
   @@index([customerId, createdAt])
+}
+
+// Agent profit book: what an agent charged their own customer for a
+// purchase (defaults to face value when not set), who it was for, and
+// whether they still owe.
+model AgentSale {
+  id           String    @id @default(cuid())
+  agentId      String
+  orderId      String    @unique
+  soldFor      Decimal   @db.Decimal(14, 2)
+  customerName String?
+  owing        Boolean   @default(false)
+  paidAt       DateTime?
+  note         String?
+  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime  @default(now())
+
+  @@index([agentId, owing])
 }

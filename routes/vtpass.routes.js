@@ -8,27 +8,8 @@ const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
 
-// VTpass's catalog (networks, data plans, TV bouquets) rarely changes,
-// but fetching it live takes 1-2 seconds every time a customer opens a
-// Buy page. Keep good answers in memory for an hour, per sandbox/live
-// mode. Prices are still checked by VTpass when the purchase is made.
-const CATALOG_TTL_MS = 60 * 60 * 1000;
-const catalogCache = new Map();
-
-async function cachedCatalog(path, query) {
-  const { vtpassMode } = await getSettings();
-  const key = `${vtpassMode}|${path}|${JSON.stringify(query || {})}`;
-  const hit = catalogCache.get(key);
-  if (hit && Date.now() - hit.at < CATALOG_TTL_MS) return hit.data;
-  const data = await vtpassRequest('GET', path, { query });
-  const content = data?.content;
-  const ok = Array.isArray(content) ? content.length > 0 : Boolean(content && (content.varations || content.variations || Object.keys(content).length));
-  if (ok) {
-    if (catalogCache.size > 200) catalogCache.clear();
-    catalogCache.set(key, { at: Date.now(), data });
-  }
-  return data;
-}
+// Catalog cache lives in lib/catalog.js (also used by the deal finder).
+const { cachedCatalog } = require('../lib/catalog');
 
 // --- Catalog & verification (read-only, proxied straight to VTpass) ---
 // These don't touch the wallet or Order table at all — just pass VTpass's
@@ -119,7 +100,7 @@ router.get('/pricing', requireCustomerAuth, async (req, res) => {
 // repeat automatically — both only after a successful purchase, so a
 // failed first payment never leaves a schedule behind.
 router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
-  const { service, serviceID, variationCode, billersCode, phone, amount, meterType, saveBeneficiary, repeat, promoCode, gift } = req.body;
+  const { service, serviceID, variationCode, billersCode, phone, amount, meterType, saveBeneficiary, repeat, promoCode, gift, shop } = req.body;
   if (!service || !serviceID || !billersCode || !phone) {
     return res.status(400).json({ error: 'service, serviceID, billersCode, and phone are required.' });
   }
@@ -131,7 +112,9 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
   const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType };
-  const result = await performPurchase(req.customer.customerId, { ...input, promoCode });
+  // Bought through an agent's shop link?
+  const shopAgentId = await require('../lib/shop').agentForPurchase(req.customer.customerId, shop).catch(() => null);
+  const result = await performPurchase(req.customer.customerId, { ...input, promoCode, shopAgentId });
 
   if (result.status === 201 || result.status === 202) {
     const extras = {};
