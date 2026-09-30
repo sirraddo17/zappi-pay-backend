@@ -38,6 +38,7 @@ const selfProtectRouter = require('./routes/selfprotect.routes');
 const insightsRouter = require('./routes/insights.routes');
 const epinsRouter = require('./routes/epins.routes');
 const adVideoRouter = require('./routes/advideo.routes');
+const heygenRouter = require('./routes/heygen.routes');
 const { startScheduler } = require('./lib/schedules');
 const { startOrderSweeper } = require('./lib/purchase');
 const { startDailySummary } = require('./lib/dailySummary');
@@ -85,6 +86,7 @@ app.use('/api', selfProtectRouter);
 app.use('/api', insightsRouter);
 app.use('/api', epinsRouter);
 app.use('/api', adVideoRouter);
+app.use('/api', heygenRouter);
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);

@@ -650,6 +650,13 @@ model Settings {
   bettingSupplier          String  @default("VTPASS")
   // Video adverts in the app (off = pictures only).
   videoAdsEnabled          Boolean @default(false)
+  // HeyGen AI presenter videos (optional; key never sent to the browser).
+  heygenEnabled            Boolean @default(false)
+  heygenApiKey             String?
+  heygenMonthlyBudgetUsd   Decimal @default(10) @db.Decimal(8, 2)
+  heygenPricePerMinUsd     Decimal @default(1) @db.Decimal(6, 2)
+  heygenAvatarId           String?
+  heygenVoiceId            String?
   // Admin alerts for things waiting on you (new support message, OTP
   // needed, funding request...), by push to the admin app and email.
   adminAlertPush           Boolean @default(true)
@@ -1264,4 +1271,28 @@ model PinCard {
 
   @@unique([batchId, pin])
   @@index([batchId])
+}
+
+// A HeyGen presenter video made from the admin (Ad Studio or AI chat).
+model AiVideo {
+  id            String    @id @default(cuid())
+  adminId       String
+  title         String
+  script        String    @db.Text
+  avatarId      String
+  voiceId       String
+  aspect        String    @default("9:16")
+  heygenVideoId String?
+  status        String    @default("PENDING")
+  videoUrl      String?   @db.Text
+  thumbnailUrl  String?   @db.Text
+  duration      Float?
+  estUsd        Decimal   @default(0) @db.Decimal(8, 2)
+  costUsd       Decimal?  @db.Decimal(8, 2)
+  error         String?
+  urlExpiresAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([createdAt])
 }

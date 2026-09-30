@@ -19,6 +19,8 @@ function safeSettings(settings) {
   delete out.openaiApiKey;
   out.ckApiKeySet = Boolean(out.ckApiKey);
   delete out.ckApiKey;
+  out.heygenApiKeySet = Boolean(out.heygenApiKey);
+  delete out.heygenApiKey;
   return out;
 }
 

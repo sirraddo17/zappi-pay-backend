@@ -597,6 +597,9 @@ const ACTION_TOOLS = [
   { name: 'get_money_check', description: 'The money check: what customers are owed (wallets, savings, pending transfers) vs what is in VTpass and Monnify, and the difference.', input_schema: { type: 'object', properties: { otherMoney: { type: 'number', description: 'cash held elsewhere for the business' } } } },
   { name: 'get_help_centre', description: 'Help Centre answers already added from the admin.', input_schema: { type: 'object', properties: {} } },
   { name: 'propose_faq', description: 'Propose adding a question and answer to the public Help Centre (e.g. from repeated tickets).', input_schema: { type: 'object', properties: { topic: { type: 'string' }, question: { type: 'string' }, answer: { type: 'string' } }, required: ['question', 'answer'] } },
+  { name: 'write_video_script', description: 'Write a short social-media video script for an AI presenter (TikTok/Reels/Status). Returns scenes, presenter lines, caption and hashtags to show the owner.', input_schema: { type: 'object', properties: { topic: { type: 'string' }, seconds: { type: 'integer', enum: [15, 30, 45, 60] }, language: { type: 'string', enum: ['en', 'pcm', 'yo', 'ha', 'ig'] }, platform: { type: 'string', enum: ['tiktok', 'reels', 'status', 'facebook', 'shorts'] }, tone: { type: 'string', enum: ['friendly', 'funny', 'hype', 'calm'] }, presenter: { type: 'string' }, extra: { type: 'string' } }, required: ['topic'] } },
+  { name: 'propose_heygen_video', description: 'Propose making a HeyGen AI-presenter video from a script (costs money; the owner taps Apply). Only when HeyGen is set up; otherwise give the script for heygen.com.', input_schema: { type: 'object', properties: { script: { type: 'string', description: 'exactly what the presenter says' }, title: { type: 'string' }, aspect: { type: 'string', enum: ['9:16', '1:1', '16:9'] } }, required: ['script'] } },
+  { name: 'get_heygen_videos', description: 'HeyGen setup (on/off, budget used) and recent videos with status and links.', input_schema: { type: 'object', properties: {} } },
   {
     name: 'design_ad',
     description: 'Design an advert. The app draws it in the ZAPPI PAY style. sizes: presets "square" (1080×1080), "story" (1080×1920), "slider" (1200×600), "popup" (1080×1350), or custom like {"w":1200,"h":628}. Up to 6 sizes.',
@@ -651,6 +654,15 @@ function actionHandlers(adminId, collector) {
     propose_promo_code: wrap(A.proposePromo),
     propose_service_notice: wrap(A.proposeNotice),
     propose_broadcast: wrap(A.proposeBroadcast),
+    propose_heygen_video: wrap(A.proposeHeygenVideo),
+    async write_video_script(input) {
+      try { return await require('../lib/videoScript').generate(adminId, input || {}); } catch (e) { return { error: e.message }; }
+    },
+    async get_heygen_videos() {
+      const H = require('../lib/heygen');
+      const st = await H.status();
+      return { ...st, videos: st.keySet ? (await H.list()).slice(0, 10).map((v) => ({ title: v.title, status: v.status, videoUrl: v.videoUrl, costUsd: v.costUsd ?? v.estUsd, createdAt: v.createdAt })) : [] };
+    },
     async design_ad(d) {
       const PRESETS = { square: [1080, 1080], story: [1080, 1920], slider: [1200, 600], popup: [1080, 1350] };
       const sizes = (Array.isArray(d.sizes) ? d.sizes : [d.sizes]).slice(0, 6).map((x) => {
