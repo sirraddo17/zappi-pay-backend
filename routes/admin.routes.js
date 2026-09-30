@@ -14,6 +14,9 @@ function safeSettings(settings) {
   out.aiApiKeySet = Boolean(out.aiApiKey);
   out.aiApiKeyHint = out.aiApiKey ? `…${out.aiApiKey.slice(-4)}` : null;
   delete out.aiApiKey;
+  out.openaiApiKeySet = Boolean(out.openaiApiKey);
+  out.openaiApiKeyHint = out.openaiApiKey ? `…${out.openaiApiKey.slice(-4)}` : null;
+  delete out.openaiApiKey;
   return out;
 }
 
@@ -40,7 +43,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -262,6 +265,19 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       const k = String(aiApiKey).trim();
       if (!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(k)) return res.status(400).json({ error: 'That does not look like a Claude API key (it should start with sk-ant-).' });
       data.aiApiKey = k;
+    }
+    // Better voice notes (lib/voice.js) — OpenAI key and limits.
+    if (openaiApiKeyClear) data.openaiApiKey = null;
+    else if (openaiApiKey !== undefined && String(openaiApiKey).trim()) {
+      const k = String(openaiApiKey).trim();
+      if (!/^sk-[A-Za-z0-9_-]{20,}$/.test(k) || k.startsWith('sk-ant-')) return res.status(400).json({ error: 'That does not look like an OpenAI API key (it should start with sk-, not sk-ant-).' });
+      data.openaiApiKey = k;
+    }
+    if (voiceMonthlyBudgetUsd !== undefined) data.voiceMonthlyBudgetUsd = Math.min(1000, Math.max(0, Number(voiceMonthlyBudgetUsd) || 0));
+    if (voiceDailyLimit !== undefined) data.voiceDailyLimit = Math.min(200, Math.max(1, parseInt(voiceDailyLimit, 10) || 20));
+    if (voiceAiEnabled !== undefined) data.voiceAiEnabled = Boolean(voiceAiEnabled);
+    if (data.voiceAiEnabled && !data.openaiApiKey && !existing.openaiApiKey && !process.env.OPENAI_API_KEY) {
+      return res.status(400).json({ error: 'Paste your OpenAI API key before turning on better voice.' });
     }
     if (aiCustomerEnabled !== undefined) data.aiCustomerEnabled = Boolean(aiCustomerEnabled);
     if (aiChatBuyEnabled !== undefined) data.aiChatBuyEnabled = Boolean(aiChatBuyEnabled);

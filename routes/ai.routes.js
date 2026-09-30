@@ -178,6 +178,32 @@ router.get('/ai/status', requireCustomerAuth, async (req, res) => {
   }
 });
 
+// Voice notes: the app always has the phone's own speech recognition;
+// this is the better (paid) transcription when the owner turns it on.
+router.get('/voice/status', requireCustomerAuth, async (req, res) => {
+  try { res.json(await require('../lib/voice').status(req.customer.customerId)); } catch { res.json({ enhanced: false }); }
+});
+router.post('/ai/transcribe', requireCustomerAuth, async (req, res) => {
+  const voice = require('../lib/voice');
+  try {
+    res.json(await voice.transcribe(req.customer.customerId, req.body || {}));
+  } catch (error) {
+    if (error instanceof voice.VoiceError) return res.status(error.status).json({ error: error.message, code: error.code });
+    console.error('POST /ai/transcribe failed:', error);
+    res.status(500).json({ error: 'Could not turn that into text.', code: 'VOICE_FAILED' });
+  }
+});
+router.get('/admin/voice/status', requireAdminAuth, async (req, res) => {
+  try {
+    const voice = require('../lib/voice');
+    const s = await getSettings();
+    const m = await voice.monthSpend();
+    res.json({ enabled: Boolean(s.voiceAiEnabled), keySet: Boolean(voice.keyFrom(s)), monthUsd: Math.round(m.usd * 1000) / 1000, notes: m.notes, budgetUsd: Number(s.voiceMonthlyBudgetUsd || 0), dailyLimit: s.voiceDailyLimit, pricePerMinuteUsd: voice.USD_PER_MINUTE });
+  } catch (error) {
+    fail(res, error, 'Could not load voice status.');
+  }
+});
+
 router.post('/ai/chat', requireCustomerAuth, async (req, res) => {
   try {
     const settings = await ai.ensureAvailable('CUSTOMER');

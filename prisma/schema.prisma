@@ -629,6 +629,12 @@ model Settings {
   aiAdminModel             String  @default("claude-sonnet-5")
   aiCustomerDailyLimit     Int     @default(20)
   aiMonthlyBudgetUsd       Decimal @default(10) @db.Decimal(10, 2)
+  // Voice notes (lib/voice.js). The phone's own speech recognition is
+  // always available; this switches on the better OpenAI transcription.
+  voiceAiEnabled           Boolean @default(false)
+  openaiApiKey             String?
+  voiceMonthlyBudgetUsd    Decimal @default(5) @db.Decimal(10, 2)
+  voiceDailyLimit          Int     @default(20)
   // Admin alerts for things waiting on you (new support message, OTP
   // needed, funding request...), by push to the admin app and email.
   adminAlertPush           Boolean @default(true)
