@@ -646,6 +646,8 @@ model Settings {
   epinAgentDiscountPct     Decimal @default(2) @db.Decimal(5, 2)
   epinSupplierDiscountPct  Decimal @default(5) @db.Decimal(5, 2)
   epinDailyCards           Int     @default(300)
+  // Who handles Bet Funding: VTPASS or CLUBKONNECT.
+  bettingSupplier          String  @default("VTPASS")
   // Admin alerts for things waiting on you (new support message, OTP
   // needed, funding request...), by push to the admin app and email.
   adminAlertPush           Boolean @default(true)

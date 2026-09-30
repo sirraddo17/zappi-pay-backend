@@ -30,6 +30,14 @@ router.get('/vtpass/services', requireCustomerAuth, async (req, res) => {
   try {
     const { identifier } = req.query;
     if (!identifier) return res.status(400).json({ error: 'identifier is required.' });
+    // Bet funding companies: from ClubKonnect or VTpass (Settings → ClubKonnect).
+    if (identifier === 'betting') {
+      const ckBet = require('../lib/ckBetting');
+      if (await ckBet.useCk()) return res.json(await ckBet.servicesForApp());
+      const data = await cachedCatalog('/services', { identifier: 'other-services' });
+      const list = Array.isArray(data?.content) ? data.content : [];
+      return res.json({ ...data, content: list.filter((p) => ckBet.VTPASS_BET_IDS.includes(p.serviceID)) });
+    }
     const data = await cachedCatalog('/services', { identifier });
     res.json(data);
   } catch (error) {
@@ -59,6 +67,14 @@ router.get('/vtpass/verify', requireCustomerAuth, async (req, res) => {
     const { serviceID, billersCode, type } = req.query;
     if (!serviceID || !billersCode) {
       return res.status(400).json({ error: 'serviceID and billersCode are required.' });
+    }
+    const ckBet = require('../lib/ckBetting');
+    if (ckBet.isCk(serviceID)) {
+      try {
+        return res.json(await ckBet.verify(serviceID, billersCode));
+      } catch (e) {
+        return res.status(502).json({ error: e.message });
+      }
     }
     const data = await vtpassRequest('GET', '/merchant-verify', {
       query: { serviceID, billersCode, type: type || undefined },
