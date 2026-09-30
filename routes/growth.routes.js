@@ -180,7 +180,7 @@ router.get('/loyalty', requireCustomerAuth, async (req, res) => {
       points: customer.loyaltyPoints,
       worth: Math.floor(customer.loyaltyPoints * value * 100) / 100,
       pointValue: value,
-      pointsPer100: Number(settings.loyaltyPointsPer100 || 0),
+      pointsPer100: settings.rewardSplitEnabled ? null : Number(settings.loyaltyPointsPer100 || 0),
       minRedeem: settings.loyaltyMinRedeem,
     });
   } catch (error) {

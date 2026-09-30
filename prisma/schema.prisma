@@ -659,6 +659,13 @@ model Settings {
   deliveryPromiseMinAmount Int     @default(100)
   deliveryPromiseDailyBudget Int   @default(2000)
   deliveryPromiseServices  Json    @default("[\"AIRTIME\",\"DATA\"]")
+  // Rewards split (lib/rewardSplit.js): give back a set % of what you
+  // earn on each purchase, shared automatically between cashback,
+  // loyalty points, the agent's shop commission, and pools that pay
+  // referral bonuses, challenge rewards and delivery-promise bonuses.
+  rewardSplitEnabled       Boolean @default(false)
+  rewardSplitPct           Int     @default(30)
+  rewardSplitShares        Json    @default("{\"CASHBACK\":35,\"LOYALTY\":20,\"REFERRAL\":20,\"CHALLENGES\":10,\"PROMISE\":5,\"SHOP\":10}")
   // Agent shop links (lib/shop.js): commission paid to the agent on
   // each purchase made through their link, capped per order and by the
   // reward safety limit.
@@ -1087,4 +1094,24 @@ model FamilyLink {
 
   @@index([parentId])
   @@index([status, nextAllowanceAt])
+}
+
+// Money set aside by the rewards split for rewards that aren't paid on
+// the purchase itself (referral bonuses, challenges, delivery promise).
+model RewardPool {
+  key       String   @id
+  balance   Decimal  @default(0) @db.Decimal(14, 2)
+  updatedAt DateTime @updatedAt
+}
+
+// Every amount added to or paid out of a reward pool.
+model RewardPoolMove {
+  id        String   @id @default(cuid())
+  pool      String
+  amount    Decimal  @db.Decimal(14, 2)
+  orderId   String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([pool, createdAt])
 }

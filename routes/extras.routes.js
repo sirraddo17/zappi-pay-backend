@@ -38,7 +38,9 @@ router.get('/app/info', async (req, res) => {
       manualFunding: manualList[0] ? { bankName: manualList[0].bankName, accountNumber: manualList[0].accountNumber, accountName: manualList[0].accountName } : null,
       manualAccounts: manualList.map((m) => ({ id: m.id, bankName: m.bankName, accountNumber: m.accountNumber, accountName: m.accountName })),
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
-      cashback: settings.cashbackEnabled ? settings.cashbackPercentByService || {} : {},
+      // Rewards split on: cashback isn't a fixed %, so show a general note.
+      cashback: settings.cashbackEnabled && !settings.rewardSplitEnabled ? settings.cashbackPercentByService || {} : {},
+      rewardsSplit: Boolean(settings.rewardSplitEnabled && (settings.cashbackEnabled || settings.loyaltyEnabled)),
       maintenance: require('../lib/maintenance').publicInfo(settings),
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),
     });
