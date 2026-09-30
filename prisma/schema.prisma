@@ -648,6 +648,8 @@ model Settings {
   epinDailyCards           Int     @default(300)
   // Who handles Bet Funding: VTPASS or CLUBKONNECT.
   bettingSupplier          String  @default("VTPASS")
+  // Video adverts in the app (off = pictures only).
+  videoAdsEnabled          Boolean @default(false)
   // Admin alerts for things waiting on you (new support message, OTP
   // needed, funding request...), by push to the admin app and email.
   adminAlertPush           Boolean @default(true)
@@ -951,6 +953,18 @@ model AppAd {
   views      Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  video      AdVideo?
+}
+
+// Optional short video for an advert (MP4/WebM, max ~10 MB). Only shown
+// when Settings.videoAdsEnabled is on.
+model AdVideo {
+  adId      String   @id
+  ad        AppAd    @relation(fields: [adId], references: [id], onDelete: Cascade)
+  mime      String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
 }
 
 // Screenshots/photos a customer attaches to a support message (data:

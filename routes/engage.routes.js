@@ -402,8 +402,10 @@ router.get('/ads', async (req, res) => {
     });
     const withImage = await prisma.appAd.findMany({ where: { id: { in: ads.map((a) => a.id) }, image: { not: null } }, select: { id: true } });
     const has = new Set(withImage.map((a) => a.id));
+    const videoOn = Boolean((await require('../lib/vtpass').getSettings()).videoAdsEnabled);
+    const vids = videoOn ? new Set((await prisma.adVideo.findMany({ where: { adId: { in: ads.map((a) => a.id) } }, select: { adId: true } })).map((v) => v.adId)) : new Set();
     res.set('Cache-Control', 'public, max-age=60');
-    res.json({ ads: ads.map((a) => publicAd({ ...a, image: has.has(a.id) ? 'x' : null })) });
+    res.json({ ads: ads.map((a) => ({ ...publicAd({ ...a, image: has.has(a.id) ? 'x' : null }), hasVideo: vids.has(a.id) })) });
   } catch (error) {
     console.error('GET /ads failed:', error);
     res.json({ ads: [] });
@@ -474,7 +476,8 @@ router.get('/admin/ads', requireAdminAuth, async (req, res) => {
       select: { id: true, title: true, body: true, linkUrl: true, buttonText: true, placement: true, active: true, startsAt: true, endsAt: true, sortOrder: true, clicks: true, createdAt: true, updatedAt: true },
     });
     const withImage = new Set((await prisma.appAd.findMany({ where: { image: { not: null } }, select: { id: true } })).map((a) => a.id));
-    res.json({ ads: ads.map((a) => ({ ...a, hasImage: withImage.has(a.id), imageVersion: new Date(a.updatedAt).getTime() })) });
+    const vids = new Map((await prisma.adVideo.findMany({ select: { adId: true, size: true } })).map((v) => [v.adId, v.size]));
+    res.json({ ads: ads.map((a) => ({ ...a, hasImage: withImage.has(a.id), imageVersion: new Date(a.updatedAt).getTime(), hasVideo: vids.has(a.id), videoSize: vids.get(a.id) || null })) });
   } catch (error) {
     console.error('GET /admin/ads failed:', error);
     res.status(500).json({ error: 'Could not load adverts.' });
