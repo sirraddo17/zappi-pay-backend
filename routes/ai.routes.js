@@ -189,7 +189,52 @@ router.get('/ai/status', requireCustomerAuth, async (req, res) => {
 // Voice notes: the app always has the phone's own speech recognition;
 // this is the better (paid) transcription when the owner turns it on.
 router.get('/voice/status', requireCustomerAuth, async (req, res) => {
-  try { res.json(await require('../lib/voice').status(req.customer.customerId)); } catch { res.json({ enhanced: false }); }
+  let out = { enhanced: false };
+  try { out = await require('../lib/voice').status(req.customer.customerId); } catch { /* free voice only */ }
+  try { out = { ...out, ...(await require('../lib/openaiExtras').speakStatus(req.customer.customerId)) }; } catch { out.natural = false; }
+  res.json(out);
+});
+
+// Natural voice for a Help chat reply (mp3). Falls back to the phone's
+// own voice in the app when this is off, over budget or failing.
+router.post('/ai/speak', requireCustomerAuth, async (req, res) => {
+  const X = require('../lib/openaiExtras');
+  try {
+    const buf = await X.speak(req.customer.customerId, { text: req.body?.text, language: req.body?.language });
+    res.set({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, max-age=3600' });
+    res.send(buf);
+  } catch (error) {
+    if (error instanceof X.ExtraError) return res.status(error.status).json({ error: error.message, code: error.code });
+    console.error('POST /ai/speak failed:', error);
+    res.status(500).json({ error: 'Could not read that aloud.', code: 'TTS_FAILED' });
+  }
+});
+
+// Owner: natural voice + AI pictures settings. The AI assistant can't change them.
+router.get('/admin/openai-extras', requireAdminAuth, async (req, res) => {
+  try { res.json(await require('../lib/openaiExtras').status()); } catch (error) { fail(res, error, 'Could not load the settings.'); }
+});
+router.put('/admin/openai-extras', requireAdminAuth, async (req, res) => {
+  const X = require('../lib/openaiExtras');
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant cannot change these settings.' });
+    const out = await X.updateSettings(req.body || {});
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'OPENAI_EXTRAS_SETTINGS', details: { changed: Object.keys(req.body || {}) } } }).catch(() => {});
+    res.json(out);
+  } catch (error) {
+    if (error instanceof X.ExtraError) return res.status(error.status).json({ error: error.message, code: error.code });
+    fail(res, error, 'Could not save.');
+  }
+});
+router.post('/admin/ai/ad-image', requireAdminAuth, async (req, res) => {
+  const X = require('../lib/openaiExtras');
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'Pictures cost money — make them from Ad Studio.' });
+    res.json(await X.adImage(req.admin.adminId, { prompt: req.body?.prompt, shape: req.body?.shape }));
+  } catch (error) {
+    if (error instanceof X.ExtraError) return res.status(error.status).json({ error: error.message, code: error.code });
+    fail(res, error, 'Could not make the picture.');
+  }
 });
 router.post('/ai/transcribe', requireCustomerAuth, async (req, res) => {
   const voice = require('../lib/voice');

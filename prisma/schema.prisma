@@ -715,6 +715,15 @@ model Settings {
   // reward safety limit.
   shopLinksEnabled         Boolean @default(false)
   shopCommissionPct        Decimal @default(1) @db.Decimal(5, 2)
+  // Natural AI voice for chat replies (OpenAI text-to-speech).
+  ttsEnabled             Boolean @default(false)
+  ttsVoice               String  @default("coral")
+  ttsMonthlyBudgetUsd    Decimal @default(3) @db.Decimal(10, 2)
+  ttsDailyLimit          Int     @default(30)
+  // AI background pictures for Ad Studio (OpenAI images).
+  adImagesEnabled        Boolean @default(false)
+  adImageQuality         String  @default("medium")
+  adImageMonthlyBudgetUsd Decimal @default(5) @db.Decimal(10, 2)
   problemSpotterEnabled  Boolean @default(true)
   monthlySummaryEnabled  Boolean @default(true)
   lastMonthlySummaryKey  String?
