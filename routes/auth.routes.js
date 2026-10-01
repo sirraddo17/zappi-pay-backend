@@ -10,6 +10,7 @@ const {
   signCustomerToken,
   issueCustomerToken,
   requireCustomerAuth,
+  requireAdminAuth,
 } = require('../lib/auth');
 const identity = require('../lib/identity');
 
@@ -32,6 +33,7 @@ function publicCustomer(customer) {
     isAgent: Boolean(customer.isAgent),
     agentRequestedAt: customer.agentRequestedAt || null,
     hasDob: Boolean(customer.dateOfBirth),
+    idVerified: Boolean(customer.kycVerifiedAt),
     hasSecurityQuestion: Boolean(customer.securityAnswerHash),
   };
 }
@@ -197,7 +199,12 @@ router.patch('/auth/me', requireCustomerAuth, async (req, res) => {
     const { name, email, avatarUrl, language, password } = req.body;
     const data = {};
     if (language !== undefined) data.language = ['en', 'pcm', 'yo', 'ha', 'ig'].includes(language) ? language : null;
-    if (name !== undefined) data.name = name.trim();
+    if (name !== undefined) {
+      const clean = String(name).trim();
+      const cur = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { name: true, kycVerifiedAt: true } });
+      if (cur?.kycVerifiedAt && clean !== cur.name) return res.status(400).json({ error: 'Your name is confirmed from your BVN/NIN, so it can’t be changed here. Contact support if it is wrong.', code: 'NAME_LOCKED' });
+      data.name = clean;
+    }
     let emailChanged = null;
     if (email !== undefined) {
       const next = String(email || '').trim().toLowerCase() || null;
@@ -317,9 +324,14 @@ router.post('/admin/login', async (req, res) => {
         html: `<p>Your ZappiPay admin login code is:</p><p style="font-size:28px;font-weight:bold;letter-spacing:4px">${code}</p><p>It expires in 10 minutes. If you didn't try to log in, change your admin password now.</p>`,
         text: `Your ZappiPay admin login code is ${code}. It expires in 10 minutes.`,
       });
-      if (!sent.sent) return res.status(502).json({ error: 'Could not send your login code by email. Try again shortly.' });
       const [user, domain] = admin.email.split('@');
-      return res.json({ twoFactor: true, challengeId: challenge.id, emailHint: `${user.slice(0, 2)}***@${domain}` });
+      const backups = await prisma.adminBackupCode.count({ where: { adminId: admin.id, usedAt: null } });
+      if (!sent.sent) {
+        // Email is down: a backup code still lets the owner in.
+        if (!backups) return res.status(502).json({ error: 'Could not send your login code by email, and you have no backup codes. Try again shortly — if email keeps failing, set ADMIN_2FA_DISABLED=1 on Render to log in, then fix email.' });
+        return res.json({ twoFactor: true, challengeId: challenge.id, emailFailed: true, backupCodes: backups });
+      }
+      return res.json({ twoFactor: true, challengeId: challenge.id, emailHint: `${user.slice(0, 2)}***@${domain}`, backupCodes: backups });
     }
 
     const token = signAdminToken(admin);
@@ -348,21 +360,82 @@ router.post('/admin/login/verify', async (req, res) => {
       return res.status(400).json({ error: 'This code has expired. Log in again to get a new one.' });
     }
     if (challenge.attempts >= 5) return res.status(429).json({ error: 'Too many wrong codes. Log in again to get a new one.' });
-    const ok = /^\d{6}$/.test(String(code || '')) && (await comparePassword(String(code), challenge.codeHash));
+    const raw = String(code || '').trim();
+    let ok = false;
+    let usedBackup = null;
+    if (/^\d{6}$/.test(raw)) {
+      ok = await comparePassword(raw, challenge.codeHash);
+    } else {
+      // A one-time backup code (e.g. K7QM-3XPD).
+      const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (clean.length === 8) {
+        const codes = await prisma.adminBackupCode.findMany({ where: { adminId: challenge.adminId, usedAt: null } });
+        for (const c of codes) {
+          if (await comparePassword(clean, c.codeHash)) { usedBackup = c; break; }
+        }
+        if (usedBackup) {
+          const claimB = await prisma.adminBackupCode.updateMany({ where: { id: usedBackup.id, usedAt: null }, data: { usedAt: new Date() } });
+          ok = claimB.count === 1;
+        }
+      }
+    }
     if (!ok) {
       await prisma.adminLoginCode.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
-      return res.status(401).json({ error: 'Wrong code. Check the latest email and try again.' });
+      return res.status(401).json({ error: 'Wrong code. Check the latest email (or your backup code) and try again.' });
     }
     const claim = await prisma.adminLoginCode.updateMany({ where: { id: challenge.id, usedAt: null }, data: { usedAt: new Date() } });
     if (claim.count !== 1) return res.status(400).json({ error: 'This code was already used.' });
     const admin = challenge.admin;
     if (!admin.active) return res.status(403).json({ error: 'This admin account has been deactivated.' });
+    if (usedBackup) {
+      const left = await prisma.adminBackupCode.count({ where: { adminId: admin.id, usedAt: null } });
+      await prisma.auditLog.create({ data: { actorAdminId: admin.id, action: 'ADMIN_BACKUP_CODE_USED', details: { left } } }).catch(() => {});
+      require('../lib/adminAlert').alertAdmins('🔑 Admin logged in with a backup code', `${admin.name} logged in with a backup code (${left} left). If this wasn't you, change the password and make new codes in Settings → Security now.`, '/admin/settings');
+    }
     const token = signAdminToken(admin);
     const rememberToken = remember ? require('jsonwebtoken').sign({ sub: admin.id, kind: 'admin2fa' }, process.env.JWT_SECRET, { expiresIn: '30d' }) : undefined;
     res.json({ token, rememberToken, admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role || 'OWNER' } });
   } catch (error) {
     console.error('POST /admin/login/verify failed:', error);
     res.status(500).json({ error: 'Could not verify the code.' });
+  }
+});
+
+// Admin backup codes: 10 one-time codes, shown once. Making new ones
+// cancels the old ones. Needs the admin's password; the AI assistant
+// can't do this.
+router.get('/admin/security/backup-codes', requireAdminAuth, async (req, res) => {
+  try {
+    const [left, newest] = await Promise.all([
+      prisma.adminBackupCode.count({ where: { adminId: req.admin.adminId, usedAt: null } }),
+      prisma.adminBackupCode.findFirst({ where: { adminId: req.admin.adminId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }),
+    ]);
+    res.json({ left, createdAt: newest?.createdAt || null });
+  } catch (error) {
+    console.error('GET /admin/security/backup-codes failed:', error);
+    res.status(500).json({ error: 'Could not load backup codes.' });
+  }
+});
+
+router.post('/admin/security/backup-codes', requireAdminAuth, async (req, res) => {
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant cannot make backup codes.' });
+    const admin = await prisma.adminUser.findUnique({ where: { id: req.admin.adminId } });
+    if (!admin || !admin.active) return res.status(403).json({ error: 'Not allowed.' });
+    if (!req.body?.password || !(await comparePassword(String(req.body.password), admin.passwordHash))) {
+      return res.status(400).json({ error: 'Your password is not correct.' });
+    }
+    const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+    const codes = Array.from({ length: 10 }, () => Array.from({ length: 8 }, () => ABC[crypto.randomInt(0, ABC.length)]).join(''));
+    await prisma.$transaction([
+      prisma.adminBackupCode.deleteMany({ where: { adminId: admin.id } }),
+      prisma.adminBackupCode.createMany({ data: await Promise.all(codes.map(async (c) => ({ adminId: admin.id, codeHash: await hashPassword(c) }))) }),
+    ]);
+    await prisma.auditLog.create({ data: { actorAdminId: admin.id, action: 'ADMIN_BACKUP_CODES_CREATED', details: {} } }).catch(() => {});
+    res.json({ codes: codes.map((c) => `${c.slice(0, 4)}-${c.slice(4)}`) });
+  } catch (error) {
+    console.error('POST /admin/security/backup-codes failed:', error);
+    res.status(500).json({ error: 'Could not make backup codes.' });
   }
 });
 

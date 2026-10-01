@@ -48,7 +48,26 @@ const app = express();
 app.disable('x-powered-by');
 // Email owners about crashes and repeated failures (lib/errorAlerts.js).
 require('./lib/errorAlerts').installCrashHandlers();
-app.use(cors());
+// Only our own websites may call the API from a browser. Requests with
+// no Origin (payment webhooks, server-to-server, the Android app's own
+// calls) are not affected. CORS_ORIGINS on Render adds more addresses;
+// CORS_ALLOW_ALL=1 is the emergency switch.
+const ALLOWED_ORIGINS = [
+  /^https:\/\/([a-z0-9-]+\.)?zappipay\.com\.ng$/,
+  /^https:\/\/zappi-pay-frontend[a-z0-9-]*\.vercel\.app$/,
+  /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+  ...String(process.env.CORS_ORIGINS || '').split(',').map((x) => x.trim().replace(/\/$/, '')).filter(Boolean),
+];
+const blockedOrigins = new Set();
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin || process.env.CORS_ALLOW_ALL === '1') return cb(null, true);
+    const ok = ALLOWED_ORIGINS.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
+    if (!ok && !blockedOrigins.has(origin)) { blockedOrigins.add(origin); console.warn(`CORS: blocked browser calls from ${origin} (add it to CORS_ORIGINS if it is ours)`); }
+    cb(null, ok);
+  },
+  maxAge: 600,
+}));
 app.use(require('./lib/errorAlerts').watchResponses);
 // Security headers and request limits (lib/protect.js).
 app.use(require('./lib/protect').securityHeaders);

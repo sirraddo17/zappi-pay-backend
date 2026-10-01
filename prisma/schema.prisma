@@ -67,6 +67,18 @@ model AdminLoginCode {
   @@index([adminId, createdAt])
 }
 
+// One-time backup codes for admin two-step login, for when the email
+// code can't be sent. Only hashes are stored.
+model AdminBackupCode {
+  id        String    @id @default(cuid())
+  adminId   String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([adminId])
+}
+
 // A customer's wallet balance lives directly on this record — there's
 // only ever one wallet per customer, so a separate Wallet model would
 // just be an extra join for no real benefit. WalletTransaction is the
@@ -175,6 +187,8 @@ model Customer {
   // Customer froze their own account (e.g. lost phone). Support checks
   // who they are before switching it back on.
   selfFrozenAt        DateTime?
+  // Name and date of birth confirmed against BVN/NIN (then locked).
+  kycVerifiedAt       DateTime?
   // App language chosen in Profile (en, pcm, yo, ha, ig) — broadcasts
   // are translated into it when AI translation is on.
   language            String?
@@ -724,6 +738,8 @@ model Settings {
   adImagesEnabled        Boolean @default(false)
   adImageQuality         String  @default("medium")
   adImageMonthlyBudgetUsd Decimal @default(5) @db.Decimal(10, 2)
+  // Check name + date of birth against BVN/NIN before giving an account number.
+  idMatchEnabled         Boolean @default(false)
   problemSpotterEnabled  Boolean @default(true)
   monthlySummaryEnabled  Boolean @default(true)
   lastMonthlySummaryKey  String?
@@ -1328,4 +1344,16 @@ model ScamReport {
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// Each BVN/NIN name + date-of-birth check (no ID numbers stored).
+model IdCheck {
+  id         String   @id @default(cuid())
+  customerId String
+  idType     String
+  result     String
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([customerId, createdAt])
 }

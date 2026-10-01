@@ -45,7 +45,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
@@ -188,6 +188,10 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
         return res.status(400).json({ error: 'Set up email (Resend) on Render before turning on two-step login.' });
       }
       data.adminTwoFactorEnabled = Boolean(adminTwoFactorEnabled);
+    }
+    if (idMatchEnabled !== undefined) {
+      if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant cannot change ID checks.' });
+      data.idMatchEnabled = Boolean(idMatchEnabled);
     }
     if (manualBankName !== undefined) data.manualBankName = String(manualBankName).trim().slice(0, 60) || null;
     if (manualAccountName !== undefined) data.manualAccountName = String(manualAccountName).trim().slice(0, 80) || null;

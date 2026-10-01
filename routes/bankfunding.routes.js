@@ -33,6 +33,8 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       available: await monnify.isConfigured(),
       ...(await shown(customer.bankAccounts)),
       kycType: customer.kycType || null,
+      idMatch: Boolean((await getSettings()).idMatchEnabled),
+      hasDob: Boolean(customer.dateOfBirth),
       ...(await feeInfo()),
     });
   } catch (error) {
@@ -59,6 +61,27 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     if (other) {
       return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account. Each person can have only one account — contact support if this is a mistake.`, code: 'IDENTITY_IN_USE' });
     }
+
+    // Name + date of birth must match the BVN/NIN (when switched on).
+    const settings = await getSettings();
+    let verifiedDob = null;
+    if (settings.idMatchEnabled) {
+      if (!req.body.consent) return res.status(400).json({ error: `Tick the box to let us check your name and date of birth with your ${idType}.`, code: 'CONSENT_NEEDED' });
+      let dob = customer.dateOfBirth;
+      if (!dob) {
+        const parsed = require('../lib/identity').parseDob(req.body.dateOfBirth);
+        if (parsed.error) return res.status(400).json({ error: parsed.error, code: 'DOB_NEEDED' });
+        dob = parsed.date;
+      }
+      const idCheck = require('../lib/idCheck');
+      try {
+        await idCheck.verify(customer, { idType, idNumber, dateOfBirth: dob });
+      } catch (e) {
+        if (e instanceof idCheck.IdCheckError) return res.status(e.status).json({ error: e.message, code: e.code });
+        throw e;
+      }
+      verifiedDob = dob;
+    }
     try {
       await prisma.customer.update({ where: { id: customer.id }, data: { kycHash } });
     } catch (error) {
@@ -73,7 +96,11 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
       throw error;
     }
-    res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType });
+    if (verifiedDob) {
+      // Name and date of birth now match the ID — lock them.
+      await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
+    }
+    res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: Boolean(verifiedDob) });
   } catch (error) {
     console.error('POST /wallet/bank-account failed:', error.message, JSON.stringify(error.body || {}));
     if (error instanceof monnify.MonnifyError && error.status && error.status < 500) {

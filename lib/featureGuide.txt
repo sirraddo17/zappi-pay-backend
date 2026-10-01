@@ -48,6 +48,7 @@ HOW TO GET STARTED: MANUAL FUNDING
 
 RULES, LIMITS AND FEES
 - BVN or NIN must be exactly 11 digits.
+- Name and date of birth check [idMatchEnabled, default OFF]: when on, the customer's name (as in Profile) and date of birth must match their BVN/NIN before the account number is given. They enter their date of birth and tick a consent box on the same card. Up to 3 tries a day. If it says the name doesn't match, they fix the spelling in Profile (first name and surname as on the BVN/NIN) and try again; if the date of birth doesn't match, they enter the one on their BVN/NIN. After a match, the name and date of birth are locked — only support can change them.
 - One BVN or NIN can only be linked to one ZAPPI PAY account. If it is already in use, the customer sees "already linked to another ZAPPI PAY account… contact support".
 - ZAPPI PAY says it does not store the BVN or NIN; it is sent only to the payment partner. (The code keeps only a scrambled one-way check, not the number itself.)
 - Automatic funding fee: a percentage of each transfer, with a cap.
@@ -1044,6 +1045,7 @@ AGENT WEEKLY REPORT
 - Agent applications on the Dashboard show a verdict (Looks good / Probably fine / Check first / Risky) with reasons: verification, account age, purchases, address quality, duplicate shop names/addresses, risk flags.
 - Ad Studio → "✨ Or make a background picture with AI" [adImagesEnabled, default OFF; adImageQuality; adImageMonthlyBudgetUsd]: photo-style backgrounds from a description, price confirmed before each one. Brand names, logos and real/famous people are refused. Settings → AI Assistant → "Natural voice & AI pictures".
 - Ad Studio → "Plan my week": 7 days of posts (design, caption, time); "Open in designer" loads each one.
+- Admin login safety: two-step login by email code [adminTwoFactorEnabled] can be switched on/off in Settings → Security. Backup codes (Settings → Security → 🔑 Backup codes, 10 one-time codes, needs the admin password) let the owner log in when the email can't be sent; using one alerts all admins. Admin sessions last 12 hours.
 - Support → "Check reply" before sending: flags wrong facts, tone, missing next steps or asking for PIN/OTP, and suggests a better version.
 
 ======================================================================
