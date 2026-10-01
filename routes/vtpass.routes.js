@@ -109,7 +109,10 @@ router.get('/vtpass/insurance/plans', requireCustomerAuth, async (req, res) => {
   } catch (e) { xfail(res, e, 'insurance plans'); }
 });
 router.get('/vtpass/insurance/options/:kind', requireCustomerAuth, async (req, res) => {
-  try { res.json({ options: await require('../lib/extraServices').insuranceOptions(req.params.kind, req.query.parent) }); } catch (e) { xfail(res, e, 'insurance options'); }
+  try {
+    const options = await require('../lib/extraServices').insuranceOptions(req.params.kind, req.query.parent);
+    res.json({ options, ...(options.raw ? { raw: options.raw } : {}) });
+  } catch (e) { xfail(res, e, 'insurance options'); }
 });
 
 // Confirms a meter number / smartcard number / similar identifier
