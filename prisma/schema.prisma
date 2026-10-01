@@ -651,6 +651,9 @@ model Settings {
   // Video adverts in the app (off = pictures only).
   videoAdsEnabled          Boolean @default(false)
   // HeyGen AI presenter videos (optional; key never sent to the browser).
+  // Receipts carry the sender's invite link + QR (Settings → Referrals).
+  receiptInviteEnabled     Boolean @default(true)
+  receiptInviteMessage     String?
   heygenEnabled            Boolean @default(false)
   heygenApiKey             String?
   heygenMonthlyBudgetUsd   Decimal @default(10) @db.Decimal(8, 2)

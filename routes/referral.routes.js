@@ -1,7 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { getSettings } = require('../lib/vtpass');
-const { requireCustomerAuth } = require('../lib/auth');
+const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
 const router = express.Router();
 
@@ -74,6 +74,42 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
   } catch (error) {
     console.error('GET /referrals failed:', error);
     res.status(500).json({ error: 'Could not load referrals.' });
+  }
+});
+
+// --- Invite on receipts -----------------------------------------------
+// Every shared receipt can carry the sender's referral link + QR code.
+const DEFAULT_INVITE = 'Pay bills, buy airtime & data in seconds. Join me on ZAPPI PAY — scan or use my link:';
+const cleanMsg = (m) => String(m || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
+
+router.get('/receipt-invite', requireCustomerAuth, async (req, res) => {
+  try {
+    const s = await getSettings();
+    const me = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { username: true } });
+    res.json({ enabled: s.receiptInviteEnabled !== false, message: cleanMsg(s.receiptInviteMessage) || DEFAULT_INVITE, code: me?.username || null });
+  } catch (error) {
+    res.json({ enabled: false });
+  }
+});
+
+router.get('/admin/receipt-invite', requireAdminAuth, async (req, res) => {
+  const s = await getSettings();
+  res.json({ enabled: s.receiptInviteEnabled !== false, message: s.receiptInviteMessage || '', defaultMessage: DEFAULT_INVITE });
+});
+
+router.put('/admin/receipt-invite', requireAdminAuth, async (req, res) => {
+  try {
+    const s = await getSettings();
+    const data = {};
+    if (req.body?.enabled !== undefined) data.receiptInviteEnabled = Boolean(req.body.enabled);
+    if (req.body?.message !== undefined) data.receiptInviteMessage = cleanMsg(req.body.message) || null;
+    await prisma.settings.update({ where: { id: s.id }, data });
+    require('../lib/vtpass').invalidateSettings();
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'RECEIPT_INVITE', details: data } }).catch(() => {});
+    const n = await getSettings();
+    res.json({ enabled: n.receiptInviteEnabled !== false, message: n.receiptInviteMessage || '', defaultMessage: DEFAULT_INVITE });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not save.' });
   }
 });
 

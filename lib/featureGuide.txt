@@ -606,6 +606,11 @@ RULES
 
 ADMIN SWITCH: [referralEnabled, default OFF]. When it is off, the screen says "Referral rewards are paused right now."
 
+RECEIPTS AS INVITES
+- Every receipt you save or share (purchases and bank transfers) has a box at the bottom: "Invited by @yourusername", a short invite, your link (zappipay.com.ng/signup?ref=yourusername) and a QR code of it. Whoever gets the receipt can scan the QR or open the link to join with your code.
+- No username yet? The receipt shows a general zappipay.com.ng link instead — choose a username on Refer & Earn to get your own.
+- ZAPPI PAY can turn this on or off [receiptInviteEnabled, default ON] and change the message [receiptInviteMessage].
+
 ----------------------------------------------------------------------
 23. CASHBACK, LOYALTY POINTS, PROMO CODES AND COUPONS
 ----------------------------------------------------------------------
