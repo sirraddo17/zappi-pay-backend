@@ -1,0 +1,1049 @@
+======================================================================
+ZAPPI PAY: CUSTOMER FEATURE FACT SHEET (for the in-app AI assistant)
+======================================================================
+
+HOW TO READ THIS
+- "Home" is the main screen. The bottom bar has four tabs: Home, Wallet, Orders and Profile.
+- Home shows a "Services" grid with these tiles: Airtime, Data, Electricity, Cable TV, Education, Send Money, Internet, Bet Funding and More.
+- Home → More ("More services") has these tiles: Airtime to Cash, Print Cards, Bulk airtime & data, Best data deals, Refer & Earn and Family wallet.
+- A floating Help bubble (button labelled "Open help", window titled "ZappiPay Help") appears on every logged-in screen. It is hidden on the login, signup, password, legal and admin pages.
+- "Set by ZAPPI PAY (currently configurable)" means an admin setting. The value in brackets is the code DEFAULT, not necessarily today's live value.
+- Every purchase and transfer needs the 4-digit transaction PIN, or fingerprint / Face ID on a device where that is set up.
+
+----------------------------------------------------------------------
+0. FEATURES IN THE BACKEND WITH NO (OR ONLY A PARTIAL) CUSTOMER SCREEN
+----------------------------------------------------------------------
+- Self-freeze (lost or stolen phone). There is no button for it. It can only be done through the Help chat AI, which shows a confirmation card that asks for the password. When the AI is off, customers must contact support.
+- Rewards split. This runs in the background. Customers only see "🎁 This purchase earns you cashback and points" on the Buy screen.
+- Reward safety limit [rewardGuardEnabled, rewardGuardPercent]. This runs in the background. It can quietly reduce a promo discount, cashback, points or shop commission on a purchase.
+- Fraud hold on bank transfers. Customers only see a "Transfer Under Review" notification.
+- Email alerts are sent only when the admin has switched on emailAlertsEnabled (default off). The customer toggle is at Profile → "Email alerts".
+- Low-balance warning before a scheduled top-up. This arrives as a notification only.
+- Escalations ("Report to VTpass"). These are for admins only.
+
+----------------------------------------------------------------------
+1. WALLET FUNDING
+----------------------------------------------------------------------
+WHAT IT IS
+You add money to your ZAPPI PAY wallet and pay for everything from it. There are two ways:
+- Automatic funding: you get your own personal bank account number, through ZAPPI PAY's payment partner Monnify.
+- Manual funding: you pay into a ZAPPI PAY business account, then an admin approves it.
+
+BENEFITS
+- A personal account number credits your wallet automatically, with no waiting for approval.
+- You can transfer from any bank app.
+- A calculator tells you exactly how much to send when a fee applies.
+- Manual funding is a backup when the bank network is having problems.
+
+HOW TO GET STARTED: PERSONAL ACCOUNT NUMBER
+1. Tap Wallet (bottom bar), or tap "Fund Wallet" on the Home balance card.
+2. Find the card "Get your personal account number". Choose "BVN" or "NIN" and enter the 11 digits.
+3. Tap "Get My Account Number". This is a one-time setup.
+4. Copy one of the account numbers shown under "Fund by bank transfer" using its "Copy" button, and transfer to it from any bank.
+5. If the money hasn't shown up yet, tap "I've sent money — check now".
+
+HOW TO GET STARTED: MANUAL FUNDING
+1. Go to Wallet. Use the "Fund Wallet" form, or, if you already have a personal account, open "Other way: send to our business account for manual approval".
+2. Transfer to the business account shown. If more than one is shown, tick the one you used.
+3. Enter "Amount (₦)", and optionally "Transfer reference" and "Note". Tap "Submit Funding Request".
+
+RULES, LIMITS AND FEES
+- BVN or NIN must be exactly 11 digits.
+- One BVN or NIN can only be linked to one ZAPPI PAY account. If it is already in use, the customer sees "already linked to another ZAPPI PAY account… contact support".
+- ZAPPI PAY says it does not store the BVN or NIN; it is sent only to the payment partner. (The code keeps only a scrambled one-way check, not the number itself.)
+- Automatic funding fee: a percentage of each transfer, with a cap.
+  - Set by ZAPPI PAY (currently configurable) [setting: bankFundingFeePercent, default 0%] [setting: bankFundingFeeCap, default ₦0 = no cap]. Both at 0 means free.
+  - The fee is taken from the amount received. The wallet gets the amount minus the fee, and the notification shows the fee.
+  - When a fee applies, the Wallet page shows "How much do you want in your wallet?" and tells you to "Send exactly ₦X".
+  - When the fee matches the partner's own charge, the app says it goes to the payment partner and "ZAPPI PAY does not keep it".
+- There is no minimum for automatic funding.
+- Manual funding minimum: set by ZAPPI PAY (currently configurable) [setting: minFundingAmount, default ₦100].
+- Manual funding requests stay "PENDING" until an admin approves them. The customer then gets "Wallet Funded" or "Funding Request Rejected".
+- The "check now" button can be tapped once every 15 seconds.
+- The same bank payment can never be credited twice.
+- If a bank is having network problems, the admin can hide that account number [setting: hiddenFundingBanks]. The app then says "temporarily unavailable because of bank network issues" and points to the business account.
+
+ADMIN SWITCHES
+- Automatic funding only shows when Monnify is set up.
+- Manual funding: [manualFundingEnabled, default on], plus a separate on/off switch for each business account [manualAccounts].
+
+COMMON QUESTIONS
+- "I sent money but it's not in my wallet." Tap "I've sent money — check now" on Wallet. Most transfers arrive within minutes, and some banks take up to 30 minutes. If it still hasn't arrived, message support (Profile → Support → "💬 Message support in the app") with a screenshot of the bank alert. Money sent to your account number is not lost.
+- "Why do you need my BVN/NIN?" Banks require it to create a personal account number.
+- "Why did I get less than I sent?" The bank processing fee applies (see above). Use the "Send exactly" calculator next time.
+
+Coupon codes ("🎟️ Have a coupon code?" on Wallet) are covered in section 23 (Promo codes).
+
+----------------------------------------------------------------------
+2. HOW ALL PURCHASES WORK (airtime, data, electricity, cable TV, education, internet, bet funding)
+----------------------------------------------------------------------
+These rules apply to every service in sections 3 to 9.
+
+HOW TO BUY
+1. Home → tap the service tile.
+2. Choose the provider, enter the number, and choose a plan or type an amount.
+3. Check the "Total". Optionally tap "Have a promo code?".
+4. Tap "Pay ₦X".
+5. Confirm with your PIN or fingerprint in the "Confirm payment" sheet.
+
+PRICE
+- The price is the supplier's price, plus any ZAPPI PAY markup, minus any discount.
+  - Markup: [setting: markupPercentByService, default none = 0%], capped by [markupCapByService].
+  - Discount: [setting: discountPercentByService, default none].
+- When there is a discount, the Home tile shows an "X% OFF" badge and the Buy screen shows "🎉 X% off all … purchases right now".
+- The server re-checks the price when you pay.
+
+MINIMUM
+- For services where you type an amount (airtime, electricity, bet funding), the minimum is set by ZAPPI PAY (currently configurable) [setting: minPurchaseAmount, default ₦50].
+- Plan services (data, cable, education, internet) use the plan's fixed price.
+
+CHECKS BEFORE YOU ARE CHARGED
+- Your wallet balance must cover it ("Insufficient wallet balance.").
+- The KYC daily limit, if switched on (section 30).
+- Family limits, if you are a managed family member (section 15).
+- Maintenance pauses (section 40).
+- The account must not be deactivated or frozen.
+
+PIN
+- Wrong PIN: "Wrong PIN. X attempts left."
+- After 5 wrong tries, the PIN locks for 15 minutes. Logging in with your password unlocks it.
+
+FAILURE AND REFUND
+- The wallet is charged first. If the purchase definitely fails, the full amount goes back automatically and the customer gets "Purchase Failed … refunded".
+- If the result is unclear, the order shows as pending ("Your purchase is processing…"). It is re-checked after about 20 seconds, 2 minutes and 10 minutes, then every 15 minutes. It then either succeeds or is refunded.
+- If the network is slow (over about 6 seconds), the app says you can leave the page and that you'll be refunded automatically if it fails.
+
+AFTER SUCCESS
+- You get a "Purchase Successful" notification, including "You saved ₦X" when a discount applied.
+- Depending on what is switched on, you may also get cashback, loyalty points, referral bonus progress for whoever invited you, challenge progress and renewal reminders.
+
+OPTIONAL TICKBOXES ON EVERY BUY SCREEN
+- "Save this … for next time"
+- "Repeat this purchase automatically" (section 26)
+- For airtime and data sent to someone else's number: "🎁 Send as a gift with a message" (section 13)
+
+----------------------------------------------------------------------
+3. BUY AIRTIME
+----------------------------------------------------------------------
+WHAT IT IS: Recharge any MTN, Airtel, Glo or 9mobile line from your wallet.
+
+BENEFITS
+- Instant top-up.
+- Discounts and cashback when they are on.
+- You can save numbers and repeat purchases automatically.
+- You can send airtime as a gift.
+
+HOW TO GET STARTED
+1. Home → "Airtime".
+2. Choose the "Airtime provider" (network).
+3. Enter the "Phone number" and the "Amount (₦)".
+4. Tap "Pay ₦X" and enter your PIN.
+
+RULES
+- Minimum: [minPurchaseAmount, default ₦50].
+- The number you type is the number that gets recharged.
+- Delivered airtime cannot be reversed.
+
+ADMIN SWITCH: Maintenance pause [pausedServices containing AIRTIME, or purchasesPaused].
+
+COMMON QUESTIONS
+- "I sent airtime to the wrong number." It can't be reversed once delivered. If it went to your own line by mistake, you may be able to use Airtime to Cash (section 11).
+
+----------------------------------------------------------------------
+4. BUY DATA
+----------------------------------------------------------------------
+WHAT IT IS: Buy data plans for any network.
+
+BENEFITS
+- Clear plan prices.
+- The "Best data deals" finder (section 12).
+- Repeat purchases and renewal reminders.
+- Gifts.
+
+HOW TO GET STARTED
+1. Home → "Data".
+2. Choose the provider, enter the "Phone number", and pick from the "Data plan" list. Each plan shows your price.
+3. Tap "Pay ₦X".
+4. Tip: the link "🔎 Find the best deal for your budget ›" at the top opens the deals finder.
+
+RULES
+- The plan price is fixed by the supplier, plus markup and minus discount.
+- "That plan is no longer available" appears if the plan was removed from the list.
+- Renewal reminder: you get one 1 day before a plan of 3 days or longer ends (section 17).
+
+ADMIN SWITCH: Maintenance pause (DATA).
+
+----------------------------------------------------------------------
+5. ELECTRICITY (prepaid or postpaid, token)
+----------------------------------------------------------------------
+WHAT IT IS: Pay for prepaid or postpaid electricity for any distribution company (disco) available on the list.
+
+BENEFITS
+- The meter name is checked before you pay.
+- The token is shown on the receipt and can be copied.
+- You can save meters.
+
+HOW TO GET STARTED
+1. Home → "Electricity".
+2. Choose the provider (disco).
+3. Set "Meter type" to "Prepaid" or "Postpaid".
+4. Enter the "Meter number". The name is checked automatically once 10 to 13 digits are entered, or you can tap "Verify".
+5. Enter the "Amount (₦)" and tap "Pay ₦X".
+
+RULES
+- Minimum: [minPurchaseAmount, default ₦50]. Some discos have their own higher minimum; if so, the screen shows an error before you pay.
+- If the meter can't be verified, the app says "Could not verify this number — double-check it before continuing", but you can still pay.
+
+WHERE IS THE TOKEN?
+Orders → tap the electricity purchase. "Your token" is shown with a "Copy" button. You can also use "Save image" or "Share receipt".
+
+ADMIN SWITCH: Maintenance pause (ELECTRICITY).
+
+COMMON QUESTIONS
+- "I can't find my token." Open it from the Orders tab.
+- "Wrong meter." A delivered token can't be reversed. Contact support through "Report Issue" on the order.
+
+----------------------------------------------------------------------
+6. CABLE TV
+----------------------------------------------------------------------
+WHAT IT IS: Renew DStv, GOtv, Startimes, Showmax and other packages that appear in the provider list.
+
+BENEFITS
+- The smartcard name and the date your current plan ends are shown before you pay.
+- Expiry reminders.
+- Automatic monthly renewal.
+
+HOW TO GET STARTED
+1. Home → "Cable TV".
+2. Choose the provider and enter the "Smartcard / IUC number". It is verified automatically, or you can tap "Verify". The name shows with "current plan ends [date]".
+3. Choose a "Package" and tap "Pay ₦X".
+
+RULES
+- Reminder: 3 days before expiry, unless you already have an active repeat for that smartcard.
+
+ADMIN SWITCH: Maintenance pause (CABLE).
+
+----------------------------------------------------------------------
+7. EDUCATION / EXAM PINS (WAEC, JAMB and others)
+----------------------------------------------------------------------
+WHAT IT IS: Buy exam PINs, for example WAEC and JAMB, from whatever products the supplier lists under education.
+
+HOW TO GET STARTED
+1. Home → "Education".
+2. Choose the provider.
+3. Enter the "Profile ID (if any)".
+4. Choose the "Exam type" and tap "Pay ₦X".
+5. The PIN or code shows on the receipt under Orders as "PIN / code".
+
+RULES
+- Fixed plan prices.
+- The Profile ID box must not be empty (the form says "Please fill in every field." otherwise): type your JAMB Profile ID for JAMB, or your phone number for other exams. 
+
+ADMIN SWITCH: Maintenance pause (EDUCATION, shown to customers as "Exam PINs").
+
+----------------------------------------------------------------------
+8. INTERNET
+----------------------------------------------------------------------
+WHAT IT IS: Pay for Spectranet, Smile, Swift 4G and ipNX internet plans.
+
+HOW TO GET STARTED
+1. Home → "Internet".
+2. Choose the provider and enter the "Account / MAC ID".
+3. Choose a plan and tap "Pay ₦X".
+
+RULES
+- Fixed plan prices.
+- Renewal reminder 2 days before a plan of 3 days or longer ends.
+
+ADMIN SWITCH: Maintenance pause (INTERNET).
+
+----------------------------------------------------------------------
+9. BET FUNDING
+----------------------------------------------------------------------
+WHAT IT IS: Fund a betting account (Bet9ja, SportyBet, BetKing and others) from your wallet.
+
+HOW TO GET STARTED
+1. Home → "Bet Funding".
+2. Choose the company and enter the "Betting account ID". It is checked automatically, or you can tap "Verify".
+3. Enter the "Amount (₦)" and tap "Pay ₦X".
+
+SUPPLIER SWITCH
+- ZAPPI PAY chooses who handles bet funding [setting: bettingSupplier, default "VTPASS"; the other option is "CLUBKONNECT"].
+- On VTpass, the companies are Bet9ja, BetKing, SportyBet, BangBet, 1xBet, NairaBet and MerryBet.
+- On ClubKonnect, the list comes from ClubKonnect and may include more companies.
+- ClubKonnect is used only when its keys are saved. Otherwise VTpass is used.
+
+RULES
+- App minimum: [minPurchaseAmount, default ₦50].
+- On ClubKonnect, a company may have its own minimum. If the payment fails for that reason, the message gives the company's minimum and confirms the refund.
+- On ClubKonnect, if the ID can't be verified, the app says "You can still pay — if the ID is wrong you'll be refunded."
+- Wrong ID on ClubKonnect: "That betting account ID was not found. You have been refunded."
+- A ClubKonnect order that stays "not found" for more than 30 minutes is treated as failed and refunded.
+
+ADMIN SWITCH: Maintenance pause (BETTING).
+
+----------------------------------------------------------------------
+10. SEND MONEY: TO ZAPPI PAY USERS (P2P, by phone, username or QR)
+----------------------------------------------------------------------
+WHAT IT IS: Instant, free wallet-to-wallet transfers to another ZAPPI PAY customer.
+
+BENEFITS
+- Instant.
+- No fee in the code.
+- You see the receiver's name before you send.
+- Works by phone number, username, QR code or pay link.
+
+HOW TO GET STARTED
+1. Home → "Send Money" → tab "ZappiPay User".
+2. Enter the "Recipient's phone number or username" and tap "Continue". The name shows under "Sending to". Use "Change" to pick someone else.
+3. Enter the "Amount (₦)" and an optional "Note". Tap "Send Money" and enter your PIN.
+
+QR CODES AND PAY LINKS
+- To pay someone by QR, tap "📷 Scan QR to pay" on the same screen.
+- To get paid, show "My ZAPPI PAY QR" (next to the scan button, or on Refer & Earn) and use "Save / share".
+- A pay link has the form zappipay.com.ng/pay/<username>. It opens Send Money with that person filled in. For someone without an account, it opens signup with the username as their referral code.
+
+RULES
+- You can't send to yourself.
+- The balance must cover the amount.
+- Counts toward the KYC daily limit (section 30).
+- Family members who aren't allowed to send money can only send back to the parent who manages them.
+- There is no minimum or maximum in the code beyond the balance and the daily limit.
+- Both sides get notifications ("Money Received" / "Money Sent").
+
+COMMON QUESTIONS
+- "Can I reverse it?" There is no reversal feature. Contact support.
+- "User not found." Check the phone number or username. The receiver must have a ZAPPI PAY account.
+
+----------------------------------------------------------------------
+11. AIRTIME TO CASH
+----------------------------------------------------------------------
+WHAT IT IS: Bought airtime by mistake? Transfer it to ZAPPI PAY's line and get wallet cash back, minus a fee. A person checks it before you are paid.
+
+BENEFITS
+- Rescues airtime bought by mistake.
+- The payout is shown before you submit.
+
+HOW TO GET STARTED
+1. Home → More → "Airtime to Cash". Or open an airtime receipt in Orders and tap "Bought by mistake? Convert to cash".
+2. Optionally choose "Which purchase was a mistake?".
+3. Choose the "Network" and enter the "Phone number the airtime is on" (11 digits starting with 0) and the "Airtime amount (₦)".
+4. Check the summary: "Airtime value", "Service fee (X%)" and "You'll receive".
+5. Tap "Submit Request".
+6. Then send the airtime from that line to the number shown, using your network's Share & Sell or transfer option.
+
+RULES
+- Fee: set by ZAPPI PAY (currently configurable) [setting: airtimeToCashFeePercent, default 20%]. The payout is rounded down to whole naira.
+- Minimum: [setting: airtimeToCashMinAmount, default ₦500]. Maximum: ₦50,000 (fixed in the code).
+- Only networks with a receiving line set up can be chosen [setting: airtimeToCashNumbers]. Supported networks are MTN, Glo, Airtel and 9mobile.
+- At most 3 requests can be waiting at a time.
+- The admin can approve a smaller "received" amount if less airtime arrived. The payout is then recalculated.
+
+ADMIN SWITCH: [airtimeToCashEnabled, default OFF]. When it is off, the screen says "Airtime to Cash isn't available right now."
+
+COMMON QUESTIONS
+- "When do I get paid?" After ZAPPI PAY confirms the airtime arrived. You'll get a notification.
+
+----------------------------------------------------------------------
+12. BEST DATA DEALS FINDER
+----------------------------------------------------------------------
+WHAT IT IS: Enter a budget and it lists the most data you can get on every network, at your own price.
+
+HOW TO GET STARTED
+1. Open it from any of:
+   - Home → the card "🔎 Best data for your budget"
+   - Home → More → "Best data deals"
+   - the link on the Data buy screen
+2. Set "My budget (₦)", or use the quick chips ₦300 / ₦500 / ₦1,000 / ₦2,000 / ₦5,000.
+3. Optionally fill in "For this number". This guesses the network from the number's prefix; since numbers can be ported, it's only a hint.
+4. Optionally filter by network and by length: Any length / 1–2 days / Week-ish / Month / Longer.
+5. Sort by "Most data" or "Best value".
+6. Tap a plan's price button. It opens the Data buy screen already filled in.
+
+RULES
+- Prices include markup and your discount, including agent discounts.
+- "Best value" marks the cheapest price per GB.
+
+ADMIN SWITCH: None of its own.
+
+----------------------------------------------------------------------
+13. GIFTS (airtime or data gift cards and links)
+----------------------------------------------------------------------
+WHAT IT IS: Send airtime or data to someone with a themed card and message, plus a link they can open without an account.
+
+HOW TO GET STARTED
+1. On the Airtime or Data buy screen, enter someone else's number and tick "🎁 Send as a gift with a message".
+2. Pick a theme (Birthday, Thank you, Love, Congrats, Just because) and write a message.
+3. Pay. You are taken to the receipt with the gift card.
+4. To turn a past purchase into a gift: Orders → open the purchase → "🎁 Send as a gift card" → "Create gift card".
+5. Share the gift with "Send on WhatsApp" or "Copy link". You can change it later with "Edit message".
+
+RULES
+- Airtime and data only.
+- Not to your own number.
+- The order must be successful or pending.
+- The message can be up to 160 characters.
+- The gift page shows the face value, with the receiver's number partly hidden.
+- The gift page disappears if the order fails.
+
+ADMIN SWITCH: None.
+
+----------------------------------------------------------------------
+14. DELIVERY PROMISE
+----------------------------------------------------------------------
+WHAT IT IS: "⚡ Delivered in 60s or ₦20 back". If a covered purchase takes longer than the promised time to confirm, you get a small bonus.
+
+RULES
+- Time: [setting: deliveryPromiseSeconds, default 60 seconds].
+- Bonus: [setting: deliveryPromiseBonus, default ₦20].
+- Minimum purchase: [setting: deliveryPromiseMinAmount, default ₦100].
+- Covered services: [setting: deliveryPromiseServices, default Airtime and Data].
+- One bonus per customer per day (Lagos time).
+- Overall daily budget for all customers: [setting: deliveryPromiseDailyBudget, default ₦2,000].
+- A purchase that fails after the promised time also qualifies, and is refunded as well.
+- Confirmed within the time means no bonus.
+- If the rewards split is on and its promise pool is empty, no bonus is paid.
+- The badge on the Buy screen explains the rules when you hover over or tap it.
+
+ADMIN SWITCH: [deliveryPromiseEnabled, default OFF].
+
+----------------------------------------------------------------------
+15. FAMILY WALLET
+----------------------------------------------------------------------
+WHAT IT IS: A parent links a family member's ZAPPI PAY account. The parent can then send an automatic allowance and set controls: a daily spending limit, which services the member can buy, and whether they can send money out.
+
+BENEFITS
+- Automatic weekly or monthly pocket money.
+- Spending limits.
+- The parent can see the member's balance, spending today and last 5 purchases.
+
+HOW TO GET STARTED (PARENT)
+1. Open Home → More → "Family wallet", or Profile → the "👨‍👩‍👧 Family" card.
+2. Under "Add a family member", enter "Their username or phone number" and an optional "Nickname". Tap "Send invite".
+3. Once they accept, tap "Limits & allowance" on their card and set:
+   - "Allowance (₦)" and "How often" (Every week / Every month)
+   - "Daily spending limit (₦)" (leave empty for no limit)
+   - "They can buy:" (tick the services)
+   - "Allow sending money to friends or banks"
+4. Tap "Save settings".
+5. "Send now" pays this period's allowance immediately. "Remove from family" ends the link.
+
+HOW TO ACCEPT (MEMBER)
+- You get a "Family Invite" notification. Open the Family screen and tap "Accept" or "Decline".
+- To leave later, tap "Leave family".
+
+RULES
+- A parent can have up to 10 members.
+- An account can belong to only one family.
+- A managed member can't add others.
+- You can't add yourself.
+- Allowance: ₦50 to ₦1,000,000, weekly or monthly. It is paid from the parent's wallet.
+- If the parent's wallet is short, the allowance is not sent and the parent gets "Allowance Not Sent". Funding the wallet and tapping "Send now" fixes it.
+- Allowances are checked hourly.
+- Daily limit: at least ₦50, or empty for none. It counts the member's successful and pending purchases today, Lagos time. Print Cards count as Airtime.
+- "Allow sending money to friends or banks" is OFF by default. When it is off, the member can still send money back to the parent.
+- No PIN is needed to save family settings or for "Send now".
+- Either side can end the link at any time. Limits and allowance stop immediately.
+
+ADMIN SWITCH: None.
+
+COMMON QUESTIONS
+- "My purchase was blocked." Your family settings don't allow that service, or you've reached the daily limit. Ask the family member who manages your account to change it.
+
+----------------------------------------------------------------------
+16. BULK AIRTIME AND DATA
+----------------------------------------------------------------------
+WHAT IT IS: Top up as many as 50 numbers on one network in one go.
+
+HOW TO GET STARTED
+1. Open Home → the card "Bulk airtime & data", or Home → More → "Bulk airtime & data".
+2. Choose airtime or data, then the "Network (all numbers must be on it)".
+3. Enter the "Amount per number (₦)" or pick a "Data plan for every number".
+4. Paste the "Phone numbers (one per line, or separated by commas)".
+5. Tap "Review & pay", then enter your PIN.
+
+RULES
+- Up to 50 numbers. Duplicates are removed. Numbers can start with 0 or 234.
+- Only one bulk run at a time.
+- Each number is a normal order, with normal refunds when it fails.
+- If the wallet runs out or the daily limit is reached, it stops and the remaining numbers are "Not bought" (not charged).
+- A "Bulk Purchase Finished" notification arrives at the end.
+- Airtime minimum per number: [minPurchaseAmount, default ₦50].
+
+ADMIN SWITCH: Maintenance pauses only.
+
+----------------------------------------------------------------------
+17. BILL AND RENEWAL REMINDERS
+----------------------------------------------------------------------
+WHAT IT IS: Automatic warnings before your cable TV, data or internet plan runs out.
+
+HOW IT WORKS
+- Reminders are created automatically after a successful purchase.
+- Cable TV: reminder 3 days before expiry, using the date read from the smartcard.
+- Data: 1 day before. Internet: 2 days before. Both only for plans of 3 days or longer.
+- No reminder if you have an active "Repeat" for that same number.
+- Home shows a renewals card for bills due within 14 days, with a "Renew" button.
+
+HOW TO STOP OR RESTART
+- Tap "×" on one item to stop that reminder.
+- "Stop renewal reminders" on the card turns them all off.
+- To turn them back on: Notifications (the bell on Home) → "Renewal reminders".
+
+ADMIN SWITCH: None. The customer controls it.
+
+----------------------------------------------------------------------
+18. AGENT MODE AND AGENT PRICING
+----------------------------------------------------------------------
+WHAT IT IS: Resellers can apply to become ZAPPI PAY agents and buy at cheaper agent prices.
+
+HOW TO GET STARTED
+1. Profile → the card "Become a ZappiPay agent" → "Apply to be an agent".
+2. Enter the "Business or shop name" and the "Shop address" (street, area, town and state; at least 10 characters).
+3. Tap "Send application".
+
+RULES
+- The card is only shown when agent pricing is on.
+- An admin approves or declines the application. You get "Agent Account Approved", or a decline with a reason.
+- After a decline, you can apply again after 7 days.
+- Approved agents get an extra percentage off per service, added on top of any normal discount (100% at most), automatically [setting: agentDiscountPercentByService, default none].
+- Agents see "⭐ AGENT" on Home.
+- Agents also get the Print Cards agent discount (section 20), the Profit book (section 19) and the shop link (section 21).
+
+ADMIN SWITCH: [agentPricingEnabled, default OFF].
+
+----------------------------------------------------------------------
+19. PROFIT BOOK (agents only)
+----------------------------------------------------------------------
+WHAT IT IS: For agents, a record of what they sold, what it cost them, their profit, and who still owes them.
+
+HOW TO GET STARTED
+1. Profile → "📒 Profit book". This only shows for approved agents.
+2. Pick a period ("This month", "Last month", or your own dates; at most one year).
+3. Tap a sale to set "I sold it for (₦)", "Customer (optional)" and "They haven't paid me yet".
+4. Use the tabs "Sales" and "Who owes me". "Download as spreadsheet (CSV)" exports it.
+
+RULES
+- A sale counts at face value until you change the price.
+- Shop-link commissions count as extra income.
+
+ADMIN SWITCH: Indirect (you must be an approved agent).
+
+----------------------------------------------------------------------
+20. RECHARGE CARD PRINTING ("Print Cards")
+----------------------------------------------------------------------
+WHAT IT IS: Buy airtime PINs (e-PINs) to print and sell in your shop.
+
+HOW TO GET STARTED
+1. Home → More → "Print Cards" (the screen is called "Print recharge cards").
+2. Choose the "Network": MTN, Glo, Airtel, or 9mobile (shown as T2mobile).
+3. Choose the "Card value": ₦100, ₦200 or ₦500.
+4. Choose "How many cards?" and an optional "Name on the cards".
+5. Check "You pay", then tap "Buy & print N cards" and enter your PIN.
+6. Open the batch under "Your cards" and pick a "Print layout":
+   - "A4 sheet (3 across)"
+   - "Small (4 across)"
+   - "POS printer (58mm)"
+7. Use "🖨️ Print N", "Copy PINs" or "Download (Excel)". "Only cards not sold yet" filters the list.
+8. Mark sold: tap a PIN to toggle "Sold ✓", or use "Mark all sold".
+
+RULES
+- 1 to 100 cards per order.
+- Daily cap: [setting: epinDailyCards, default 300 cards a day].
+- Price discount off face value:
+  - customers: [epinCustomerDiscountPct, default 0%]
+  - agents: [epinAgentDiscountPct, default 2%]
+- Counts as Airtime for maintenance pauses and family limits. Also counts toward the KYC daily limit.
+- If none of the cards could be made, you are fully refunded ("Recharge cards not printed").
+- If only some are delivered, the missing ones are refunded.
+- Load codes printed on the cards: MTN *311*PIN#, Glo *123*PIN#, 9mobile *222*PIN#, Airtel *126*PIN#.
+- Print Cards purchases do NOT trigger cashback, loyalty points, challenges, or the referral bonus for whoever invited you. None of those are called in the card-printing code.
+
+ADMIN SWITCH: [ckEnabled, default OFF], plus ClubKonnect keys. When off, the screen shows "Coming soon".
+
+----------------------------------------------------------------------
+21. AGENT SHOP LINK
+----------------------------------------------------------------------
+WHAT IT IS: An agent's public link (zappipay.com.ng/shop/<username>). When customers buy through it, the agent earns a commission and the customer pays the normal price.
+
+HOW TO GET STARTED (AGENT)
+1. Profile → "🏪 My shop link".
+2. Tick "Shop link on", then "Share" or copy the link.
+3. Optionally add a "Shop tagline" and tick "Show a 'Chat on WhatsApp' button with my number".
+4. The card shows sales and earnings for the last 30 days.
+
+HOW IT WORKS FOR BUYERS
+- After opening the link, the buyer's purchases on that phone are credited to the agent for 30 days.
+- The Buy screen shows "🏪 Buying through X's shop — same price for you", with a "Remove" option.
+
+RULES
+- Commission: [shopCommissionPct, default 1%], at most [shopCommissionMax, default ₦50] per sale.
+- It can also be reduced by the reward safety limit.
+- The agent needs a username and approved agent status.
+- Buying through your own shop link earns nothing.
+
+ADMIN SWITCH: [shopLinksEnabled, default OFF].
+
+----------------------------------------------------------------------
+22. REFER AND EARN (referral and username)
+----------------------------------------------------------------------
+WHAT IT IS: Invite friends with your code. When a friend makes a qualifying first purchase or bank transfer, you get a one-time bonus.
+
+HOW TO GET STARTED
+1. Open Profile → "Refer & Earn", or Home → More → "Refer & Earn", or the Home banner "Refer & earn ₦X".
+2. If you have no username, "Choose your username". It becomes your referral code and can be set only once.
+   - 3 to 20 characters: letters, numbers and underscores, with at least one letter.
+3. Use "Copy code", copy the invite link (/signup?ref=yourcode), share from the share options, or show "My ZAPPI PAY QR".
+4. Track progress under "Your referrals": "Waiting: first ₦X+ purchase", "✓ Purchased — bonus on the way", or "+₦X".
+
+RULES
+- Bonus: [setting: referralBonusAmount, default ₦100], paid once per friend.
+- Paid when the friend's first successful purchase or successful bank transfer is at least [setting: referralMinPurchase, default ₦500].
+- The friend must have signed up with your code. An unknown code is rejected at signup.
+- ZAPPI PAY-to-ZAPPI PAY transfers and Print Cards don't count.
+- If the rewards split is on, the bonus waits until the referral pool has enough money.
+- Missed bonuses are re-checked when you open Refer & Earn.
+- Referral contests may also appear (the "🏆 REFERRAL CONTEST" card), with their own rules. A friend counts only after they buy something or send to a bank AND verify BVN/NIN.
+
+ADMIN SWITCH: [referralEnabled, default OFF]. When it is off, the screen says "Referral rewards are paused right now."
+
+----------------------------------------------------------------------
+23. CASHBACK, LOYALTY POINTS, PROMO CODES AND COUPONS
+----------------------------------------------------------------------
+CASHBACK
+- WHAT IT IS: A percentage of a successful purchase goes back into your wallet.
+- Per service: [cashbackPercentByService, default none], at most [cashbackMaxPerOrder, default ₦500] per order. Amounts under ₦1 are not paid.
+- The Buy screen shows "+ X% cashback (about ₦Y) back to your wallet".
+- ADMIN SWITCH: [cashbackEnabled, default OFF].
+
+LOYALTY POINTS
+- WHAT IT IS: Points on purchases that you turn into wallet cash.
+- Earning: [loyaltyPointsPer100, default 1 point per ₦100 spent].
+- Value: [loyaltyPointValue, default ₦0.50 per point].
+- Minimum to redeem: [loyaltyMinRedeem, default 200 points].
+- HOW TO REDEEM: the points card on Home → "Redeem". It converts ALL your points at once.
+- ADMIN SWITCH: [loyaltyEnabled, default OFF]. The card is hidden when it's off.
+
+PROMO CODES (DISCOUNT AT CHECKOUT)
+- HOW TO USE: On a Buy screen, tap "Have a promo code?", type the code and tap "Apply". "Remove" takes it off.
+- A code can have any of these conditions: an expiry date, a total use limit, a per-customer limit, specific services only, a minimum amount, first purchase only, or a customer group only.
+- A code is only used up when the purchase succeeds.
+- Promo codes don't apply to scheduled repeats.
+- The reward safety limit may reduce the discount.
+- ADMIN SWITCH: Each code is created or deactivated by an admin.
+
+WALLET COUPONS (FREE CREDIT)
+- HOW TO USE: Wallet → "🎟️ Have a coupon code?" → enter the code (for example WELCOME500) → "Redeem". The amount is added to your wallet.
+- You can try 10 times per 10 minutes.
+- A discount code typed here gets: "That is a discount code — enter it when you buy…". A coupon typed on a Buy screen gets: "That is a wallet coupon — redeem it on the Wallet page."
+
+----------------------------------------------------------------------
+24. CHALLENGES
+----------------------------------------------------------------------
+WHAT IT IS: Activity rewards such as "Buy data 5 times this month", "Spend ₦10,000 on electricity", or "Buy 5 days in a row". You are paid once per period.
+
+WHERE: The "🎯 Challenges" card on Home shows progress, the reward ("Get ₦X") and how many days are left.
+
+RULES
+- Created by ZAPPI PAY, weekly, monthly or one-time. A challenge may require a minimum amount per purchase.
+- The reward goes into your wallet automatically ("Done — reward added to your wallet").
+- The reward can be limited by the safety limit or the challenges pool.
+
+ADMIN SWITCH: Each challenge is switched on or off by an admin.
+
+----------------------------------------------------------------------
+25. REWARDS SPLIT (background)
+----------------------------------------------------------------------
+WHAT IT IS: When on, ZAPPI PAY gives back a set share of what it earns on each purchase. It is divided between cashback, loyalty points, agent shop commission, and pools that pay referral, challenge and delivery-promise rewards.
+
+RULES
+- Percentage given back: [rewardSplitPct, default 30%].
+- Default shares: Cashback 35, Loyalty 20, Referral 20, Challenges 10, Promise 5, Shop 10 [rewardSplitShares].
+- When it is on, cashback is no longer a fixed percentage. The Buy screen just says "🎁 This purchase earns you cashback and points".
+
+ADMIN SWITCH: [rewardSplitEnabled, default OFF].
+
+----------------------------------------------------------------------
+26. SAVED AND SCHEDULED (saved numbers and repeat purchases)
+----------------------------------------------------------------------
+WHAT IT IS: Save phone numbers, meters and smartcards for one tap, and set purchases to repeat automatically from your wallet.
+
+HOW TO GET STARTED
+1. On any Buy screen, tick "Save this … for next time" and/or "Repeat this purchase automatically".
+2. For a repeat, choose "Every day", "Every week (same day)" or "Every month (same date)". You can add a "Nickname (optional)", for example "Mum's line".
+3. The pay button reads "Pay ₦X & schedule". The schedule is only created if this first payment succeeds.
+4. To manage them, open Profile → "Saved & Scheduled", or Home → "Saved & Scheduled" next to "Buy again".
+   - Scheduled top-ups: "Pause", "Resume", "Delete".
+   - Saved numbers: "Buy", "Rename", "✕".
+5. Saved numbers also appear as chips under "Saved" at the top of each Buy screen.
+
+RULES
+- Up to 20 schedules and 50 saved numbers.
+- A repeat runs at about the same time of day it was created.
+- Monthly repeats on the 31st move to the last day of shorter months.
+- Plan repeats use the plan's price on the day. No PIN is asked for each run.
+- If the server missed some runs, it buys once and moves on.
+- After 3 failures in a row (or an account or limit block), the schedule is paused and you get a notification.
+- A low wallet balance gives "Scheduled Top-up Skipped".
+- About 24 hours before a run, if your wallet can't cover it, you get "Top Up Before Your Renewal".
+- During maintenance, repeats wait and run later. That is not counted as a failure.
+
+ADMIN SWITCH: None, apart from maintenance.
+
+----------------------------------------------------------------------
+27. ORDER HISTORY, RECEIPTS, "BUY AGAIN" AND REPORT ISSUE
+----------------------------------------------------------------------
+- The Orders tab is called "Order History" and shows your last 100 orders. Tap one to see the "Payment Receipt".
+- The receipt shows: Service, Provider, Recipient, Discount, Name, Date and Reference, plus the token or PIN with a "Copy" button.
+- Buttons on the receipt: "Save image", "Share receipt", "Buy again" (opens the Buy screen already filled in), and, for airtime only, "Bought by mistake? Convert to cash".
+- "Report Issue" opens a "What went wrong?" box. You can add screenshots ("📎 Add a screenshot (e.g. bank alert)", up to 3). "Submit Report" sends it to support with the order attached.
+- Home also has a "Buy again" row with your last 6 different successful purchases.
+- After a purchase you may be asked "How was your purchase?" [feedbackPromptEnabled, default ON; asked at most once every 14 days]. Happy customers are invited to share their referral link.
+
+----------------------------------------------------------------------
+28. BANK TRANSFER (Send to Bank)
+----------------------------------------------------------------------
+WHAT IT IS: Send money from your wallet to any Nigerian bank account. The account name is checked before you send.
+
+HOW TO GET STARTED
+1. Home → "Send Money" → tab "Bank Account".
+2. Choose the "Bank" and enter the "Account number" (10 digits). The account name appears automatically.
+3. Enter the "Amount (₦)" and an optional "Description".
+4. Send it and confirm with your PIN.
+5. "Recent bank transfers" lists your past transfers. Tap one for details, including the fee.
+
+RULES
+- Fee by amount:
+  - Under ₦10,000: [bankTransferFee, default ₦0]
+  - ₦10,000 to ₦49,999.99: [bankTransferFeeMid, default = same as bankTransferFee]
+  - ₦50,000 and above: [bankTransferFeeHigh, default = same as bankTransferFee]
+  - The fee is added on top. Your wallet needs amount + fee.
+- Minimum per transfer: [bankTransferMin, default ₦100]. Maximum per transfer: [bankTransferMax, default ₦50,000].
+- Daily bank-transfer total: [bankTransferDailyMax, default ₦200,000]. It resets daily.
+- The amount + fee also counts toward the KYC daily limit.
+- The account name is always re-checked on the server.
+- You can check up to 30 account names per 10 minutes.
+- Fraud hold: a transfer of at least [fraudHoldAmount, default ₦20,000] made within [fraudHoldHours, default 24 hours] of signing up, changing your PIN or password, or logging in on a new device, is held for an admin to review. You get "Transfer Under Review". It is then sent or refunded [fraudHoldEnabled, default ON].
+- Failure or reversal: the amount + fee goes back to your wallet automatically ("Bank Transfer Failed … has been returned to your wallet").
+- If the result is unclear, it stays processing until the provider confirms. Money is never refunded and sent at the same time.
+- Family members need "Allow sending money to friends or banks" switched on.
+
+ADMIN SWITCH: [bankTransferEnabled, default OFF]. When off, the tab says "Sending to other banks is coming soon." Monnify must also be set up, with a payout wallet [monnifyWalletAccount].
+
+COMMON QUESTIONS
+- "My transfer hasn't arrived." Most arrive within minutes. Large first transfers may be held for a security check. If it fails, you are refunded automatically.
+
+----------------------------------------------------------------------
+29. SAVINGS AND INTEREST
+----------------------------------------------------------------------
+STATUS: OFF by default. It can only be switched on after ZAPPI PAY records the licence or licensed partner it runs under.
+
+WHAT IT IS: A "🐖 Savings" pocket on the Wallet page that earns daily interest.
+
+HOW TO USE
+1. Wallet → the Savings card.
+2. Enter the "Amount (₦)", or use "All wallet" or "All savings".
+3. Tap "Save" to move money in, or "Move to wallet" to take it out.
+
+RULES
+- Rate: [savingsRatePct, default 10% a year], paid every night just after midnight Nigerian time.
+- Interest is worked out on the lowest amount held that day. Money in from tomorrow night starts earning.
+- It is added to savings, so it compounds.
+- Interest is earned from [savingsMinBalance, default ₦1,000] up to [savingsMaxBalance, default ₦500,000].
+- Money above the maximum can be held but earns nothing extra. (The code does not block deposits above the maximum.)
+- Total interest paid to everyone per day is capped [savingsDailyBudget, default ₦5,000]. Interest is scaled down when it would go over.
+- No fees, no lock-in, and no PIN is required.
+- When savings is switched off, the card stays visible only for people with a balance, so they can always move their money back. No interest is paid.
+
+ADMIN SWITCH: [savingsEnabled, default OFF].
+
+----------------------------------------------------------------------
+30. KYC (BVN/NIN) VERIFICATION AND DAILY LIMITS
+----------------------------------------------------------------------
+- "Verified" means you created your personal account number with your BVN or NIN (section 1). There is no separate verification screen.
+- Profile shows "Account level": "✓ Verified" or "Not verified" (with "Verify ›", which opens Wallet).
+- Daily limits:
+  - unverified accounts: [dailyLimitUnverified, default ₦50,000]
+  - verified accounts: [dailyLimitVerified, default ₦1,000,000]
+  - These cover purchases, Print Cards, ZAPPI PAY transfers and bank transfers including fees.
+- The limit runs from midnight Nigerian time. Refunds of today's failed purchases give back the room.
+- Profile shows "Daily limit ₦X · ₦Y left today" when limits are on.
+- The unverified error message tells the customer to verify on the Wallet page.
+- ADMIN SWITCH: [kycLimitsEnabled, default OFF]. When it's off, there is no daily cap.
+
+----------------------------------------------------------------------
+31. TRANSACTION PIN
+----------------------------------------------------------------------
+WHAT IT IS: A 4-digit PIN that confirms every purchase and transfer.
+
+HOW TO SET OR CHANGE IT
+1. Profile → "Security" → "Transaction PIN" → "Create" (or "Change").
+2. Enter "Your account password" and tap "Continue".
+3. Choose a new 4-digit PIN, then enter it again.
+- Home also shows "Create your transaction PIN" until a PIN is set.
+- If you try to pay without a PIN, the payment sheet offers "Create your PIN".
+
+RULES
+- These PINs are rejected:
+  - all the same digit (1111)
+  - straight runs up or down (1234, 4321)
+  - repeated pairs (1212)
+  - your birth year or birthday (DDMM or MMDD)
+  - the last 4 digits of your phone number
+- Changing the PIN always needs your account password.
+- 5 wrong PIN tries locks the PIN for 15 minutes. A successful password login unlocks it.
+- A PIN change counts as a security change for the fraud hold (section 28).
+
+FORGOT PIN
+- The payment sheet says "Forgot your PIN? Reset it with your password". That means going to Security → Change, which needs only the account password.
+- If they can't do it themselves (e.g. forgot the password too), support can reset the PIN after checking their identity.
+
+----------------------------------------------------------------------
+32. QUICK LOGIN (PIN login) AND FINGERPRINT / FACE ID
+----------------------------------------------------------------------
+HOW TO GET STARTED
+1. Profile → "Security".
+2. Switch on "Quick login on this device" and enter your PIN. Next time, you log in with just your PIN.
+3. Then switch on "Fingerprint / Face ID". This needs quick login to be on first, and a phone or browser that supports it.
+
+WHAT IT GIVES YOU
+- Biometrics can be used to log in AND to confirm payments on that device.
+- One fingerprint or Face ID per device.
+- On the login screen: "Use password instead" or "Switch account".
+
+RULES
+- The app logs you out after 10 minutes with no activity.
+- Login lock: after 5 wrong passwords, password login is locked for 15 minutes and you are notified.
+
+----------------------------------------------------------------------
+33. TRUSTED DEVICES, SESSIONS, SELF-FREEZE AND SECURITY DETAILS
+----------------------------------------------------------------------
+TRUSTED DEVICES AND SESSIONS
+- Security → "Other devices" → "Turn off quick login on other devices".
+- Security → "📱 Where you're logged in" → "Log out" for one device, or "Log out all other devices".
+
+SECURITY DETAILS
+- Profile → "🔐 Security details" → "Add security details" or "Change security question". Your password is needed.
+- Your date of birth can't be edited once saved. Contact support to correct it.
+- Home nudges you with "Protect your account" until these are set.
+
+SELF-FREEZE (LOST OR STOLEN PHONE)
+- There is no button for this. It is only available by asking the Help chat AI, which shows a confirmation card that needs your password.
+- Freezing logs out every device, removes quick login, and blocks all logins and payments until support confirms who you are and unfreezes the account.
+- If the AI chat is off, contact support on WhatsApp or in-app.
+- Help Centre's "I lost my phone" advice: log in on another device → Security → "Log out all other devices" → change your password.
+
+----------------------------------------------------------------------
+34. NOTIFICATIONS, PUSH ALERTS AND EMAIL ALERTS
+----------------------------------------------------------------------
+- In-app: the bell icon on Home (a gold dot means unread) opens "Notifications". The "Renewal reminders" switch is here too.
+- Push: Home nudge "🔔 Get instant alerts" → "Turn on", or Profile → "Notifications on this device". On iPhone, add ZAPPI PAY to the Home Screen first.
+- Email alerts: Profile → "Email alerts". This needs an email address on your profile. It covers money in and out, purchases, transfers, freezes and logins. Emails are only sent if ZAPPI PAY has switched them on [emailAlertsEnabled, default OFF].
+
+----------------------------------------------------------------------
+35. LANGUAGES, APPEARANCE AND LITE MODE
+----------------------------------------------------------------------
+- Language: Profile → "🗣️ Language" → English, Pidgin, Yorùbá, Hausa or Igbo. The main screens (Home, Buy, Wallet, Profile, bottom bar) are translated. Some pages stay in English.
+- Appearance: Profile → "Appearance" (light / dark / system).
+- Lite mode: Profile → "🪶 Lite mode (data saver)". It hides ads and promos, turns off animations and checks for updates less often. It is saved on that phone only. Home may suggest it ("Slow network?… Turn on").
+
+----------------------------------------------------------------------
+36. HELP CHAT AI (buy by chat, send by chat, voice notes)
+----------------------------------------------------------------------
+WHAT IT IS
+- The floating "ZappiPay Help" chat. Quick topics always work.
+- When the AI is on, typed questions go to an assistant that can look at your account and prepare actions for you to confirm.
+
+WHAT IT CAN DO
+- Check orders.
+- Open support tickets.
+- Explain your spending.
+- List your devices.
+- Prepare purchases for any service, including repeats and gifts. Each one comes as a card you pay with your PIN.
+- Prepare ZAPPI PAY or bank transfers. The real account name is checked, and you confirm with your PIN.
+- Pause, resume or delete repeats.
+- Switch renewal reminders on or off.
+- Log out other devices, or freeze the account (needs your password).
+- Start Airtime to Cash requests.
+- Change family settings.
+- For agents: record sales.
+- The assistant never buys or sends anything itself. Everything needs you to tap and confirm.
+
+SCREENSHOTS
+- "📷 Add a screenshot (bank alert, error message…)", up to 2 per message.
+
+LIMITS
+- [aiCustomerDailyLimit, default 20 AI replies per customer per day]. After that: "You've reached today's limit…". Quick topics still work.
+- Overall monthly AI budget [aiMonthlyBudgetUsd, default $10].
+
+VOICE NOTES
+- The 🎤 button. The phone's own voice typing is free and always used when available.
+- Better OpenAI transcription ("Speak (better voice)") is used when switched on [voiceAiEnabled, default OFF].
+  - Limits: [voiceDailyLimit, default 20 a day], [voiceMonthlyBudgetUsd, default $5], up to 60 seconds per recording in the app.
+  - If it fails, the app falls back to the phone's voice typing.
+
+ADMIN SWITCHES
+- AI: [aiCustomerEnabled, default OFF]. Buy and send by chat: [aiChatBuyEnabled, default ON when the AI is on].
+
+----------------------------------------------------------------------
+37. SUPPORT TICKETS WITH SCREENSHOTS
+----------------------------------------------------------------------
+- Ways in:
+  - Profile → "Support" → "💬 Message support in the app"
+  - "Talk to support" in the Help chat
+  - "Report Issue" on an order
+- In the chat's "Message support" form, choose "What's it about?" and describe the issue. Add up to 3 screenshots (JPG, PNG or WebP). Tap "Send to support".
+- Replies appear under Profile → Support ("Open" / "Solved", with "ZappiPay Support replied:") and in Notifications.
+- Also on Profile: "Chat on WhatsApp" and "Email support@zappipay.com.ng".
+
+----------------------------------------------------------------------
+38. HELP CENTRE / FAQ
+----------------------------------------------------------------------
+- Profile → Support → "❓ Help Centre" (/help). It is public.
+- It covers: account, safety, languages, slow network, chat buying, the mobile app, funding and fees, credit delays, BVN/NIN, failed purchases, tokens, wrong numbers, schedules, the delivery promise, gifts, reminders, bulk, transfers, referrals, challenges, promo codes, family, forgotten password or PIN, lost phone, changing phone or email, deleting your account, and becoming an agent.
+- Install as an app: open zappipay.com.ng and tap "Install" or "Add to Home screen". It works on Android and iPhone.
+- Change your email yourself: Profile → edit "Email" → "Save Changes". Your phone number can't be changed in the app; message support for that.
+
+----------------------------------------------------------------------
+39. SERVICE STATUS PAGE
+----------------------------------------------------------------------
+- Profile → Support → "🟢 Service status" (/status). It is public.
+- It shows each service as working, "Slow / some failures", "Paused for maintenance" or "Not working".
+- Services shown: the 7 purchase services, plus "Wallet funding (bank transfer)", "Send to bank" and "App & login".
+- A service is marked "Slow / some failures" when, in the last hour, it had at least 3 failures making up half or more of its purchases.
+
+----------------------------------------------------------------------
+40. MAINTENANCE PAUSES AND SERVICE NOTICES
+----------------------------------------------------------------------
+- ZAPPI PAY can pause all purchases [purchasesPaused] or only some services [pausedServices], with an optional message [maintenanceMessage].
+- Default messages:
+  - all purchases: "Purchases are paused for a short maintenance… your wallet is safe."
+  - one service: "[Service] is paused for a short while…"
+- The Pay button reads "Paused for maintenance".
+- Pauses apply to app purchases, bulk, Print Cards (as Airtime) and repeats. Repeats wait and run later.
+- Service notices and banners also appear on Home and the Buy screens. Banners can be closed with "×".
+
+----------------------------------------------------------------------
+41. ACCOUNT STATEMENT
+----------------------------------------------------------------------
+- Profile → "Account Statement", or Wallet → "Statement (PDF) ›".
+- Pick a "Period" (one of the last 12 months, or "Custom dates…", at most one year).
+- It shows opening balance, money in, money out and closing balance, then every line.
+- Tap "Download PDF" and choose "Save as PDF" in the print window.
+
+----------------------------------------------------------------------
+42. ACCOUNT DELETION
+----------------------------------------------------------------------
+- Profile → "Delete my account" → optional "Why are you leaving?" → "Your password" → "Request deletion". "Keep my account" cancels.
+- The message says: "Our team will close your account within 7 days. Spend or withdraw any money left in your wallet first."
+- Personal details are removed. Transaction records are kept for record-keeping rules.
+- You can undo it with "Cancel request" while it is pending.
+- A public information page is at /delete-account.
+
+----------------------------------------------------------------------
+43. TEST MODE BANNER
+----------------------------------------------------------------------
+- "🧪 Test mode. ZAPPI PAY is still being tested — payments, airtime, data and bills here are not real yet, and no real money is charged or sent."
+- It shows while either VTpass [vtpassMode] or Monnify [monnifyMode] is not "live" (both default to "sandbox"). It disappears automatically when both are live.
+
+----------------------------------------------------------------------
+44. OTHER CUSTOMER-VISIBLE EXTRAS
+----------------------------------------------------------------------
+- Spending summary card on Wallet (spending by category, including "Sent to banks" and "Sent to friends").
+- Referral contests ("🏆 REFERRAL CONTEST" card on Home and Refer & Earn).
+- Ads carousel and popup. These are hidden in Lite mode [videoAdsEnabled, default OFF; when off, ads are pictures only].
+- Profile photo ("Tap to change photo", under 1.5MB).
+- "Change Password" on Profile: at least 8 characters, with a capital letter, a small letter, a number and a special character.
+- Forgot password: a reset link by email that expires in 30 minutes. It only works if the account has an email address.
+
+======================================================================
+SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
+======================================================================
+- minFundingAmount: ₦100. Minimum manual funding request.
+- bankFundingFeePercent: 0%. Fee on automatic bank funding.
+- bankFundingFeeCap: ₦0 (no cap). Maximum automatic-funding fee.
+- minPurchaseAmount: ₦50. Minimum for amount-entered purchases (airtime, electricity, bet funding, bulk airtime).
+- markupPercentByService: none (0%). Markup on supplier price, per service.
+- markupCapByService: none. Maximum markup per purchase, per service.
+- discountPercentByService: none. Automatic percentage off per service (the "X% OFF" badge).
+- agentPricingEnabled: off. Allows agent applications and agent prices.
+- agentDiscountPercentByService: none. Extra percentage off for agents.
+- airtimeToCashEnabled: off. Airtime to Cash on or off.
+- airtimeToCashFeePercent: 20%. Fee kept on Airtime to Cash. (Maximum ₦50,000 is fixed in code.)
+- airtimeToCashMinAmount: ₦500. Airtime to Cash minimum.
+- referralEnabled: off. Referral bonus on or off.
+- referralBonusAmount: ₦100. Bonus per qualifying friend.
+- referralMinPurchase: ₦500. Friend's first purchase or bank transfer needed.
+- bankTransferEnabled: off. Send to Bank on or off.
+- bankTransferFee: ₦0. Fee under ₦10,000.
+- bankTransferFeeMid: same as bankTransferFee. Fee from ₦10,000 to ₦49,999.99.
+- bankTransferFeeHigh: same as bankTransferFee. Fee from ₦50,000.
+- bankTransferMin: ₦100. Minimum per transfer.
+- bankTransferMax: ₦50,000. Maximum per transfer.
+- bankTransferDailyMax: ₦200,000. Daily bank-transfer total.
+- fraudHoldEnabled: on. Holds big transfers for review.
+- fraudHoldAmount: ₦20,000. Transfer size that can be held.
+- fraudHoldHours: 24. Window after signup or a security change.
+- kycLimitsEnabled: off. Daily spending limits on or off.
+- dailyLimitUnverified: ₦50,000. Daily limit without BVN/NIN.
+- dailyLimitVerified: ₦1,000,000. Daily limit with BVN/NIN.
+- cashbackEnabled: off. Cashback on or off.
+- cashbackPercentByService: none. Cashback percentage per service.
+- cashbackMaxPerOrder: ₦500. Cashback cap per order.
+- loyaltyEnabled: off. Loyalty points on or off.
+- loyaltyPointsPer100: 1. Points per ₦100 spent.
+- loyaltyPointValue: ₦0.50. Value of each point.
+- loyaltyMinRedeem: 200. Minimum points to redeem.
+- epinCustomerDiscountPct: 0%. Print Cards discount for customers.
+- epinAgentDiscountPct: 2%. Print Cards discount for agents.
+- epinDailyCards: 300. Maximum cards per customer per day. (1 to 100 per order is fixed in code.)
+- ckEnabled: off. Print Cards on or off.
+- bettingSupplier: VTPASS. Which supplier handles bet funding (VTPASS or CLUBKONNECT).
+- deliveryPromiseEnabled: off. Delivery promise on or off.
+- deliveryPromiseSeconds: 60. Promised delivery time.
+- deliveryPromiseBonus: ₦20. Bonus when late.
+- deliveryPromiseMinAmount: ₦100. Minimum purchase that qualifies.
+- deliveryPromiseDailyBudget: ₦2,000. Total bonus budget per day for all customers.
+- deliveryPromiseServices: Airtime and Data. Services covered.
+- rewardSplitEnabled: off. Rewards split on or off.
+- rewardSplitPct: 30%. Share of earnings given back.
+- rewardSplitShares: Cashback 35, Loyalty 20, Referral 20, Challenges 10, Promise 5, Shop 10. How it is divided.
+- rewardGuardEnabled: on. Safety limit on all giveaways per purchase.
+- rewardGuardPercent: 50%. Most of ZAPPI PAY's earnings on one purchase that can be given away.
+- shopLinksEnabled: off. Agent shop links on or off.
+- shopCommissionPct: 1%. Agent commission per shop-link sale.
+- shopCommissionMax: ₦50. Commission cap per sale.
+- savingsEnabled: off. Savings on or off.
+- savingsRatePct: 10% a year. Interest rate.
+- savingsMinBalance: ₦1,000. Lowest balance that earns interest.
+- savingsMaxBalance: ₦500,000. Highest balance that earns interest.
+- savingsDailyBudget: ₦5,000. Total interest paid per day for all customers.
+- aiCustomerEnabled: off. Help chat AI on or off.
+- aiChatBuyEnabled: on. Buy and send by chat.
+- aiCustomerDailyLimit: 20. AI replies per customer per day.
+- aiMonthlyBudgetUsd: $10. AI spending stops for the month at this.
+- voiceAiEnabled: off. Better voice transcription.
+- voiceDailyLimit: 20. Better voice notes per customer per day.
+- voiceMonthlyBudgetUsd: $5. Monthly voice budget.
+- emailAlertsEnabled: off. Email alerts are sent at all.
+- feedbackPromptEnabled: on. "How was your purchase?" prompt.
+- manualFundingEnabled: on. Manual business-account funding.
+- purchasesPaused: off. Pauses every purchase.
+- pausedServices: none. Pauses chosen services.
+- maintenanceMessage: (none). Custom pause message.
+- hiddenFundingBanks: none. Hides personal account numbers at banks with network problems.
+- vtpassMode and monnifyMode: sandbox. Test mode banner shows until both are "live".
+
+Fixed in code (not settings):
+- PIN: 5 tries, then a 15-minute lock.
+- Login: 5 wrong passwords, then a 15-minute lock.
+- Idle logout after 10 minutes.
+- Password reset link lasts 30 minutes.
+- Bulk: up to 50 numbers.
+- Family: up to 10 members. Allowance ₦50 to ₦1,000,000. Daily limit at least ₦50.
+- Schedules: up to 20, paused after 3 failures. Saved numbers: up to 50.
+- Airtime to Cash: maximum ₦50,000, 3 requests waiting at once.
+- Support: 3 screenshots per ticket; 2 per chat message.
+- Shop link remembered 30 days on the buyer's phone.
+- Agent re-apply wait: 7 days after a decline.
+- Gift message up to 160 characters.
+- Coupon tries: 10 per 10 minutes.
