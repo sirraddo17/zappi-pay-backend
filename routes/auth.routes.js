@@ -194,11 +194,28 @@ router.get('/auth/me', requireCustomerAuth, async (req, res) => {
 
 router.patch('/auth/me', requireCustomerAuth, async (req, res) => {
   try {
-    const { name, email, avatarUrl, language } = req.body;
+    const { name, email, avatarUrl, language, password } = req.body;
     const data = {};
     if (language !== undefined) data.language = ['en', 'pcm', 'yo', 'ha', 'ig'].includes(language) ? language : null;
     if (name !== undefined) data.name = name.trim();
-    if (email !== undefined) data.email = email.trim() || null;
+    let emailChanged = null;
+    if (email !== undefined) {
+      const next = String(email || '').trim().toLowerCase() || null;
+      const me = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { email: true, passwordHash: true, name: true } });
+      if (next !== (me?.email ? String(me.email).toLowerCase() : null)) {
+        // The email can reset the password, so changing it needs the
+        // current password (stops someone with an unlocked phone).
+        if (!password || !(await comparePassword(String(password), me.passwordHash))) {
+          return res.status(401).json({ error: 'Enter your current password to change your email.', code: 'PASSWORD_REQUIRED' });
+        }
+        if (next && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(next)) return res.status(400).json({ error: 'That email address does not look right.' });
+        if (next && (await prisma.customer.findFirst({ where: { email: { equals: next, mode: 'insensitive' }, NOT: { id: req.customer.customerId } }, select: { id: true } }))) {
+          return res.status(409).json({ error: 'That email is already used by another account.' });
+        }
+        data.email = next;
+        emailChanged = { from: me?.email || null, to: next };
+      }
+    }
     if (avatarUrl !== undefined) {
       // A generous cap on the base64 string itself (roughly a 1.5MB
       // image once decoded) — there's no separate file storage doing
@@ -214,6 +231,14 @@ router.patch('/auth/me', requireCustomerAuth, async (req, res) => {
       where: { id: req.customer.customerId },
       data,
     });
+    if (emailChanged) {
+      require('../lib/notify').notify(customer.id, 'Email changed', `Your ZAPPI PAY email was changed${emailChanged.to ? ` to ${emailChanged.to}` : ' (removed)'}. If this wasn't you, change your password and contact support now.`);
+      // Tell the old address too, so a hijacker can't do it quietly.
+      if (emailChanged.from) {
+        Promise.resolve().then(() => require('../lib/email').sendEmail?.({ to: emailChanged.from, subject: 'Your ZAPPI PAY email was changed', text: `Hello ${customer.name.split(' ')[0]},\n\nThe email on your ZAPPI PAY account was just changed${emailChanged.to ? ` to ${emailChanged.to}` : ''}. If this wasn't you, contact support@zappipay.com.ng right away.\n\nZAPPI PAY` })).catch(() => {});
+      }
+      await prisma.auditLog.create({ data: { actorAdminId: null, action: 'CUSTOMER_EMAIL_CHANGED', details: { customerId: customer.id } } }).catch(() => {});
+    }
     res.json({ customer: publicCustomer(customer) });
   } catch (error) {
     console.error('PATCH /auth/me failed:', error);

@@ -13,7 +13,6 @@ HOW TO READ THIS
 ----------------------------------------------------------------------
 0. FEATURES IN THE BACKEND WITH NO (OR ONLY A PARTIAL) CUSTOMER SCREEN
 ----------------------------------------------------------------------
-- Self-freeze (lost or stolen phone). There is no button for it. It can only be done through the Help chat AI, which shows a confirmation card that asks for the password. When the AI is off, customers must contact support.
 - Rewards split. This runs in the background. Customers only see "🎁 This purchase earns you cashback and points" on the Buy screen.
 - Reward safety limit [rewardGuardEnabled, rewardGuardPercent]. This runs in the background. It can quietly reduce a promo discount, cashback, points or shop commission on a purchase.
 - Fraud hold on bank transfers. Customers only see a "Transfer Under Review" notification.
@@ -237,7 +236,7 @@ HOW TO GET STARTED
 
 RULES
 - Fixed plan prices.
-- The Profile ID box must not be empty (the form says "Please fill in every field." otherwise): type your JAMB Profile ID for JAMB, or your phone number for other exams. 
+- Profile ID: required for JAMB (the form asks "Enter your JAMB Profile ID"). For other exams (e.g. WAEC) you can leave it blank. other exams. 
 
 ADMIN SWITCH: Maintenance pause (EDUCATION, shown to customers as "Exam PINs").
 
@@ -832,9 +831,10 @@ SECURITY DETAILS
 - Home nudges you with "Protect your account" until these are set.
 
 SELF-FREEZE (LOST OR STOLEN PHONE)
-- There is no button for this. It is only available by asking the Help chat AI, which shows a confirmation card that needs your password.
+- How: Profile → Security → "🧊 Freeze my account" → "Freeze my account" → enter your password → "Freeze now" (and confirm). You can also ask the Help chat to do it.
+- Lost the phone itself? Log in on any other phone or computer, then go to Security and freeze.
 - Freezing logs out every device, removes quick login, and blocks all logins and payments until support confirms who you are and unfreezes the account.
-- If the AI chat is off, contact support on WhatsApp or in-app.
+- Your money stays in your wallet. To unfreeze, contact support on WhatsApp or by email — they check it's really you first.
 - Help Centre's "I lost my phone" advice: log in on another device → Security → "Log out all other devices" → change your password.
 
 ----------------------------------------------------------------------
@@ -906,7 +906,7 @@ ADMIN SWITCHES
 - Profile → Support → "❓ Help Centre" (/help). It is public.
 - It covers: account, safety, languages, slow network, chat buying, the mobile app, funding and fees, credit delays, BVN/NIN, failed purchases, tokens, wrong numbers, schedules, the delivery promise, gifts, reminders, bulk, transfers, referrals, challenges, promo codes, family, forgotten password or PIN, lost phone, changing phone or email, deleting your account, and becoming an agent.
 - Install as an app: open zappipay.com.ng and tap "Install" or "Add to Home screen". It works on Android and iPhone.
-- Change your email yourself: Profile → edit "Email" → "Save Changes". Your phone number can't be changed in the app; message support for that.
+- Change your email yourself: Profile → edit "Email" → enter your current password in the box that appears → "Save Changes". You get a notification (and the old email gets a warning). Your phone number can't be changed in the app; message support for that.
 
 ----------------------------------------------------------------------
 39. SERVICE STATUS PAGE
