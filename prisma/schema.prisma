@@ -346,6 +346,8 @@ model Order {
   // Electricity only: "prepaid" / "postpaid" (sent to VTpass as
   // variation_code), kept so "Buy again" can repeat it exactly.
   meterType       String?
+  // Exam PINs bought in bulk (e.g. 20 WAEC result checkers in one order).
+  quantity        Int?
   // Promo code used on this order (discount already taken off amount)
   // and any cashback credited back after it succeeded.
   promoCode       String?

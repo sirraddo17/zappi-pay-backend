@@ -1086,6 +1086,16 @@ RULES
 - After payment the certificate is ready: Orders → the purchase → "📄 Download certificate" (also emailed). Keep a copy in the vehicle.
 - Third-party cover pays for damage or injury you cause to other people; it does not cover your own vehicle. It lasts one year.
 
+----------------------------------------------------------------------
+53. EXAM PINS IN BULK (WAEC RESULT CHECKER)
+----------------------------------------------------------------------
+- Home → More → "Exam PINs (bulk)". For schools, cyber cafés and agents.
+- Choose how many WAEC result checker PINs (1–50), optionally the name to print on the sheet (school or shop), and pay once from the wallet with your PIN.
+- The PINs and serial numbers show straight away: 🖨️ Print (A4 sheet 2 across, a list, or a 58mm POS printer; Print can also save as PDF), Copy all, or Download (Excel).
+- Find them again under "Your recent PINs" on the same page, or Orders → the purchase → "Open the PINs to print".
+- If VTpass can't deliver them, the full amount is refunded automatically. Agent prices and discounts apply. Results are checked at waecdirect.org.
+- For one PIN for yourself, Home → Education works as before.
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================

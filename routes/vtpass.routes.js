@@ -181,14 +181,14 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     return res.status(400).json({ error: 'Choose how often to repeat: daily, weekly or monthly.' });
   }
 
-  if ((service === 'INTERNATIONAL' || service === 'INSURANCE') && repeat) {
+  if ((service === 'INTERNATIONAL' || service === 'INSURANCE' || Number(req.body.quantity) > 1) && repeat) {
     return res.status(400).json({ error: 'Repeat is not available for this service yet.' });
   }
 
   const confirmation = await confirmTransaction(req);
   if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
-  const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType, intl: req.body.intl, insurance: req.body.insurance };
+  const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType, quantity: req.body.quantity, intl: req.body.intl, insurance: req.body.insurance };
   // Bought through an agent's shop link?
   const shopAgentId = await require('../lib/shop').agentForPurchase(req.customer.customerId, shop).catch(() => null);
   const result = await performPurchase(req.customer.customerId, { ...input, promoCode, shopAgentId });
