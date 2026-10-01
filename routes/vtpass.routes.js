@@ -84,7 +84,14 @@ router.get('/vtpass/intl/variations', requireCustomerAuth, async (req, res) => {
     const vs = await require('../lib/extraServices').variations(req.query.operator, req.query.type);
     const out = [];
     for (const v of vs) out.push({ ...v, price: v.fixed ? await priceFor(req.customer.customerId, 'INTERNATIONAL', v.naira) : null });
-    res.json({ variations: out });
+    // Nothing priceable: send what VTpass returned (catalog data only) so
+    // the owner can screenshot it for support.
+    let raw;
+    if (!out.length) {
+      const { d, vs: rv } = await require('../lib/extraServices').rawVariations(req.query.operator, req.query.type);
+      raw = { count: rv.length, sample: rv.slice(0, 3), keys: Object.keys(d?.content || {}), description: d?.response_description || null };
+    }
+    res.json({ variations: out, ...(raw ? { raw } : {}) });
   } catch (e) { xfail(res, e, 'intl variations'); }
 });
 router.get('/vtpass/intl/quote', requireCustomerAuth, async (req, res) => {
