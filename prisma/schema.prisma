@@ -715,6 +715,11 @@ model Settings {
   // reward safety limit.
   shopLinksEnabled         Boolean @default(false)
   shopCommissionPct        Decimal @default(1) @db.Decimal(5, 2)
+  problemSpotterEnabled  Boolean @default(true)
+  monthlySummaryEnabled  Boolean @default(true)
+  lastMonthlySummaryKey  String?
+  agentWeeklyEnabled     Boolean @default(true)
+  lastAgentWeeklyKey     String?
   shopCommissionMax        Int     @default(50)
   updatedAt              DateTime @updatedAt
 }
@@ -1299,6 +1304,19 @@ model AiVideo {
   urlExpiresAt  DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([createdAt])
+}
+
+// Scam messages customers reported through the help chat.
+model ScamReport {
+  id         String   @id @default(cuid())
+  customerId String
+  summary    String   @db.Text
+  channel    String
+  contact    String?
+  lostMoney  Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   @@index([createdAt])
 }

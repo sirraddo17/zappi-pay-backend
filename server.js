@@ -121,6 +121,7 @@ app.listen(PORT, () => {
   startScheduler();
   startOrderSweeper();
   require('./lib/epins').startSweeper();
+  require('./lib/adminRadar').startJobs();
   startDailySummary();
   require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();

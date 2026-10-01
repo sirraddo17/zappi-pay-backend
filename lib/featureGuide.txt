@@ -871,7 +871,14 @@ WHAT IT CAN DO
 - Start Airtime to Cash requests.
 - Change family settings.
 - For agents: record sales.
+- Check a wallet funding that hasn't shown (see 45).
+- Say if a message, call or link is a scam (see 46).
+- Suggest the best data plan for how you use data (see 47).
+- Walk new customers through getting started (see 48).
 - The assistant never buys or sends anything itself. Everything needs you to tap and confirm.
+
+READ ALOUD
+- Tap 🔊 under any assistant reply to hear it read out (uses the phone's own voice, free). Tap again to stop.
 
 SCREENSHOTS
 - "📷 Add a screenshot (bank alert, error message…)", up to 2 per message.
@@ -959,6 +966,83 @@ ADMIN SWITCHES
 - Profile photo ("Tap to change photo", under 1.5MB).
 - "Change Password" on Profile: at least 8 characters, with a capital letter, a small letter, a number and a special character.
 - Forgot password: a reset link by email that expires in 30 minutes. It only works if the account has an email address.
+
+----------------------------------------------------------------------
+45. FUNDING NOT SHOWING — LET THE HELP CHAT CHECK IT
+----------------------------------------------------------------------
+WHAT IT IS
+- In the Help chat, say "I sent money but my wallet is not credited" and add a screenshot of the bank alert ("📷 Add a screenshot").
+- The assistant reads the amount, time and reference, asks the bank partner again for your personal account (anything missed is credited at once), then looks for the money in your wallet history.
+
+WHAT YOU GET
+- "It's in your wallet" with the time and amount (a small bank fee may have been taken off), or
+- "Your manual request is waiting for admin approval", or
+- A warning if the account number in the alert is not your ZAPPI PAY account, or
+- If it is still not found, an offer to send it to support with your screenshot and details, so you don't have to type everything again.
+
+RULES
+- Only money sent to your own personal account number is credited automatically. Money sent to the business account needs a funding request on Wallet.
+- Banks can be slow: if you sent it less than 15 minutes ago, wait a little and tap "I've sent money — check now" on Wallet.
+- Needs the Help chat AI to be on [aiCustomerEnabled].
+
+----------------------------------------------------------------------
+46. SCAM CHECK
+----------------------------------------------------------------------
+WHAT IT IS
+- Not sure if a message, call or link is really from ZAPPI PAY? Paste it (or a screenshot) into the Help chat and ask "is this real?".
+- The assistant says clearly whether it is a scam, why, and what to do. It also reports it to the ZAPPI PAY team so they can warn other customers.
+
+HOW TO SPOT A SCAM
+- ZAPPI PAY NEVER asks for your PIN, password, OTP, BVN or card details.
+- ZAPPI PAY never calls to "verify", "unlock" or "upgrade" your account, and never asks you to pay to receive a prize or a refund.
+- The only website is zappipay.com.ng. Support is in the app (Help) or support@zappipay.com.ng.
+
+IF YOU ALREADY SHARED SOMETHING
+- Change your password and PIN at once (Profile → Security).
+- Freeze your account if needed (Profile → Security → "Freeze my account"), and tell support.
+
+----------------------------------------------------------------------
+47. DATA PLAN ADVISOR
+----------------------------------------------------------------------
+WHAT IT IS
+- Ask the Help chat "which data plan should I buy?" and say how you use data (WhatsApp only, TikTok/YouTube every day, work calls…).
+- It works out how much data you need in a month and compares plans by what they would cost you for the whole month — not just the cheapest price — on your network.
+
+BENEFITS
+- One bigger monthly plan is often cheaper than many daily ones.
+- You can buy the suggestion straight from the chat (a card you confirm with your PIN), and turn on Repeat for monthly plans.
+
+TIP
+- The "🔎 Find the best deal for your budget" link on the Data page finds plans by budget.
+
+----------------------------------------------------------------------
+48. GETTING STARTED (NEW CUSTOMERS) AND MONTHLY SUMMARY
+----------------------------------------------------------------------
+GETTING STARTED
+- New customers see a "Getting started" checklist on Home until they make their first purchase:
+  1. Fund your wallet (Wallet → personal account number).
+  2. Create your transaction PIN (Profile → Security).
+  3. Choose a username so friends can send you money (Profile).
+  4. Make your first purchase (airtime or data is a good start).
+- Each step has a button. "Ask the assistant" opens the Help chat with "Help me get started".
+- Tap "Hide" to remove the card.
+
+MONTHLY SUMMARY
+- In the first days of each month you get a notification (Updates tab) with last month's purchases, total spent, top services and how much you saved in discounts and rewards, plus one tip [monthlySummaryEnabled, default ON].
+
+AGENT WEEKLY REPORT
+- Agents get a "📒 Your weekly shop report" every Monday: sales and profit for the week, best sellers, how many customers still owe them (Profit book) and unsold recharge cards [agentWeeklyEnabled, default ON].
+
+----------------------------------------------------------------------
+49. ADMIN AI HELPERS (OWNER ONLY)
+----------------------------------------------------------------------
+- Win-back radar (Insights → "Win-back"): regulars who bought 3+ times in the 2 months before but nothing in the last 3 weeks. "Make campaign" uses the audience "Regulars slipping away" (SLIPPING).
+- What-if pricing: re-prices the last 30 days of real orders for one service with a different discount, markup or cashback and shows profit now vs after and the extra sales needed to break even.
+- Problem spotter [problemSpotterEnabled, default ON]: every 5 minutes; if 5+ purchases of one provider fail (50%+) in 15 minutes, admins are alerted and a service notice and a pause card are prepared in AI Assistant. Nothing changes until the owner taps Apply.
+- Feedback digest: ratings and comments grouped by service and provider. Scam reports: what customers reported in the Help chat.
+- Agent applications on the Dashboard show a verdict (Looks good / Probably fine / Check first / Risky) with reasons: verification, account age, purchases, address quality, duplicate shop names/addresses, risk flags.
+- Ad Studio → "Plan my week": 7 days of posts (design, caption, time); "Open in designer" loads each one.
+- Support → "Check reply" before sending: flags wrong facts, tone, missing next steps or asking for PIN/OTP, and suggests a better version.
 
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)

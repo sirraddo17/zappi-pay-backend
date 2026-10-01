@@ -47,7 +47,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
-      aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
+      aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
     }
@@ -220,6 +220,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (adminAlertPush !== undefined) data.adminAlertPush = Boolean(adminAlertPush);
     if (adminAlertEmail !== undefined) data.adminAlertEmail = Boolean(adminAlertEmail);
     if (feedbackPromptEnabled !== undefined) data.feedbackPromptEnabled = Boolean(feedbackPromptEnabled);
+    if (problemSpotterEnabled !== undefined) data.problemSpotterEnabled = Boolean(problemSpotterEnabled);
+    if (monthlySummaryEnabled !== undefined) data.monthlySummaryEnabled = Boolean(monthlySummaryEnabled);
+    if (agentWeeklyEnabled !== undefined) data.agentWeeklyEnabled = Boolean(agentWeeklyEnabled);
     if (rewardGuardEnabled !== undefined) data.rewardGuardEnabled = Boolean(rewardGuardEnabled);
     if (escalationHours !== undefined) data.escalationHours = Math.min(168, Math.max(1, parseInt(escalationHours, 10) || 24));
     if (vtpassSupportEmail !== undefined) {

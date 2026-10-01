@@ -149,6 +149,11 @@ router.get('/admin/agent-requests', requireAdminAuth, async (req, res) => {
       select: { id: true, name: true, phone: true, agentBusinessName: true, agentShopAddress: true, agentRequestedAt: true, kycType: true },
       orderBy: { agentRequestedAt: 'asc' },
     });
+    // Quick checks for each application (good signs / things to check).
+    const { agentSignals } = require('../lib/adminRadar');
+    for (const c of customers.slice(0, 30)) {
+      try { c.signals = await agentSignals(c.id); } catch { c.signals = null; }
+    }
     res.json({ customers });
   } catch (error) {
     console.error('GET /admin/agent-requests failed:', error);
