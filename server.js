@@ -59,15 +59,24 @@ const ALLOWED_ORIGINS = [
   ...String(process.env.CORS_ORIGINS || '').split(',').map((x) => x.trim().replace(/\/$/, '')).filter(Boolean),
 ];
 const blockedOrigins = new Set();
+const originOk = (origin) => !origin || process.env.CORS_ALLOW_ALL === '1' || ALLOWED_ORIGINS.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
 app.use(cors({
   origin(origin, cb) {
-    if (!origin || process.env.CORS_ALLOW_ALL === '1') return cb(null, true);
-    const ok = ALLOWED_ORIGINS.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
+    const ok = originOk(origin);
     if (!ok && !blockedOrigins.has(origin)) { blockedOrigins.add(origin); console.warn(`CORS: blocked browser calls from ${origin} (add it to CORS_ORIGINS if it is ours)`); }
     cb(null, ok);
   },
   maxAge: 600,
 }));
+// Attack watch (lib/attackWatch.js): refuse blocked addresses, catch
+// scanners, note calls from other websites.
+const attackWatch = require('./lib/attackWatch');
+app.use(attackWatch.guard);
+app.use((req, res, next) => {
+  const o = req.headers.origin;
+  if (o && !originOk(o)) attackWatch.record('CORS_BLOCKED', req, { detail: `From ${String(o).slice(0, 100)}` });
+  next();
+});
 app.use(require('./lib/errorAlerts').watchResponses);
 // Security headers and request limits (lib/protect.js).
 app.use(require('./lib/protect').securityHeaders);
@@ -106,6 +115,7 @@ app.use('/api', insightsRouter);
 app.use('/api', epinsRouter);
 app.use('/api', adVideoRouter);
 app.use('/api', heygenRouter);
+app.use('/api', require('./routes/attackwatch.routes'));
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
@@ -141,6 +151,7 @@ app.listen(PORT, () => {
   startOrderSweeper();
   require('./lib/epins').startSweeper();
   require('./lib/adminRadar').startJobs();
+  require('./lib/attackWatch').start();
   startDailySummary();
   require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();

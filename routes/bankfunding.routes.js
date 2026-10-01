@@ -137,6 +137,7 @@ router.post('/webhooks/monnify', async (req, res) => {
   try {
     if (!(await monnify.isValidSignature(req.rawBody, req.headers['monnify-signature']))) {
       console.warn('Monnify webhook rejected: bad signature');
+      require('../lib/attackWatch').record('WEBHOOK_BAD_SIGNATURE', req, { detail: 'Someone sent a payment message that was not signed by Monnify. It was rejected — no money moved.' });
       return res.status(401).json({ error: 'Invalid signature.' });
     }
     const { eventType, eventData } = req.body || {};

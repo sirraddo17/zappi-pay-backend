@@ -129,10 +129,12 @@ router.post('/auth/login', async (req, res) => {
       return res.status(429).json({ error: `Too many wrong passwords. For your safety this account is locked for ${mins} more minute${mins === 1 ? '' : 's'}. Use "Forgot password" if you can't remember it.`, code: 'LOGIN_LOCKED' });
     }
     if (!customer || !(await comparePassword(password, customer.passwordHash))) {
+      require('../lib/attackWatch').record('LOGIN_FAIL', req, { customerId: customer?.id, who: customer?.id || `x:${trimmedIdentifier.slice(0, 40)}` });
       if (customer) {
         const fails = (customer.loginFailedAttempts || 0) + 1;
         if (fails >= LOGIN_MAX_TRIES) {
           await prisma.customer.update({ where: { id: customer.id }, data: { loginFailedAttempts: 0, loginLockedUntil: new Date(Date.now() + LOGIN_LOCK_MINUTES * 60000) } });
+          require('../lib/attackWatch').record('ACCOUNT_LOCKED', req, { customerId: customer.id });
           notify(customer.id, 'Login Locked', `Someone entered the wrong password for your ZAPPI PAY account ${LOGIN_MAX_TRIES} times, so we locked password login for ${LOGIN_LOCK_MINUTES} minutes. If this wasn't you, change your password and contact support.`);
           return res.status(429).json({ error: `Too many wrong passwords. For your safety this account is locked for ${LOGIN_LOCK_MINUTES} minutes. Use "Forgot password" if you can't remember it.`, code: 'LOGIN_LOCKED' });
         }
@@ -299,6 +301,7 @@ router.post('/admin/login', async (req, res) => {
 
     const admin = await prisma.adminUser.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (!admin || !(await comparePassword(password, admin.passwordHash))) {
+      require('../lib/attackWatch').record('ADMIN_LOGIN_FAIL', req, { adminId: admin?.id, detail: admin ? `for ${admin.name}` : 'unknown email' });
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
     if (!admin.active) {
@@ -380,6 +383,7 @@ router.post('/admin/login/verify', async (req, res) => {
       }
     }
     if (!ok) {
+      require('../lib/attackWatch').record('ADMIN_CODE_FAIL', req, { adminId: challenge.adminId });
       await prisma.adminLoginCode.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
       return res.status(401).json({ error: 'Wrong code. Check the latest email (or your backup code) and try again.' });
     }
@@ -390,6 +394,7 @@ router.post('/admin/login/verify', async (req, res) => {
     if (usedBackup) {
       const left = await prisma.adminBackupCode.count({ where: { adminId: admin.id, usedAt: null } });
       await prisma.auditLog.create({ data: { actorAdminId: admin.id, action: 'ADMIN_BACKUP_CODE_USED', details: { left } } }).catch(() => {});
+      require('../lib/attackWatch').record('BACKUP_CODE_USED', req, { adminId: admin.id, detail: `${admin.name}, ${left} codes left` });
       require('../lib/adminAlert').alertAdmins('🔑 Admin logged in with a backup code', `${admin.name} logged in with a backup code (${left} left). If this wasn't you, change the password and make new codes in Settings → Security now.`, '/admin/settings');
     }
     const token = signAdminToken(admin);

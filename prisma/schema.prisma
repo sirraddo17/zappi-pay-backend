@@ -740,6 +740,8 @@ model Settings {
   adImageMonthlyBudgetUsd Decimal @default(5) @db.Decimal(10, 2)
   // Check name + date of birth against BVN/NIN before giving an account number.
   idMatchEnabled         Boolean @default(false)
+  // Attack watch: block addresses that scan, guess passwords or forge logins.
+  attackWatchEnabled     Boolean @default(true)
   problemSpotterEnabled  Boolean @default(true)
   monthlySummaryEnabled  Boolean @default(true)
   lastMonthlySummaryKey  String?
@@ -1356,4 +1358,36 @@ model IdCheck {
   createdAt  DateTime @default(now())
 
   @@index([customerId, createdAt])
+}
+
+// Attack watch (lib/attackWatch.js): warning signs seen by the server.
+// Kept 30 days.
+model SecurityEvent {
+  id         String   @id @default(cuid())
+  kind       String
+  ip         String?
+  path       String?
+  detail     String?
+  customerId String?
+  adminId    String?
+  count      Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([kind, createdAt])
+}
+
+// Internet addresses blocked for a while (automatically or by the owner).
+// scope ALL = the whole API, ADMIN = admin login and admin pages only.
+model IpBlock {
+  id        String    @id @default(cuid())
+  ip        String
+  scope     String    @default("ALL")
+  reason    String
+  auto      Boolean   @default(true)
+  until     DateTime
+  liftedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([ip, until])
 }
