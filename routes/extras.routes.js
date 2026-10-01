@@ -43,6 +43,7 @@ router.get('/app/info', async (req, res) => {
       rewardsSplit: Boolean(settings.rewardSplitEnabled && (settings.cashbackEnabled || settings.loyaltyEnabled)),
       maintenance: require('../lib/maintenance').publicInfo(settings),
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),
+      intlAirtime: Boolean(settings.intlAirtimeEnabled),
     });
   } catch (error) {
     console.error('GET /app/info failed:', error);

@@ -45,7 +45,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
@@ -189,6 +189,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       }
       data.adminTwoFactorEnabled = Boolean(adminTwoFactorEnabled);
     }
+    if (intlAirtimeEnabled !== undefined) data.intlAirtimeEnabled = Boolean(intlAirtimeEnabled);
     if (attackWatchEnabled !== undefined) {
       if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant cannot change attack protection.' });
       data.attackWatchEnabled = Boolean(attackWatchEnabled);

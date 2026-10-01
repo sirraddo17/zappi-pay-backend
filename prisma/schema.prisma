@@ -742,6 +742,8 @@ model Settings {
   adImageMonthlyBudgetUsd Decimal @default(5) @db.Decimal(10, 2)
   // Check name + date of birth against BVN/NIN before giving an account number.
   idMatchEnabled         Boolean @default(false)
+  // International airtime/data shown to customers (needs VTpass live prices).
+  intlAirtimeEnabled     Boolean @default(false)
   // Attack watch: block addresses that scan, guess passwords or forge logins.
   attackWatchEnabled     Boolean @default(true)
   problemSpotterEnabled  Boolean @default(true)
