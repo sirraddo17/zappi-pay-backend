@@ -416,6 +416,9 @@ model Notification {
   customer   Customer @relation(fields: [customerId], references: [id])
   title      String
   message    String
+  // TRANSACTION (money in/out) / ACCOUNT (security, family, support) /
+  // UPDATE (announcements, promos, reminders) — the Notifications tabs.
+  category   String?
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
 

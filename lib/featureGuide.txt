@@ -840,7 +840,7 @@ SELF-FREEZE (LOST OR STOLEN PHONE)
 ----------------------------------------------------------------------
 34. NOTIFICATIONS, PUSH ALERTS AND EMAIL ALERTS
 ----------------------------------------------------------------------
-- In-app: the bell icon on Home (a gold dot means unread) opens "Notifications". The "Renewal reminders" switch is here too.
+- In-app: the bell icon on Home (a gold dot means unread) opens "Notifications". It has three tabs, each showing how many are unread: "Transactions" (money in and out: funding, purchases, refunds, transfers, cashback, allowances, cards ready), "Account" (logins, PIN, password, security, family, agent, support replies) and "Updates" (announcements, offers and renewal reminders). The "Renewal reminders" switch is on the Updates tab.
 - Push: Home nudge "🔔 Get instant alerts" → "Turn on", or Profile → "Notifications on this device". On iPhone, add ZAPPI PAY to the Home Screen first.
 - Email alerts: Profile → "Email alerts". This needs an email address on your profile. It covers money in and out, purchases, transfers, freezes and logins. Emails are only sent if ZAPPI PAY has switched them on [emailAlertsEnabled, default OFF].
 

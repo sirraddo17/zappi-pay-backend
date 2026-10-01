@@ -18,7 +18,8 @@ router.get('/notifications', requireCustomerAuth, async (req, res) => {
     const unreadCount = await prisma.notification.count({
       where: { customerId: req.customer.customerId, read: false },
     });
-    res.json({ notifications, unreadCount });
+    const { categoryOf } = require('../lib/notify');
+    res.json({ notifications: notifications.map((n) => ({ ...n, category: n.category || categoryOf(n.title) })), unreadCount });
   } catch (error) {
     console.error('GET /notifications failed:', error);
     res.status(500).json({ error: 'Could not load notifications.' });

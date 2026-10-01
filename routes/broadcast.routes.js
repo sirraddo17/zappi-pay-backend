@@ -41,7 +41,7 @@ router.post('/admin/broadcasts', requireAdminAuth, async (req, res) => {
     const notificationTitle = `${TYPE_LABELS[type]}${title}`;
     // Each customer gets it in their app language (lib/translate.js).
     const tr = await require('../lib/translate').translateMessage(title, message, customers.map((c) => c.language).filter(Boolean));
-    const forCustomer = (c) => (tr[c.language] ? { customerId: c.id, title: `${TYPE_LABELS[type]}${tr[c.language].title}`, message: tr[c.language].message } : { customerId: c.id, title: notificationTitle, message });
+    const forCustomer = (c) => (tr[c.language] ? { customerId: c.id, title: `${TYPE_LABELS[type]}${tr[c.language].title}`, message: tr[c.language].message, category: 'UPDATE' } : { customerId: c.id, title: notificationTitle, message, category: 'UPDATE' });
 
     const [broadcast] = await prisma.$transaction([
       prisma.broadcast.create({
