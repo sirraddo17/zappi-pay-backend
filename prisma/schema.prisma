@@ -308,6 +308,8 @@ enum OrderService {
   EDUCATION
   INTERNET
   BETTING
+  INTERNATIONAL
+  INSURANCE
   OTHER
 }
 
@@ -1390,4 +1392,46 @@ model IpBlock {
   createdAt DateTime  @default(now())
 
   @@index([ip, until])
+}
+
+// "Pay me" links, split bills and group gifts (lib/payRequests.js).
+// Money always moves wallet to wallet, straight to the owner — nothing
+// is held by ZAPPI PAY in between.
+// kind: REQUEST (one payment), SPLIT (one share per person), POOL (group
+// gift / contribution, any amount). status: OPEN, DONE, CLOSED, CANCELLED.
+model MoneyRequest {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  kind       String
+  ownerId    String
+  title      String
+  note       String?
+  amount     Decimal?  @db.Decimal(14, 2)
+  total      Decimal?  @db.Decimal(14, 2)
+  target     Decimal?  @db.Decimal(14, 2)
+  slots      Int?
+  collected  Decimal   @default(0) @db.Decimal(14, 2)
+  payments   Int       @default(0)
+  invited    Json?
+  status     String    @default("OPEN")
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([ownerId, createdAt])
+}
+
+model MoneyRequestPayment {
+  id         String   @id @default(cuid())
+  requestId  String
+  payerId    String
+  slotKey    String
+  amount     Decimal  @db.Decimal(14, 2)
+  message    String?
+  hideAmount Boolean  @default(false)
+  transferId String?
+  createdAt  DateTime @default(now())
+
+  @@unique([requestId, slotKey])
+  @@index([payerId, createdAt])
 }

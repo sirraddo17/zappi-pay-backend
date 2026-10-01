@@ -58,6 +58,53 @@ router.get('/vtpass/variations', requireCustomerAuth, async (req, res) => {
   }
 });
 
+// --- International airtime/data and motor insurance (lib/extraServices.js) ---
+async function priceFor(customerId, service, base) {
+  const { computePrice, settingsForCustomer } = require('../lib/pricing');
+  const c = await prisma.customer.findUnique({ where: { id: customerId }, select: { isAgent: true } });
+  return computePrice(base, service, settingsForCustomer(await getSettings(), c)).chargeAmount;
+}
+function xfail(res, e, what) {
+  const X = require('../lib/extraServices');
+  if (e instanceof X.ExtraServiceError) return res.status(e.status).json({ error: e.message });
+  console.error(`${what} failed:`, e.message);
+  return res.status(502).json({ error: e.code === 'VTPASS_NOT_CONFIGURED' ? e.message : 'Could not load this from VTpass right now. Please try again.' });
+}
+router.get('/vtpass/intl/countries', requireCustomerAuth, async (req, res) => {
+  try { res.json({ countries: await require('../lib/extraServices').countries() }); } catch (e) { xfail(res, e, 'intl countries'); }
+});
+router.get('/vtpass/intl/types', requireCustomerAuth, async (req, res) => {
+  try { res.json({ types: await require('../lib/extraServices').productTypes(req.query.code) }); } catch (e) { xfail(res, e, 'intl types'); }
+});
+router.get('/vtpass/intl/operators', requireCustomerAuth, async (req, res) => {
+  try { res.json({ operators: await require('../lib/extraServices').operators(req.query.code, req.query.type) }); } catch (e) { xfail(res, e, 'intl operators'); }
+});
+router.get('/vtpass/intl/variations', requireCustomerAuth, async (req, res) => {
+  try {
+    const vs = await require('../lib/extraServices').variations(req.query.operator, req.query.type);
+    const out = [];
+    for (const v of vs) out.push({ ...v, price: v.fixed ? await priceFor(req.customer.customerId, 'INTERNATIONAL', v.naira) : null });
+    res.json({ variations: out });
+  } catch (e) { xfail(res, e, 'intl variations'); }
+});
+router.get('/vtpass/intl/quote', requireCustomerAuth, async (req, res) => {
+  try {
+    const q = await require('../lib/extraServices').intlQuote({ countryCode: req.query.code, productTypeId: req.query.type, operatorId: req.query.operator, variationCode: req.query.variation, localAmount: req.query.amount });
+    res.json({ price: await priceFor(req.customer.customerId, 'INTERNATIONAL', q.baseAmount) });
+  } catch (e) { xfail(res, e, 'intl quote'); }
+});
+router.get('/vtpass/insurance/plans', requireCustomerAuth, async (req, res) => {
+  try {
+    const plans = await require('../lib/extraServices').insurancePlans();
+    const out = [];
+    for (const p of plans) out.push({ ...p, price: p.amount > 0 ? await priceFor(req.customer.customerId, 'INSURANCE', p.amount) : null });
+    res.json({ plans: out });
+  } catch (e) { xfail(res, e, 'insurance plans'); }
+});
+router.get('/vtpass/insurance/options/:kind', requireCustomerAuth, async (req, res) => {
+  try { res.json({ options: await require('../lib/extraServices').insuranceOptions(req.params.kind, req.query.parent) }); } catch (e) { xfail(res, e, 'insurance options'); }
+});
+
 // Confirms a meter number / smartcard number / similar identifier
 // resolves to a real customer name before money moves — not every
 // service supports this (VTpass returns an error for ones that don't,
@@ -124,17 +171,21 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     return res.status(400).json({ error: 'Choose how often to repeat: daily, weekly or monthly.' });
   }
 
+  if ((service === 'INTERNATIONAL' || service === 'INSURANCE') && repeat) {
+    return res.status(400).json({ error: 'Repeat is not available for this service yet.' });
+  }
+
   const confirmation = await confirmTransaction(req);
   if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
-  const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType };
+  const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType, intl: req.body.intl, insurance: req.body.insurance };
   // Bought through an agent's shop link?
   const shopAgentId = await require('../lib/shop').agentForPurchase(req.customer.customerId, shop).catch(() => null);
   const result = await performPurchase(req.customer.customerId, { ...input, promoCode, shopAgentId });
 
   if (result.status === 201 || result.status === 202) {
     const extras = {};
-    if (saveBeneficiary) {
+    if (saveBeneficiary && service !== 'INTERNATIONAL' && service !== 'INSURANCE') {
       extras.beneficiary = await upsertBeneficiary(req.customer.customerId, {
         service, serviceID, billersCode, meterType, nickname: saveBeneficiary.nickname,
       }).catch((e) => { console.error('save beneficiary failed:', e); return null; });

@@ -116,6 +116,7 @@ app.use('/api', epinsRouter);
 app.use('/api', adVideoRouter);
 app.use('/api', heygenRouter);
 app.use('/api', require('./routes/attackwatch.routes'));
+app.use('/api', require('./routes/payrequests.routes'));
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);

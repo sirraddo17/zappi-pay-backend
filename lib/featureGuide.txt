@@ -1049,6 +1049,43 @@ AGENT WEEKLY REPORT
 - Attack watch (Admin → 🛡️ Security) [attackWatchEnabled, default ON]: the server records scans for weak spots, wrong passwords, forged logins, fake payment messages, calls from other websites and request floods; it blocks the worst addresses for 15 minutes to a day (longer for repeat offenders) and alerts admins. The owner can unblock or block an address there. Payment messages from Monnify are never blocked. If a customer sees "access from your network is paused", their address was blocked — it lifts by itself, or they can switch between mobile data and Wi-Fi.
 - Support → "Check reply" before sending: flags wrong facts, tone, missing next steps or asking for PIN/OTP, and suggests a better version.
 
+----------------------------------------------------------------------
+50. REQUEST MONEY: PAY ME LINKS, SPLIT A BILL, GROUP GIFT
+----------------------------------------------------------------------
+WHAT IT IS
+- Home → More → "Request money". Make a link and share it (WhatsApp, SMS, anywhere). People open it and pay from their ZAPPI PAY wallet with their PIN; the money goes straight into your wallet. ZAPPI PAY does not hold the money in between.
+- 💸 Pay me: ask one person for a fixed amount ("Pay me ₦5,000 for rent"). It closes after one payment.
+- 🍽️ Split bill: enter the total and the number of people. Each person pays their share once; you see who has paid and who hasn't. Tick "Count me as one of them" if you pay your own share.
+- 🎁 Group gift: collect any amounts from many people (birthday, wedding gift, send-forth), with an optional target and an end date (3–90 days). Contributors can add a message and hide their amount from others (the organiser still sees it).
+
+HOW TO
+1. More → Request money → choose the tab → fill in what it's for and the amount → "Make link".
+2. Tap "Share on WhatsApp" (or Copy link). Optional: type ZAPPI PAY users' phone numbers or @usernames to send them an in-app notification too.
+3. Track it under "My links": Share, Copy link, View, Remind (once a day, only people who haven't paid), Close.
+4. Requests other people sent you are under "📥 For you".
+
+RULES
+- Minimum ₦100; up to ₦500,000 per payment. Up to 30 open links.
+- Pay me and split links last 14 days.
+- The payer needs a ZAPPI PAY account and enough wallet balance; daily limits and family wallet controls apply. Someone without an account can sign up from the link (they join with your referral code).
+- You can't pay your own link. A split share can only be paid once per person.
+- Safety: the link shows the real account name (with ✓ verified if confirmed with BVN/NIN). Only pay people you know.
+
+----------------------------------------------------------------------
+51. INTERNATIONAL AIRTIME & DATA
+----------------------------------------------------------------------
+- Home → More → "International airtime". Choose the country, then "Mobile Top Up" or "Mobile Data", the network, the bundle or amount (in the local currency for top-ups), and their number (without the country code).
+- You pay in naira from your wallet. The price shown is what you pay.
+- Check the number carefully — delivered international top-ups can't be reversed. If it fails, you're refunded automatically.
+
+----------------------------------------------------------------------
+52. CAR INSURANCE (THIRD-PARTY MOTOR INSURANCE)
+----------------------------------------------------------------------
+- Home → More → "Car insurance". Third-party cover from Universal Insurance (through VTpass), required by law in Nigeria.
+- Choose the vehicle type (private car, commercial, tricycle/keke, motorcycle), then enter the owner's name, plate number, chassis number (VIN), year, make, model, colour, engine capacity, state, local government and email.
+- After payment the certificate is ready: Orders → the purchase → "📄 Download certificate" (also emailed). Keep a copy in the vehicle.
+- Third-party cover pays for damage or injury you cause to other people; it does not cover your own vehicle. It lasts one year.
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================
