@@ -298,6 +298,36 @@ router.post('/admin/orders/:id/settle', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Admin: check VTpass's verify with the sandbox test numbers and show
+// exactly what VTpass answers (no money moves, keys are never shown).
+const SELFTEST = [
+  { label: 'Electricity prepaid (Ikeja) 1111111111111', serviceID: 'ikeja-electric', billersCode: '1111111111111', type: 'prepaid' },
+  { label: 'Electricity postpaid (Ikeja) 1010101010101', serviceID: 'ikeja-electric', billersCode: '1010101010101', type: 'postpaid' },
+  { label: 'DStv 1212121212', serviceID: 'dstv', billersCode: '1212121212' },
+  { label: 'JAMB 0123456789', serviceID: 'jamb', billersCode: '0123456789', type: 'utme-mock' },
+  { label: 'Smile tester@sandbox.com', serviceID: 'smile-direct', billersCode: 'tester@sandbox.com' },
+];
+router.get('/admin/vtpass/selftest', requireAdminAuth, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    const results = [];
+    for (const t of SELFTEST) {
+      let data;
+      try {
+        data = await vtpassRequest('GET', '/merchant-verify', { query: { serviceID: t.serviceID, billersCode: t.billersCode, type: t.type } });
+      } catch (e) {
+        data = e.vtpassResponse || { error: e.message };
+      }
+      const c = data?.content || {};
+      const name = c.Customer_Name || c.customerName || (Array.isArray(c.AccountList) ? c.AccountList.map((a) => a.FriendlyName || a.AccountId).join(', ') : null);
+      results.push({ label: t.label, ok: Boolean(name) && !c.error, name: name || null, code: data?.code ?? null, message: String(c.error || data?.response_description || data?.error || '').slice(0, 200) || null, reply: JSON.stringify(data).slice(0, 600) });
+    }
+    res.json({ mode: settings.vtpassMode, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // VTpass wallet balance (for the admin Overview).
 router.get('/admin/vtpass/balance', requireAdminAuth, async (req, res) => {
   try {
@@ -346,7 +376,11 @@ router.get('/admin/orders', requireAdminAuth, async (req, res) => {
     ]);
     res.json({
       // pinsGiven: VTpass already handed out PINs/token — never refund without checking.
-      orders: orders.map((o) => ({ ...o, pinsGiven: hasDeliverable(o.responsePayload), held: o.vtpassStatus === HELD })),
+      orders: orders.map((o) => {
+        const p = o.responsePayload || {};
+        const reason = o.status === 'FAILED' ? String(p.content?.error || p.response_description || p.content?.transactions?.status || o.vtpassStatus || '').slice(0, 160) || null : null;
+        return { ...o, pinsGiven: hasDeliverable(o.responsePayload), held: o.vtpassStatus === HELD, vtpassReason: reason };
+      }),
       counts: { total, PENDING: pending, SUCCESS: success, FAILED: failed, revenue: Number(revenue?._sum?.amount || 0) },
     });
   } catch (error) {

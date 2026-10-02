@@ -191,6 +191,7 @@ HOW TO GET STARTED
 5. Enter the "Amount (₦)" and tap "Pay ₦X".
 
 RULES
+- The meter number must be verified (the customer's name shows in green) before you can pay. Wrong meter = you can't pay, so no wrong-meter purchases.
 - Minimum: [minPurchaseAmount, default ₦50]. Some discos have their own higher minimum; if so, the screen shows an error before you pay.
 - If the meter can't be verified, the app says "Could not verify this number — double-check it before continuing", but you can still pay.
 
@@ -219,6 +220,7 @@ HOW TO GET STARTED
 3. Choose a "Package" and tap "Pay ₦X".
 
 RULES
+- The smartcard / IUC number must be verified (name shows in green) before you can pay (not needed for Showmax).
 - Reminder: 3 days before expiry, unless you already have an active repeat for that smartcard.
 
 ADMIN SWITCH: Maintenance pause (CABLE).
@@ -257,9 +259,11 @@ HOW TO GET STARTED
 
 RULES
 - Fixed plan prices.
+- Smile: enter the Smile account ID (the number on the Smile account), not the email.
 - Renewal reminder 2 days before a plan of 3 days or longer ends.
 
 ADMIN SWITCH: Maintenance pause (INTERNET).
+ADMIN CHECK: Settings → VTpass → "Test VTpass number checks" asks VTpass to check its sandbox test numbers and shows its exact answer. Failed orders show VTpass's reason under Orders.
 
 ----------------------------------------------------------------------
 9. BET FUNDING
