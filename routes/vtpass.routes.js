@@ -2,7 +2,8 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { vtpassRequest, getSettings } = require('../lib/vtpass');
 const { confirmTransaction } = require('../lib/security');
-const { performPurchase, recheckOrder, forceSettle } = require('../lib/purchase');
+const { performPurchase, recheckOrder, forceSettle, HELD } = require('../lib/purchase');
+const { customerView, hasDeliverable } = require('../lib/orderSafety');
 const { FREQUENCIES, createSchedule, upsertBeneficiary } = require('../lib/schedules');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 
@@ -239,7 +240,8 @@ router.get('/orders', requireCustomerAuth, async (req, res) => {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
-    res.json({ orders });
+    // PINs/tokens only on SUCCESS orders.
+    res.json({ orders: orders.map(customerView) });
   } catch (error) {
     console.error('GET /orders failed:', error);
     res.status(500).json({ error: 'Could not load orders.' });
@@ -258,9 +260,9 @@ router.get('/orders/:id', requireCustomerAuth, async (req, res) => {
     if (order.status === 'PENDING' && Date.now() - new Date(order.createdAt).getTime() > 30 * 1000) {
       await throttledRecheck(order);
       const fresh = await prisma.order.findUnique({ where: { id: order.id } });
-      return res.json({ order: fresh || order });
+      return res.json({ order: customerView(fresh || order) });
     }
-    res.json({ order });
+    res.json({ order: customerView(order) });
   } catch (error) {
     console.error('GET /orders/:id failed:', error);
     res.status(500).json({ error: 'Could not load order.' });
@@ -320,14 +322,28 @@ router.post('/webhooks/vtpass', async (req, res) => {
   }
 });
 
+const ORDER_STATUSES = ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'];
 router.get('/admin/orders', requireAdminAuth, async (req, res) => {
   try {
-    const orders = await prisma.order.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 300,
-      include: { customer: { select: { id: true, name: true, phone: true } } },
+    const status = ORDER_STATUSES.includes(String(req.query.status || '').toUpperCase()) ? String(req.query.status).toUpperCase() : null;
+    const [orders, total, pending, success, failed, revenue] = await Promise.all([
+      prisma.order.findMany({
+        where: status ? { status } : {},
+        orderBy: { createdAt: 'desc' },
+        take: 300,
+        include: { customer: { select: { id: true, name: true, phone: true } } },
+      }),
+      prisma.order.count(),
+      prisma.order.count({ where: { status: 'PENDING' } }),
+      prisma.order.count({ where: { status: 'SUCCESS' } }),
+      prisma.order.count({ where: { status: 'FAILED' } }),
+      prisma.order.aggregate({ where: { status: 'SUCCESS' }, _sum: { amount: true } }).catch(() => null),
+    ]);
+    res.json({
+      // pinsGiven: VTpass already handed out PINs/token — never refund without checking.
+      orders: orders.map((o) => ({ ...o, pinsGiven: hasDeliverable(o.responsePayload), held: o.vtpassStatus === HELD })),
+      counts: { total, PENDING: pending, SUCCESS: success, FAILED: failed, revenue: Number(revenue?._sum?.amount || 0) },
     });
-    res.json({ orders });
   } catch (error) {
     console.error('GET /admin/orders failed:', error);
     res.status(500).json({ error: 'Could not load orders.' });

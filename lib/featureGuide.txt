@@ -237,7 +237,10 @@ HOW TO GET STARTED
 
 RULES
 - Fixed plan prices.
-- Profile ID: required for JAMB (the form asks "Enter your JAMB Profile ID"). For other exams (e.g. WAEC) you can leave it blank. other exams. 
+- Profile ID: required for JAMB (the form asks "Enter your JAMB Profile ID"). For other exams (e.g. WAEC) you can leave it blank.
+- PINs, tokens and codes only show once the order is Successful. While it says Pending, the PINs are hidden ("Getting your PINs…").
+- If the supplier's reply already contains the PINs/token, the order is marked Successful straight away (the PINs are delivered).
+- An order that already received PINs/token is never refunded automatically. If the supplier later says it failed, the order is held for the admin, who checks with VTpass support before marking it Delivered or Failed + refund.
 
 ADMIN SWITCH: Maintenance pause (EDUCATION, shown to customers as "Exam PINs").
 
@@ -1091,10 +1094,18 @@ RULES
 ----------------------------------------------------------------------
 - Home → More → "Exam PINs (bulk)". For schools, cyber cafés and agents.
 - Choose how many WAEC result checker PINs (1–50), optionally the name to print on the sheet (school or shop), and pay once from the wallet with your PIN.
-- The PINs and serial numbers show straight away: 🖨️ Print (A4 sheet 2 across, a list, or a 58mm POS printer; Print can also save as PDF), Copy all, or Download (Excel).
+- The PINs and serial numbers show as soon as the order is Successful (never while Pending): 🖨️ Print (A4 sheet 2 across, a list, or a 58mm POS printer; Print can also save as PDF), Copy all, or Download (Excel).
 - Find them again under "Your recent PINs" on the same page, or Orders → the purchase → "Open the PINs to print".
 - If VTpass can't deliver them, the full amount is refunded automatically. Agent prices and discounts apply. Results are checked at waecdirect.org.
 - For one PIN for yourself, Home → Education works as before.
+
+----------------------------------------------------------------------
+54. ADMIN OVERVIEW AND ORDERS (ADMIN ONLY)
+----------------------------------------------------------------------
+- The Overview boxes are at the top and each one opens its list: Customers → Customers page; Pending Funding → Pending funding; Pending Orders / Total Orders / Successful Orders / Failed Orders → Orders filtered by that status; Total Revenue → Money.
+- The counts cover all orders, not only the newest 300.
+- Orders page: tabs All / Pending / Successful / Failed (also via the link ?status=PENDING etc.), then service buttons. The newest 5 show first; "Show more" adds 10 at a time.
+- "⚠ Held" on a pending order: VTpass gave PINs/token, then said failed. It was not refunded. "PINs/token already given" warns before Failed + refund.
 
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
