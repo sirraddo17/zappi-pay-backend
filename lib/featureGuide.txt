@@ -238,6 +238,7 @@ HOW TO GET STARTED
 RULES
 - Fixed plan prices.
 - Profile ID: required for JAMB (the form asks "Enter your JAMB Profile ID"). For other exams (e.g. WAEC) you can leave it blank.
+- For JAMB, choose the PIN type first; the Profile ID is then checked automatically and the candidate's name shows in green before paying.
 - PINs, tokens and codes only show once the order is Successful. While it says Pending, the PINs are hidden ("Getting your PINs…").
 - If the supplier's reply already contains the PINs/token, the order is marked Successful straight away (the PINs are delivered).
 - An order that already received PINs/token is never refunded automatically. If the supplier later says it failed, the order is held for the admin, who checks with VTpass support before marking it Delivered or Failed + refund.

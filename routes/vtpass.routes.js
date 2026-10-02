@@ -135,8 +135,13 @@ router.get('/vtpass/verify', requireCustomerAuth, async (req, res) => {
       }
     }
     const data = await vtpassRequest('GET', '/merchant-verify', {
-      query: { serviceID, billersCode, type: type || undefined },
+      query: { serviceID, billersCode: String(billersCode).trim(), type: type || undefined },
     });
+    // VTpass answers a wrong number with code 000 and content.error.
+    const c = data?.content || {};
+    if (c.error || c.WrongBillersCode || (data?.code && String(data.code) !== '000')) {
+      return res.status(400).json({ error: String(c.error || data.response_description || 'This number could not be verified.').slice(0, 200) });
+    }
     res.json(data);
   } catch (error) {
     console.error('GET /vtpass/verify failed:', error);
