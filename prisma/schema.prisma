@@ -746,6 +746,9 @@ model Settings {
   idMatchEnabled         Boolean @default(false)
   // International airtime/data shown to customers (needs VTpass live prices).
   intlAirtimeEnabled     Boolean @default(false)
+  // Festival greetings: app slide on the day + admin alert N days before.
+  festivalGreetingsEnabled Boolean @default(true)
+  festivalAlertDays      Int     @default(3)
   // Attack watch: block addresses that scan, guess passwords or forge logins.
   attackWatchEnabled     Boolean @default(true)
   problemSpotterEnabled  Boolean @default(true)
@@ -1438,4 +1441,10 @@ model MoneyRequestPayment {
 
   @@unique([requestId, slotKey])
   @@index([payerId, createdAt])
+}
+
+// One row per festival date the admins were alerted about (no repeats).
+model FestivalAlert {
+  id        String   @id
+  createdAt DateTime @default(now())
 }

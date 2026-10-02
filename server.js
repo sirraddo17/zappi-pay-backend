@@ -153,6 +153,7 @@ app.listen(PORT, () => {
   require('./lib/epins').startSweeper();
   require('./lib/adminRadar').startJobs();
   require('./lib/attackWatch').start();
+  require('./lib/festivals').start();
   startDailySummary();
   require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();

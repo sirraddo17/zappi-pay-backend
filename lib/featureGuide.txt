@@ -1110,6 +1110,8 @@ RULES
 - The Overview boxes are at the top and each one opens its list: Customers → Customers page; Pending Funding → Pending funding; Pending Orders / Total Orders / Successful Orders / Failed Orders → Orders filtered by that status; Total Revenue → Money.
 - The counts cover all orders, not only the newest 300.
 - Orders page: tabs All / Pending / Successful / Failed (also via the link ?status=PENDING etc.), then service buttons. The newest 5 show first; "Show more" adds 10 at a time.
+- Ad Studio → "Festival greetings": greetings for New Year, Ramadan, Eid-el-Fitr, Eid-el-Kabir, Islamic New Year, Eid-el-Maulud (birth of Prophet Muhammad, SAW), Good Friday, Easter, Christmas, Independence Day and Democracy Day, worked out for every year. Open one to download the square / status / slider pictures and copy the caption. The admins get an alert 3 days before. On the day, the app's top slider shows the greeting by itself (switch: "Show greetings in the app automatically + remind me"). Muslim dates follow the moon sighting and may move by a day.
+- Ad Studio → "Ready-made ads — new services": Pay me link, Split a bill, Group gift, Car insurance, Bulk WAEC PINs, JAMB PIN.
 - "⚠ Held" on a pending order: VTpass gave PINs/token, then said failed. It was not refunded. "PINs/token already given" warns before Failed + refund.
 
 ======================================================================

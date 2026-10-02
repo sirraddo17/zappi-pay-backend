@@ -22,6 +22,16 @@ async function audit(req, action, details) {
 
 // --- Public / customer ---------------------------------------------
 
+// Admin: festival greetings for the next year, with ready designs.
+router.get('/admin/festivals', requireAdminAuth, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    res.json({ enabled: settings.festivalGreetingsEnabled !== false, alertDays: settings.festivalAlertDays ?? 3, festivals: require('../lib/festivals').upcoming(400) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/app/info', async (req, res) => {
   try {
     const [settings, notices] = await Promise.all([
@@ -44,6 +54,8 @@ router.get('/app/info', async (req, res) => {
       maintenance: require('../lib/maintenance').publicInfo(settings),
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),
       intlAirtime: Boolean(settings.intlAirtimeEnabled),
+      // Festival greeting slide for today (Christmas, Eid, New Year…).
+      festival: settings.festivalGreetingsEnabled === false ? null : require('../lib/festivals').today(),
     });
   } catch (error) {
     console.error('GET /app/info failed:', error);
