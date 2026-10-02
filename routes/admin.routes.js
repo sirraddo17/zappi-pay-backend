@@ -21,6 +21,9 @@ function safeSettings(settings) {
   delete out.ckApiKey;
   out.heygenApiKeySet = Boolean(out.heygenApiKey);
   delete out.heygenApiKey;
+  delete out.flutterwaveSecretKey;
+  delete out.flutterwaveSecretHash;
+  delete out.flutterwavePublicKey;
   return out;
 }
 

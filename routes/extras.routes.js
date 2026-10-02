@@ -54,6 +54,14 @@ router.get('/app/info', async (req, res) => {
       maintenance: require('../lib/maintenance').publicInfo(settings),
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),
       intlAirtime: Boolean(settings.intlAirtimeEnabled),
+      // Which wallet funding methods are on.
+      funding: {
+        bank: settings.monnifyFundingEnabled !== false,
+        card: Boolean(settings.flutterwaveEnabled && (settings.flutterwaveSecretKey || process.env.FLW_SECRET_KEY)),
+        cardFeePercent: Number(settings.cardFundingFeePercent || 0),
+        cardFeeCap: Number(settings.cardFundingFeeCap || 0),
+        minAmount: Math.max(100, Number(settings.minFundingAmount || 100)),
+      },
       // Festival greeting slide for today (Christmas, Eid, New Year…).
       festival: settings.festivalGreetingsEnabled === false ? null : require('../lib/festivals').today(),
     });

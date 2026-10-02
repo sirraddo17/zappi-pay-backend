@@ -21,6 +21,12 @@ function identityHash(idType, idNumber) {
   return require('crypto').createHmac('sha256', secret).update(`${idType}:${idNumber}`).digest('hex');
 }
 
+// Admin switch: bank-transfer funding off = no new account numbers shown.
+// Money already sent to an existing account number is still credited.
+async function monnifyOn() {
+  return (await getSettings()).monnifyFundingEnabled !== false && (await monnify.isConfigured());
+}
+
 async function feeInfo() {
   const s = await getSettings();
   return { feePercent: Number(s.bankFundingFeePercent || 0), feeCap: Number(s.bankFundingFeeCap || 0), feeIsPassThrough: require('../lib/earnings').fundingFeeIsPassThrough(s) };
@@ -30,7 +36,7 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
   try {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     res.json({
-      available: await monnify.isConfigured(),
+      available: await monnifyOn(),
       ...(await shown(customer.bankAccounts)),
       kycType: customer.kycType || null,
       idMatch: Boolean((await getSettings()).idMatchEnabled),
@@ -45,7 +51,7 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
 
 router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
   try {
-    if (!(await monnify.isConfigured())) return res.status(503).json({ error: 'Bank transfer funding is not available yet.' });
+    if (!(await monnifyOn())) return res.status(503).json({ error: 'Bank transfer funding is not available right now. Please use another way to fund.' });
     const idType = String(req.body.idType || '').toUpperCase();
     const idNumber = String(req.body.idNumber || '').replace(/\D/g, '');
     if (!['BVN', 'NIN'].includes(idType)) return res.status(400).json({ error: 'Choose BVN or NIN.' });

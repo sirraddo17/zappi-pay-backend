@@ -568,6 +568,16 @@ model Settings {
   // amount, capped at bankFundingFeeCap (0 = no cap). Both 0 = free.
   bankFundingFeePercent Decimal @default(0) @db.Decimal(5, 2)
   bankFundingFeeCap     Decimal @default(0) @db.Decimal(14, 2)
+  // Wallet funding switches: Monnify bank transfer and Flutterwave card /
+  // USSD can each be turned off on their own (Admin → Settings → Wallet
+  // funding). Keys for Flutterwave are set there too (never shown back).
+  monnifyFundingEnabled Boolean @default(true)
+  flutterwaveEnabled    Boolean @default(false)
+  flutterwavePublicKey  String?
+  flutterwaveSecretKey  String?
+  flutterwaveSecretHash String?
+  cardFundingFeePercent Decimal @default(0) @db.Decimal(5, 2)
+  cardFundingFeeCap     Decimal @default(0) @db.Decimal(14, 2)
   // Monnify keys set from Admin → Settings. When the API key here is
   // empty, the MONNIFY_* environment variables on Render are used.
   monnifyMode         String  @default("sandbox")
@@ -1447,4 +1457,22 @@ model MoneyRequestPayment {
 model FestivalAlert {
   id        String   @id
   createdAt DateTime @default(now())
+}
+
+// A card / USSD wallet top-up through Flutterwave. Credited once, only
+// after Flutterwave's API confirms it (lib/flutterwave.js).
+model CardPayment {
+  id         String    @id @default(cuid())
+  txRef      String    @unique
+  customerId String
+  amount     Decimal   @db.Decimal(14, 2) // added to the wallet
+  fee        Decimal   @default(0) @db.Decimal(14, 2)
+  total      Decimal   @db.Decimal(14, 2) // charged on the card
+  status     String    @default("PENDING") // PENDING, PAID, FAILED
+  providerId String?
+  createdAt  DateTime  @default(now())
+  paidAt     DateTime?
+
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
 }

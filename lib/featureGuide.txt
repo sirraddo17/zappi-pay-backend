@@ -24,8 +24,9 @@ HOW TO READ THIS
 1. WALLET FUNDING
 ----------------------------------------------------------------------
 WHAT IT IS
-You add money to your ZAPPI PAY wallet and pay for everything from it. There are two ways:
-- Automatic funding: you get your own personal bank account number, through ZAPPI PAY's payment partner Monnify.
+You add money to your ZAPPI PAY wallet and pay for everything from it. The ways (each can be switched on or off by ZAPPI PAY):
+- Automatic funding: you get your own personal bank account number, through ZAPPI PAY's payment partner Monnify [setting: monnifyFundingEnabled, default ON].
+- Card or USSD: pay with a debit card (Verve, Mastercard, Visa) or your bank's USSD code on Flutterwave's secure page; added instantly [setting: flutterwaveEnabled, default OFF].
 - Manual funding: you pay into a ZAPPI PAY business account, then an admin approves it.
 
 BENEFITS
@@ -40,6 +41,14 @@ HOW TO GET STARTED: PERSONAL ACCOUNT NUMBER
 3. Tap "Get My Account Number". This is a one-time setup.
 4. Copy one of the account numbers shown under "Fund by bank transfer" using its "Copy" button, and transfer to it from any bank.
 5. If the money hasn't shown up yet, tap "I've sent money — check now".
+
+HOW TO GET STARTED: CARD OR USSD
+1. Wallet → the card "💳 Pay with card or USSD".
+2. Enter "Amount to add (₦)" and tap "Pay ₦X" (X includes the card processing fee, if any).
+3. You go to Flutterwave's secure page: pay by card or USSD. ZAPPI PAY never sees your card details.
+4. You come back to Wallet; it says "₦X added to your wallet". If it says "Still confirming", it is added automatically within a few minutes (you get a notification). If you didn't finish, nothing is taken.
+- Card fee: set by ZAPPI PAY [setting: cardFundingFeePercent, default 0%] [setting: cardFundingFeeCap, default ₦0 = no cap], added on top — the wallet gets the full amount you typed. Minimum = the funding minimum; maximum ₦500,000 per payment.
+- If a method is switched off, its card disappears from Wallet. Money already sent to a personal account number is still credited even when bank-transfer funding is off.
 
 HOW TO GET STARTED: MANUAL FUNDING
 1. Go to Wallet. Use the "Fund Wallet" form, or, if you already have a personal account, open "Other way: send to our business account for manual approval".
