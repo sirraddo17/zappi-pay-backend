@@ -48,7 +48,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, cashbackPocketEnabled, cashbackUseMaxPercent, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
@@ -91,6 +91,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
     for (const [label, v] of [['Unverified daily limit', dailyLimitUnverified], ['Verified daily limit', dailyLimitVerified], ['Cashback cap', cashbackMaxPerOrder]]) {
       if (v !== undefined && (!Number.isFinite(Number(v)) || Number(v) < 0)) return res.status(400).json({ error: `${label} must be 0 or more.` });
+    }
+    if (cashbackUseMaxPercent !== undefined && !(Number(cashbackUseMaxPercent) >= 0 && Number(cashbackUseMaxPercent) <= 100)) {
+      return res.status(400).json({ error: 'Cashback use limit must be between 0 and 100%.' });
     }
     if (cashbackPercentByService !== undefined) {
       if (typeof cashbackPercentByService !== 'object' || cashbackPercentByService === null || Array.isArray(cashbackPercentByService)) {
@@ -173,6 +176,8 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data.cashbackPercentByService = Object.fromEntries(Object.entries(cashbackPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
     }
     if (cashbackMaxPerOrder !== undefined) data.cashbackMaxPerOrder = Number(cashbackMaxPerOrder);
+    if (cashbackPocketEnabled !== undefined) data.cashbackPocketEnabled = Boolean(cashbackPocketEnabled);
+    if (cashbackUseMaxPercent !== undefined) data.cashbackUseMaxPercent = Math.round(Number(cashbackUseMaxPercent));
     if (agentPricingEnabled !== undefined) data.agentPricingEnabled = Boolean(agentPricingEnabled);
     if (agentDiscountPercentByService !== undefined) {
       data.agentDiscountPercentByService = Object.fromEntries(Object.entries(agentDiscountPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));

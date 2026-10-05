@@ -197,7 +197,8 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType, quantity: req.body.quantity, intl: req.body.intl, insurance: req.body.insurance };
   // Bought through an agent's shop link?
   const shopAgentId = await require('../lib/shop').agentForPurchase(req.customer.customerId, shop).catch(() => null);
-  const result = await performPurchase(req.customer.customerId, { ...input, promoCode, shopAgentId });
+  // "Use cashback" toggle: only for this purchase, never for repeats.
+  const result = await performPurchase(req.customer.customerId, { ...input, promoCode, shopAgentId, useCashback: req.body.useCashback === true });
 
   if (result.status === 201 || result.status === 202) {
     const extras = {};

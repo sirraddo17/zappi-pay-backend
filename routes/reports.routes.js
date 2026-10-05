@@ -90,12 +90,13 @@ router.get('/wallet/statement', requireCustomerAuth, async (req, res) => {
     const [customer, inRange, after] = await Promise.all([
       prisma.customer.findUnique({ where: { id }, select: { name: true, phone: true, email: true, username: true, walletBalance: true } }),
       prisma.walletTransaction.findMany({
-        where: { customerId: id, status: 'APPROVED', createdAt: { gte: from, lt: to } },
+        // Cashback-balance rows don't move the wallet, so they're left out.
+        where: { customerId: id, status: 'APPROVED', pocket: 'WALLET', createdAt: { gte: from, lt: to } },
         orderBy: { createdAt: 'asc' },
         take: 2000,
       }),
       prisma.walletTransaction.findMany({
-        where: { customerId: id, status: 'APPROVED', createdAt: { gte: to } },
+        where: { customerId: id, status: 'APPROVED', pocket: 'WALLET', createdAt: { gte: to } },
         select: { type: true, amount: true },
       }),
     ]);

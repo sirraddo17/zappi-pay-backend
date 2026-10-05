@@ -15,10 +15,35 @@ router.get('/wallet/balance', requireCustomerAuth, async (req, res) => {
   try {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     if (!customer) return res.status(404).json({ error: 'Account not found.' });
-    res.json({ walletBalance: customer.walletBalance });
+    res.json({ walletBalance: customer.walletBalance, cashbackBalance: customer.cashbackBalance });
   } catch (error) {
     console.error('GET /wallet/balance failed:', error);
     res.status(500).json({ error: 'Could not load wallet balance.' });
+  }
+});
+
+// For the payment sheet's "Use cashback" toggle: how much of the
+// cashback balance can go towards a purchase of ?amount= (the price
+// shown, after discounts/promo). Switching it on sends useCashback:
+// true with /vtpass/purchase and the price drops by `usable`.
+router.get('/wallet/cashback', requireCustomerAuth, async (req, res) => {
+  try {
+    const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { cashbackBalance: true } });
+    if (!customer) return res.status(404).json({ error: 'Account not found.' });
+    const settings = await getSettings();
+    const cashback = require('../lib/cashback');
+    const balance = Number(customer.cashbackBalance);
+    const amount = Number(req.query.amount);
+    const usable = Number.isFinite(amount) && amount > 0 ? cashback.usable(balance, amount, settings) : 0;
+    res.json({
+      cashbackBalance: balance,
+      maxPercent: Number(settings.cashbackUseMaxPercent ?? 15),
+      usable,
+      ...(usable > 0 ? { payAfter: Math.round((amount - usable) * 100) / 100 } : {}),
+    });
+  } catch (error) {
+    console.error('GET /wallet/cashback failed:', error);
+    res.status(500).json({ error: 'Could not load cashback balance.' });
   }
 });
 

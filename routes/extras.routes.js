@@ -50,6 +50,8 @@ router.get('/app/info', async (req, res) => {
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
       // Rewards split on: cashback isn't a fixed %, so show a general note.
       cashback: settings.cashbackEnabled && !settings.rewardSplitEnabled ? settings.cashbackPercentByService || {} : {},
+      // Max % of a purchase the cashback balance can pay ("Use cashback").
+      cashbackUseMaxPercent: require('../lib/cashback').pocketOn(settings) ? Number(settings.cashbackUseMaxPercent ?? 15) : 0,
       rewardsSplit: Boolean(settings.rewardSplitEnabled && (settings.cashbackEnabled || settings.loyaltyEnabled)),
       maintenance: require('../lib/maintenance').publicInfo(settings),
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),

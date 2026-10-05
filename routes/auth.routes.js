@@ -24,6 +24,7 @@ function publicCustomer(customer) {
     username: customer.username,
     email: customer.email,
     walletBalance: customer.walletBalance,
+    cashbackBalance: customer.cashbackBalance,
     avatarUrl: customer.avatarUrl,
     mustChangePassword: customer.mustChangePassword,
     hasPin: Boolean(customer.pinHash),

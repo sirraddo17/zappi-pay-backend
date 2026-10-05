@@ -98,6 +98,10 @@ model Customer {
   savingsBalance    Decimal @default(0) @db.Decimal(14, 2)
   savingsLowBalance Decimal @default(0) @db.Decimal(14, 2)
   savingsEarned     Decimal @default(0) @db.Decimal(14, 2)
+  // Cashback balance, kept apart from the wallet: it can't be withdrawn
+  // or transferred, only switched on at checkout to take money off a
+  // purchase (lib/cashback.js).
+  cashbackBalance   Decimal @default(0) @db.Decimal(14, 2)
   // Wrong-password lock: 5 wrong tries → locked for 15 minutes.
   loginFailedAttempts Int       @default(0)
   loginLockedUntil    DateTime?
@@ -266,6 +270,10 @@ enum WalletTxType {
   CHALLENGE_REWARD
   DELIVERY_BONUS
   SHOP_COMMISSION
+  // Cashback balance moves (pocket = "CASHBACK"): spent at checkout,
+  // or given back when that purchase fails.
+  CASHBACK_USED
+  CASHBACK_REFUND
 }
 
 enum WalletTxStatus {
@@ -295,6 +303,9 @@ model WalletTransaction {
   // funding. Unique, so the same payment can never be credited twice
   // (webhook retries, the "check now" button and the webhook racing).
   providerRef        String?        @unique
+  // Which balance this row moved: "WALLET" or "CASHBACK" (the separate
+  // cashback balance). Statements only count WALLET rows.
+  pocket             String         @default("WALLET")
   createdAt          DateTime       @default(now())
 
   @@index([customerId, createdAt])
@@ -323,7 +334,7 @@ enum OrderStatus {
 // One row per VTpass purchase. provider is the network/disco/cable
 // operator code VTpass expects; recipient is whichever identifier that
 // service needs (phone number, meter number, smartcard number, profile
-// ID for education pins). amount is what left the customer's wallet;
+// ID for education pins). amount is what the customer paid (wallet plus any cashbackUsed);
 // costAmount is what VTpass actually charged us, kept separate so
 // margin is visible per order without recomputing it from settings
 // that may have changed since.
@@ -353,6 +364,10 @@ model Order {
   promoCode       String?
   promoDiscount   Decimal?     @db.Decimal(14, 2)
   cashbackAmount  Decimal?     @db.Decimal(14, 2)
+  // Part of amount paid from the cashback balance instead of the
+  // wallet (amount is still the full price, so earnings are unchanged;
+  // the cashback was already counted as a reward when it was earned).
+  cashbackUsed    Decimal?     @db.Decimal(14, 2)
   pointsEarned    Int?
   // Bought through an agent's shop link: the agent and their commission.
   shopAgentId     String?
@@ -608,6 +623,11 @@ model Settings {
   cashbackEnabled          Boolean @default(false)
   cashbackPercentByService Json    @default("{}")
   cashbackMaxPerOrder      Decimal @default(500) @db.Decimal(14, 2)
+  // Earned cashback goes to the separate cashback balance (on) or
+  // straight into the wallet (off). From the cashback balance, a
+  // customer can use at most cashbackUseMaxPercent of each purchase.
+  cashbackPocketEnabled    Boolean @default(true)
+  cashbackUseMaxPercent    Int     @default(15)
   supportWhatsapp          String?
   // Business bank account shown to customers for manual funding
   // (they transfer, then submit the reference for admin approval).
