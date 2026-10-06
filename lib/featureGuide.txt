@@ -4,7 +4,9 @@ ZAPPI PAY: CUSTOMER FEATURE FACT SHEET (for the in-app AI assistant)
 
 HOW TO READ THIS
 - "Home" is the main screen. The bottom bar has four tabs: Home, Wallet, Orders and Profile.
-- Home shows a "Services" grid with these tiles: Airtime, Data, Electricity, Cable TV, Education, Internet, Bet Funding and More. A "Send Money" tile also shows, but only while sending money to users or to banks is switched on.
+- Home: the wallet card at the top (tap the eye to hide/show the balance; a gold chip shows cashback to spend and cashback earned this month) with quick buttons Add money, Airtime, Data and History. Under it a 4-column "Services" grid: Airtime, Data, Electricity, Cable TV, Education, Internet, Bet Funding and More (a "Send Money" tile shows only while sending money is switched on). Then "Buy again" chips for recent purchases.
+- Airtime / Data: the network is picked automatically from the number (e.g. 0803 → MTN); tap another network if the number was ported. On Android there is a "Contacts" button to pick a number from the phone.
+- Electricity: after typing a meter you bought for before, a box shows the last token, when, and "Same amount again". ZAPPI PAY also sends a "Time for light?" reminder when you usually top up (from your past purchases; turn off with bill reminders).
 - Home → More ("More services") has these tiles: Airtime to Cash, Print Cards, Bulk airtime & data, Best data deals, Refer & Earn and Family wallet.
 - A floating Help bubble (button labelled "Open help", window titled "ZappiPay Help") appears on every logged-in screen. It is hidden on the login, signup, password, legal and admin pages.
 - "Set by ZAPPI PAY (currently configurable)" means an admin setting. The value in brackets is the code DEFAULT, not necessarily today's live value.
@@ -1245,6 +1247,13 @@ WHERE: More → More bills.
 HOW: choose the category (e.g. Tax Payment, Utility Bills, Schools & Professional Bodies, Religious Institutions, Transport & Logistics, Donations), then the biller, then what you're paying for. Enter the customer / account / tax ID and tap Verify (if it can't be confirmed automatically, tick that you've checked it). Enter the amount (some items have a fixed amount), check the total (amount + service fee) and pay with your PIN.
 AFTER: the receipt shows the status, any token/receipt number and the reference (Print / save). "Processing" means the biller is still confirming — you're notified, and if it fails the money comes back to your wallet automatically.
 ADMIN: Admin → SMS, Tickets & Bills: service fee, which categories customers see, recent bills, and Paid / Failed — refund for payments stuck on processing (check the Flutterwave dashboard first). Paid from the Flutterwave balance. Switch: Admin → New features. [setting: billsFee, default ₦50]
+
+----------------------------------------------------------------------
+66. PAY BY CARD AT CHECKOUT (WHEN THE WALLET IS SHORT)
+----------------------------------------------------------------------
+WHERE: on any Buy screen, when the wallet doesn't cover the price, a "💳 Pay ₦X by card / transfer / USSD" button shows under Pay (only when switched on).
+HOW: tap it, pay on the secure payment page (card, bank transfer or USSD). The amount goes into your wallet and the purchase runs straight away; you land on the receipt. A small card fee may apply (shown on the button). If the purchase itself fails after you paid, the money stays in your wallet — nothing is lost; try again. Payments are from ₦100 to ₦500,000.
+ADMIN: Admin → New features → "Pay by card at checkout" (Off / Testers only / On for everyone). Fee: Settings → Wallet funding (card fee % and cap). Uses Monnify. [setting: cardFundingFeePercent] [setting: cardFundingFeeCap]
 
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)

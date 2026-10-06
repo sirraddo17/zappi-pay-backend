@@ -617,6 +617,7 @@ model Settings {
   payRequestsEnabled    Boolean @default(false)
   familyEnabled         Boolean @default(false)
   // Bulk SMS (VTpass Messaging), event tickets (Monnify split payments), more bills (Flutterwave Bills).
+  cardCheckoutEnabled   Boolean @default(false)
   bulkSmsEnabled        Boolean @default(false)
   ticketsEnabled        Boolean @default(false)
   moreBillsEnabled      Boolean @default(false)
@@ -2045,6 +2046,28 @@ model BillPayment {
   providerRef  String?
   response     Json?
   createdAt    DateTime @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([status])
+}
+
+// Pay by card / transfer at checkout: the customer pays the shortfall
+// through Monnify, it lands in their wallet, then the purchase runs.
+model CheckoutIntent {
+  id          String    @id @default(cuid())
+  reference   String    @unique
+  customerId  String
+  input       Json
+  label       String
+  needed      Decimal   @db.Decimal(14, 2)
+  fee         Decimal   @db.Decimal(14, 2)
+  status      String    @default("PENDING") // PENDING | PAID | DONE | PURCHASE_FAILED | EXPIRED | FAILED
+  monnifyRef  String?
+  checkoutUrl String?
+  orderId     String?
+  message     String?
+  createdAt   DateTime  @default(now())
+  paidAt      DateTime?
 
   @@index([customerId, createdAt])
   @@index([status])

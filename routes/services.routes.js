@@ -7,6 +7,7 @@ const F = require('../lib/features');
 const sms = require('../lib/bulkSms');
 const tickets = require('../lib/tickets');
 const bills = require('../lib/flwBills');
+const checkout = require('../lib/checkout');
 
 // Bulk SMS, Event tickets and More bills — each behind its own switch.
 const router = express.Router();
@@ -60,6 +61,11 @@ router.post('/bills/pay', requireCustomerAuth, withPin(async (req) => bills.pay(
 router.get('/bills/history', requireCustomerAuth, H(async (req) => ({ bills: await bills.history(me(req)) }), 'Could not load your bills.'));
 router.get('/bills/:ref', requireCustomerAuth, H(async (req) => bills.view(me(req), req.params.ref), 'Could not load the payment.'));
 
+// --- Pay by card at checkout ---
+router.get('/checkout/quote', requireCustomerAuth, H(async (req) => checkout.quote(me(req), req.query.needed), 'Could not price the card payment.'));
+router.post('/checkout/start', requireCustomerAuth, H(async (req) => checkout.start(me(req), req.body || {}), 'Could not start the card payment.'));
+router.get('/checkout/:ref', requireCustomerAuth, H(async (req) => checkout.view(me(req), req.params.ref), 'Could not load the payment.'));
+
 // --- Admin ---
 router.get('/admin/extra-services', requireAdminAuth, H(async () => {
   const s = await getSettings();
@@ -107,6 +113,7 @@ function startJobs() {
   const run = () => {
     tickets.sweep().catch((e) => console.error('tickets sweep failed:', e.message));
     bills.sweep().catch((e) => console.error('bills sweep failed:', e.message));
+    checkout.sweep().catch((e) => console.error('checkout sweep failed:', e.message));
   };
   setTimeout(run, 3 * 60 * 1000).unref?.();
   setInterval(run, 10 * 60 * 1000).unref?.();
