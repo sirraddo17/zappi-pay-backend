@@ -91,6 +91,13 @@ model Customer {
   email         String?  @unique
   passwordHash  String
   walletBalance Decimal  @default(0) @db.Decimal(14, 2)
+  // Cashback is kept apart from the wallet and used to cut the price of
+  // a later purchase (up to cashbackUseMaxPercent of it).
+  cashbackBalance Decimal @default(0) @db.Decimal(14, 2)
+  // Ajo Circle: kept out of new circles after repeated missed payments
+  // (lifted by an admin after an appeal).
+  circleBannedAt   DateTime?
+  circleBanReason  String?
   // Savings pocket (off until the owner turns it on in Settings).
   // savingsLowBalance is the lowest the pocket has been since the last
   // interest run, so money moved in just before the run and out after
@@ -250,6 +257,8 @@ model WebAuthnCredential {
 
 enum WalletTxType {
   FUND
+  CIRCLE_OUT
+  CIRCLE_IN
   DEBIT
   REFUND
   TRANSFER_OUT
@@ -336,6 +345,8 @@ model Order {
   variationCode   String?
   recipient       String
   recipientName   String?
+  // Part of `amount` paid from the cashback balance (the rest from the wallet).
+  cashbackUsed    Decimal?     @db.Decimal(14, 2)
   amount          Decimal      @db.Decimal(14, 2)
   costAmount      Decimal?     @db.Decimal(14, 2)
   // How much was taken off this order by an admin-set service
@@ -572,6 +583,11 @@ model Settings {
   // USSD can each be turned off on their own (Admin → Settings → Wallet
   // funding). Keys for Flutterwave are set there too (never shown back).
   monnifyFundingEnabled Boolean @default(true)
+  // Ajo Circle (group contributions). Off until the owner turns it on.
+  circlesEnabled        Boolean @default(false)
+  circleMaxAmount       Decimal @default(500000) @db.Decimal(14, 2)
+  circleMaxMembers      Int     @default(30)
+  circleBanStrikes      Int     @default(3)
   flutterwaveEnabled    Boolean @default(false)
   flutterwavePublicKey  String?
   flutterwaveSecretKey  String?
@@ -608,6 +624,9 @@ model Settings {
   cashbackEnabled          Boolean @default(false)
   cashbackPercentByService Json    @default("{}")
   cashbackMaxPerOrder      Decimal @default(500) @db.Decimal(14, 2)
+  // On: cashback goes to its own balance (used at checkout). Off: old way, straight into the wallet.
+  cashbackSeparate         Boolean @default(true)
+  cashbackUseMaxPercent    Decimal @default(20) @db.Decimal(5, 2)
   supportWhatsapp          String?
   // Business bank account shown to customers for manual funding
   // (they transfer, then submit the reference for admin approval).
@@ -1475,4 +1494,159 @@ model CardPayment {
 
   @@index([customerId, createdAt])
   @@index([status, createdAt])
+}
+
+// Milestones already celebrated (e.g. 1,000 verified members) — once each.
+model Celebration {
+  id        String   @id
+  kind      String
+  value     Int
+  showUntil DateTime
+  createdAt DateTime @default(now())
+}
+
+// Cashback balance history: + earned on a purchase, − used at checkout,
+// + returned when that purchase is refunded.
+model CashbackEntry {
+  id         String   @id @default(cuid())
+  customerId String
+  amount     Decimal  @db.Decimal(14, 2)
+  orderId    String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+// ---------------- Ajo Circle (rotating group contributions) ----------------
+// Members pay the same amount every period; each period one member (by
+// position) receives the whole pot. Money collected sits in the round's
+// pot (shown to everyone) until every member has paid, then it is paid
+// to that period's member. See lib/circles.js.
+model Circle {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  name             String
+  creatorId        String
+  amount           Decimal   @db.Decimal(14, 2)
+  frequency        String // DAILY, WEEKLY, MONTHLY
+  size             Int
+  status           String    @default("FORMING") // FORMING, ACTIVE, COMPLETED, CANCELLED
+  startAt          DateTime?
+  payoutFee        Decimal   @default(0) @db.Decimal(14, 2)
+  penaltyFee       Decimal   @default(0) @db.Decimal(14, 2)
+  graceHours       Int       @default(24)
+  strikesToLast    Int       @default(2)
+  extraRules       String?
+  agreementVersion Int       @default(1)
+  remindedRound    Int       @default(0)
+  warnedRound      Int       @default(0)
+  createdAt        DateTime  @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  @@index([status])
+  @@index([creatorId])
+}
+
+model CircleMember {
+  id               String    @id @default(cuid())
+  circleId         String
+  customerId       String
+  position         Int?
+  status           String    @default("JOINED") // INVITED, JOINED, LEFT
+  agreedAt         DateTime?
+  agreementVersion Int?
+  strikes          Int       @default(0)
+  received         Boolean   @default(false)
+  receivedAt       DateTime?
+  movedToLast      Boolean   @default(false)
+  joinedAt         DateTime  @default(now())
+
+  @@unique([circleId, customerId])
+  @@index([customerId])
+}
+
+model CircleRound {
+  id                String    @id @default(cuid())
+  circleId          String
+  number            Int
+  recipientMemberId String?
+  dueAt             DateTime
+  status            String    @default("COLLECTING") // COLLECTING, PAID
+  expected          Decimal   @db.Decimal(14, 2)
+  collected         Decimal   @default(0) @db.Decimal(14, 2)
+  released          Decimal   @default(0) @db.Decimal(14, 2)
+  feeCreator        Decimal   @default(0) @db.Decimal(14, 2)
+  feeApp            Decimal   @default(0) @db.Decimal(14, 2)
+  feeTaken          Boolean   @default(false)
+  paidAt            DateTime?
+  delayNotifiedAt   DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@unique([circleId, number])
+}
+
+model CircleDue {
+  id          String    @id @default(cuid())
+  circleId    String
+  roundId     String
+  memberId    String
+  customerId  String
+  amount      Decimal   @db.Decimal(14, 2)
+  penalty     Decimal   @default(0) @db.Decimal(14, 2)
+  paid        Decimal   @default(0) @db.Decimal(14, 2)
+  status      String    @default("DUE") // DUE, PAID, CANCELLED
+  dueAt       DateTime
+  penalizedAt DateTime?
+  lastTryAt   DateTime?
+  failNoticeAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([roundId, memberId])
+  @@index([customerId, status])
+  @@index([status, dueAt])
+}
+
+model CircleEvent {
+  id        String   @id @default(cuid())
+  circleId  String
+  kind      String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([circleId, createdAt])
+}
+
+// "I need my payout now" while others still owe: the member agrees to
+// take what's collected now (the rest follows), and an admin approves.
+model CircleRelease {
+  id         String    @id @default(cuid())
+  circleId   String
+  roundId    String
+  memberId   String
+  customerId String
+  amount     Decimal   @db.Decimal(14, 2)
+  status     String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  reason     String?
+  agreedAt   DateTime
+  reviewedAt DateTime?
+  reviewedBy String?
+  note       String?
+  createdAt  DateTime  @default(now())
+
+  @@index([status])
+}
+
+model CircleAppeal {
+  id         String    @id @default(cuid())
+  customerId String
+  message    String
+  status     String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedAt DateTime?
+  reviewedBy String?
+  note       String?
+  createdAt  DateTime  @default(now())
+
+  @@index([status])
 }

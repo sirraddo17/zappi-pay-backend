@@ -78,6 +78,7 @@ const CUSTOMER_TOOLS = [
       },
     },
   },
+  { name: 'get_my_circles', description: "The customer's Ajo Circles (group contributions): status, payout number, what they owe, whose payout is waiting and for whom, and whether they are blocked from new circles. Use for 'why is my payout delayed?', 'when is my turn?', 'how much do I owe my circle?'.", input_schema: { type: 'object', properties: {} } },
   { name: 'get_my_wallet_history', description: "The customer's recent wallet credits and debits (funding, refunds, transfers, cashback), newest first.", input_schema: { type: 'object', properties: { limit: { type: 'integer', description: '1-10, default 6' } } } },
   { name: 'get_my_bank_transfers', description: "The customer's recent Send-to-Bank transfers and their status.", input_schema: { type: 'object', properties: { limit: { type: 'integer', description: '1-5, default 3' } } } },
   { name: 'get_my_support_tickets', description: "The customer's recent support messages and any replies.", input_schema: { type: 'object', properties: {} } },
@@ -115,6 +116,16 @@ function customerHandlers(customerId, settings) {
         take: cap(limit, 10, 5),
       });
       return orders.length ? orders.map(orderRow) : 'No matching orders.';
+    },
+    async get_my_circles() {
+      const C = require('../lib/circles');
+      const m = await C.mine(customerId);
+      const out = [];
+      for (const c of m.circles.slice(0, 5)) {
+        const d = await C.detail(c.id, customerId).catch(() => null);
+        out.push({ name: c.name, status: c.status, amount: naira(c.amount), frequency: c.frequency.toLowerCase(), members: `${c.joined}/${c.size}`, myPayoutNumber: c.position, alreadyPaidOut: c.received, iOwe: naira(c.owed), currentPayout: d?.current ? { number: d.current.number, to: d.current.recipient, inPot: naira(d.current.inPot), waitingFor: d.current.waitingFor.map((w) => `${w.name} (${naira(w.owes)})`) } : null, nextPaymentDay: d?.nextDueAt ? when(d.nextDueAt) : null, open: `/circles/${c.id}` });
+      }
+      return { circles: out.length ? out : 'No circles yet.', blockedFromNewCircles: m.banned ? { reason: m.banned.reason, appeal: m.banned.appeal?.status || 'not sent (they can appeal on the Ajo Circle page)' } : false };
     },
     async get_my_wallet_history({ limit }) {
       const tx = await prisma.walletTransaction.findMany({ where: { customerId }, orderBy: { createdAt: 'desc' }, take: cap(limit, 10, 6) });
@@ -661,6 +672,7 @@ const ACTION_TOOLS = [
   { name: 'get_feature_guide', description: 'The official ZAPPI PAY feature guide (written from the app code): what a feature is, benefits, exact customer steps and button names, rules, limits, common questions, plus live setting values. Use it whenever you explain a feature or draft a reply about one — never guess.', input_schema: { type: 'object', properties: { topic: { type: 'string' } }, required: ['topic'] } },
   { name: 'write_video_script', description: 'Write a short social-media video script for an AI presenter (TikTok/Reels/Status). Returns scenes, presenter lines, caption and hashtags to show the owner.', input_schema: { type: 'object', properties: { topic: { type: 'string' }, seconds: { type: 'integer', enum: [15, 30, 45, 60] }, language: { type: 'string', enum: ['en', 'pcm', 'yo', 'ha', 'ig'] }, platform: { type: 'string', enum: ['tiktok', 'reels', 'status', 'facebook', 'shorts'] }, tone: { type: 'string', enum: ['friendly', 'funny', 'hype', 'calm'] }, presenter: { type: 'string' }, extra: { type: 'string' } }, required: ['topic'] } },
   { name: 'propose_heygen_video', description: 'Propose making a HeyGen AI-presenter video from a script (costs money; the owner taps Apply). Only when HeyGen is set up; otherwise give the script for heygen.com.', input_schema: { type: 'object', properties: { script: { type: 'string', description: 'exactly what the presenter says' }, title: { type: 'string' }, aspect: { type: 'string', enum: ['9:16', '1:1', '16:9'] } }, required: ['script'] } },
+  { name: 'get_circles_overview', description: 'Ajo Circle (group contributions): running and forming circles, money held in pots, late members, ZAPPI PAY fees earned, early-release requests and appeals waiting for the owner, and blocked members. Read only — approvals happen in Admin → Ajo Circles.', input_schema: { type: 'object', properties: {} } },
   { name: 'get_festival_greetings', description: 'Upcoming Christian, Muslim and national festivals (New Year, Ramadan, Eid-el-Fitr, Eid-el-Kabir, Islamic New Year, Eid-el-Maulud, Good Friday, Easter, Christmas, Independence, Democracy Day) with dates and the ready greeting headline + caption. Pictures are in Ad Studio → Festival greetings (link "open"); the app shows a greeting slide by itself on the day. Muslim dates follow the moon and can move by a day.', input_schema: { type: 'object', properties: { days: { type: 'integer', description: 'look ahead this many days (default 120)' } } } },
   { name: 'get_security_overview', description: 'Attack watch: warning signs the server saw (password guessing, scans for weak spots, forged logins, fake payment messages, calls from other websites, request floods), addresses blocked automatically, and anything needing the owner. Use for "is anyone attacking us?" / "any hackers?". You cannot block or unblock — the owner does that in Admin → Security.', input_schema: { type: 'object', properties: { hours: { type: 'integer', description: 'look back this many hours (default 24, max 720)' } } } },
   { name: 'get_winback_list', description: 'Win-back radar: regular customers (3+ purchases in the 2 months before) who have bought nothing in the last 3 weeks, with what they used to buy. Pair with propose_campaign audience SLIPPING.', input_schema: { type: 'object', properties: { limit: { type: 'integer' } } } },
@@ -729,6 +741,10 @@ function actionHandlers(adminId, collector) {
     get_feature_guide: async ({ topic }) => require('../lib/featureGuide').lookup(String(topic || '').slice(0, 200), { settings: await getSettings(), audience: 'admin' }),
     async write_video_script(input) {
       try { return await require('../lib/videoScript').generate(adminId, input || {}); } catch (e) { return { error: e.message }; }
+    },
+    get_circles_overview: async () => {
+      const o = await require('../lib/circles').adminList();
+      return { enabled: Boolean((await getSettings()).circlesEnabled), totals: { ...o.totals, inPots: naira(o.totals.inPots), appFees: naira(o.totals.appFees) }, circles: o.circles.filter((c) => ['ACTIVE', 'FORMING'].includes(c.status)).slice(0, 20).map((c) => ({ name: c.name, creator: c.creator, status: c.status, amount: naira(c.amount), frequency: c.frequency, members: `${c.joined}/${c.size}`, paidRounds: c.paidRounds, latePayments: c.owing, inPots: naira(c.inPots) })), releaseRequests: o.releases.length, appeals: o.appeals.length, blockedMembers: o.banned.length, open: '/admin/circles' };
     },
     get_festival_greetings: ({ days }) => require('../lib/festivals').upcoming(Math.min(400, Math.max(1, parseInt(days, 10) || 120))).map((f) => ({ name: f.name, date: f.date, daysAway: f.daysAway, showingInAppNow: f.live, moonDate: f.moon, headline: f.design.headline, caption: f.design.caption, open: `/admin/ad-studio?festival=${f.id}` })),
     get_security_overview: async ({ hours }) => {

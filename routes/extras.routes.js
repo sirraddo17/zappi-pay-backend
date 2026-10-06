@@ -26,7 +26,7 @@ async function audit(req, action, details) {
 router.get('/admin/festivals', requireAdminAuth, async (req, res) => {
   try {
     const settings = await getSettings();
-    res.json({ enabled: settings.festivalGreetingsEnabled !== false, alertDays: settings.festivalAlertDays ?? 3, festivals: require('../lib/festivals').upcoming(400) });
+    res.json({ enabled: settings.festivalGreetingsEnabled !== false, alertDays: settings.festivalAlertDays ?? 3, festivals: require('../lib/festivals').upcoming(400), milestones: await require('../lib/celebrations').overview().catch(() => null) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -54,6 +54,7 @@ router.get('/app/info', async (req, res) => {
       maintenance: require('../lib/maintenance').publicInfo(settings),
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),
       intlAirtime: Boolean(settings.intlAirtimeEnabled),
+      circles: Boolean(settings.circlesEnabled),
       // Which wallet funding methods are on.
       funding: {
         bank: settings.monnifyFundingEnabled !== false,
@@ -63,7 +64,7 @@ router.get('/app/info', async (req, res) => {
         minAmount: Math.max(100, Number(settings.minFundingAmount || 100)),
       },
       // Festival greeting slide for today (Christmas, Eid, New Year…).
-      festival: settings.festivalGreetingsEnabled === false ? null : require('../lib/festivals').today(),
+      festival: settings.festivalGreetingsEnabled === false ? null : require('../lib/festivals').today() || (await require('../lib/celebrations').current()),
     });
   } catch (error) {
     console.error('GET /app/info failed:', error);

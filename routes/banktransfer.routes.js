@@ -71,6 +71,8 @@ router.post('/wallet/bank-transfer', requireCustomerAuth, async (req, res) => {
 
     const familyError = await require('../lib/family').checkSend(req.customer.customerId);
     if (familyError) return res.status(403).json({ error: familyError, code: 'FAMILY_LIMIT' });
+    const circleLock = await require('../lib/circles').owingLock(req.customer.customerId);
+    if (circleLock) return res.status(403).json({ error: circleLock, code: 'CIRCLE_OWING' });
 
     const confirmation = await confirmTransaction(req);
     if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });

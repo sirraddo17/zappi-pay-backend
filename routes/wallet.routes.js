@@ -11,11 +11,26 @@ const router = express.Router();
 
 // --- Customer-facing ---
 
+// Cashback balance + history (earned, used at checkout, returned).
+router.get('/wallet/cashback', requireCustomerAuth, async (req, res) => {
+  try {
+    const [c, entries, settings] = await Promise.all([
+      prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { cashbackBalance: true } }),
+      prisma.cashbackEntry.findMany({ where: { customerId: req.customer.customerId }, orderBy: { createdAt: 'desc' }, take: 30 }),
+      require('../lib/vtpass').getSettings(),
+    ]);
+    res.json({ balance: Number(c?.cashbackBalance || 0), maxPercent: Number(settings.cashbackUseMaxPercent ?? 20), separate: settings.cashbackSeparate !== false, entries: entries.map((e) => ({ id: e.id, amount: Number(e.amount), note: e.note, createdAt: e.createdAt })) });
+  } catch (error) {
+    console.error('GET /wallet/cashback failed:', error);
+    res.status(500).json({ error: 'Could not load your cashback.' });
+  }
+});
+
 router.get('/wallet/balance', requireCustomerAuth, async (req, res) => {
   try {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
     if (!customer) return res.status(404).json({ error: 'Account not found.' });
-    res.json({ walletBalance: customer.walletBalance });
+    res.json({ walletBalance: customer.walletBalance, cashbackBalance: customer.cashbackBalance ?? 0 });
   } catch (error) {
     console.error('GET /wallet/balance failed:', error);
     res.status(500).json({ error: 'Could not load wallet balance.' });
@@ -123,6 +138,7 @@ router.post('/admin/wallet/:id/approve', requireAdminAuth, async (req, res) => {
     ]);
 
     notify(existing.customerId, 'Wallet Funded', `Your wallet was credited ₦${Number(existing.amount).toLocaleString()}.`);
+    require('../lib/circles').onDeposit(existing.customerId).catch(() => {});
 
     res.json({ transaction });
   } catch (error) {
@@ -199,6 +215,9 @@ router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
     const familyError = await require('../lib/family').checkSend(req.customer.customerId, receiver.id);
     if (familyError) return res.status(403).json({ error: familyError, code: 'FAMILY_LIMIT' });
 
+    const circleLock = await require('../lib/circles').owingLock(req.customer.customerId);
+    if (circleLock) return res.status(403).json({ error: circleLock, code: 'CIRCLE_OWING' });
+
     const confirmation = await confirmTransaction(req);
     if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
@@ -228,6 +247,7 @@ router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
     }
 
     notify(receiver.id, 'Money Received', `${sender.name} sent you ₦${amountNum.toLocaleString()}.`);
+    require('../lib/circles').onDeposit(receiver.id).catch(() => {});
     notify(sender.id, 'Money Sent', `You sent ₦${amountNum.toLocaleString()} to ${receiver.name}.`);
 
     res.status(201).json({ transfer });

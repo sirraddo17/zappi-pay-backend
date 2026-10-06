@@ -632,9 +632,13 @@ RECEIPTS AS INVITES
 23. CASHBACK, LOYALTY POINTS, PROMO CODES AND COUPONS
 ----------------------------------------------------------------------
 CASHBACK
-- WHAT IT IS: A percentage of a successful purchase goes back into your wallet.
+- WHAT IT IS: A percentage of a successful purchase is given back as cashback.
 - Per service: [cashbackPercentByService, default none], at most [cashbackMaxPerOrder, default ₦500] per order. Amounts under ₦1 are not paid.
-- The Buy screen shows "+ X% cashback (about ₦Y) back to your wallet".
+- Cashback is kept in its own balance, apart from the wallet [cashbackSeparate, default ON]: Wallet → "🎁 Cashback" shows the balance and history.
+- HOW TO USE IT: on any Buy screen, switch on "Use cashback (₦X available)". Up to [cashbackUseMaxPercent, default 20]% of that purchase is paid from cashback; the rest stays for next time. The Total and Pay button show the lower amount. It's not compulsory — switch it off to keep it.
+- Cashback can't be sent or withdrawn — only used on purchases. If the purchase fails, the cashback used comes back too.
+- When cashbackSeparate is OFF, cashback goes straight into the wallet instead.
+- The Buy screen shows "+ X% cashback (about ₦Y) to your cashback for next time".
 - ADMIN SWITCH: [cashbackEnabled, default OFF].
 
 LOYALTY POINTS
@@ -1122,6 +1126,36 @@ RULES
 - Ad Studio → "Festival greetings": greetings for New Year, Ramadan, Eid-el-Fitr, Eid-el-Kabir, Islamic New Year, Eid-el-Maulud (birth of Prophet Muhammad, SAW), Good Friday, Easter, Christmas, Independence Day and Democracy Day, worked out for every year. Open one to download the square / status / slider pictures and copy the caption. The admins get an alert 3 days before. On the day, the app's top slider shows the greeting by itself (switch: "Show greetings in the app automatically + remind me"). Muslim dates follow the moon sighting and may move by a day.
 - Ad Studio → "Ready-made ads — new services": Pay me link, Split a bill, Group gift, Car insurance, Bulk WAEC PINs, JAMB PIN.
 - "⚠ Held" on a pending order: VTpass gave PINs/token, then said failed. It was not refunded. "PINs/token already given" warns before Failed + refund.
+
+----------------------------------------------------------------------
+55. AJO CIRCLE (GROUP CONTRIBUTIONS: AJO / ESUSU / ADASHE)
+----------------------------------------------------------------------
+WHAT IT IS: Save together with people you trust. Every member pays the same amount every day, week or month, and each period one member (by payout number) receives the whole pot. ZAPPI PAY collects and pays out automatically. No interest, no loans — members saving together. [setting: circlesEnabled, default OFF]
+
+BENEFITS
+- No chasing people: money is taken from wallets automatically on payment day.
+- Everyone sees everything: payout order, who has paid, who is late, the money in the pot.
+- The pot is locked: nobody — not members, not the creator, not ZAPPI PAY staff — can spend it before it is paid out.
+
+HOW TO GET STARTED (CREATOR)
+1. Home → More → "Ajo Circle" → "Start a circle".
+2. Name, amount, how often (daily / weekly / monthly), number of members, start day. Optional: payout fee (max 5% of the pot; 80% to you, 20% to ZAPPI PAY), late fee (max 10% of the contribution), grace hours, missed payments before a payout number moves to the end, extra rules.
+3. Accept the agreement and confirm with your PIN.
+4. Share the invite link on WhatsApp, or invite people by username. Members join after reading the rules and agreement and confirming with their PIN.
+5. When everyone has joined, set the payout order (move people up/down or "Shuffle"), then tap "Start circle".
+
+HOW IT WORKS FOR MEMBERS
+- Reminders 3 days before each payment day (weekly/monthly) and a ⚠ low-balance warning the day before.
+- On payment day the amount is taken from the wallet. If the balance is short, what's there is taken and the rest is taken as soon as money comes in (it retries every hour).
+- Payouts go strictly in order, only when everyone has paid. If someone is late, everyone sees "Payout waiting for: …".
+- Late after the grace hours: the late fee (if set) is added — it goes into the pot for that payout — and it counts as a strike.
+- Strikes before your payout: after the set number, your payout number moves to the end, automatically.
+- Owing after you've been paid: you can't buy, send money or withdraw until it's settled.
+- Repeated missed payments: blocked from new circles. Appeal on the Ajo Circle page; ZAPPI PAY decides.
+- Need your payout early while someone is late? The member due can ask for the money already collected; they agree the rest follows later, and ZAPPI PAY approves it.
+- You can leave before the circle starts, not after. The agreement can be re-read any time on the circle page.
+
+ADMIN: Admin → Ajo Circles: running circles, pots, late payments, early-release requests (approve/reject), appeals, blocked members (unblock), stop a circle (money in unpaid pots goes back to the members who paid it). Switch and limits: top of Admin → Ajo Circles (OFF until you turn it on). [setting: circleMaxAmount, default ₦500,000] [setting: circleMaxMembers, default 30] [setting: circleBanStrikes, default 3]
 
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)

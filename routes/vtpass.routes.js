@@ -165,6 +165,8 @@ router.get('/pricing', requireCustomerAuth, async (req, res) => {
       markupCapByService: settings.markupCapByService || {},
       discountPercentByService: settings.discountPercentByService || {},
       agentPricing: settings !== raw,
+      // Separate cashback balance used at checkout (lib/cashback.js).
+      cashback: raw.cashbackSeparate !== false ? { balance: Number((await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { cashbackBalance: true } }))?.cashbackBalance || 0), maxPercent: Number(raw.cashbackUseMaxPercent ?? 20) } : null,
     });
   } catch (error) {
     console.error('GET /pricing failed:', error);
@@ -194,7 +196,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
   const confirmation = await confirmTransaction(req);
   if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });
 
-  const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType, quantity: req.body.quantity, intl: req.body.intl, insurance: req.body.insurance };
+  const input = { service, serviceID, variationCode, billersCode, phone, amount, meterType, quantity: req.body.quantity, intl: req.body.intl, insurance: req.body.insurance, useCashback: Boolean(req.body.useCashback) };
   // Bought through an agent's shop link?
   const shopAgentId = await require('../lib/shop').agentForPurchase(req.customer.customerId, shop).catch(() => null);
   const result = await performPurchase(req.customer.customerId, { ...input, promoCode, shopAgentId });

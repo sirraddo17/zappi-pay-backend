@@ -48,7 +48,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, cashbackSeparate, cashbackUseMaxPercent, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, circlesEnabled, circleMaxAmount, circleMaxMembers, circleBanStrikes, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
@@ -173,6 +173,12 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data.cashbackPercentByService = Object.fromEntries(Object.entries(cashbackPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
     }
     if (cashbackMaxPerOrder !== undefined) data.cashbackMaxPerOrder = Number(cashbackMaxPerOrder);
+    if (cashbackSeparate !== undefined) data.cashbackSeparate = Boolean(cashbackSeparate);
+    if (cashbackUseMaxPercent !== undefined) {
+      const v = Number(cashbackUseMaxPercent);
+      if (!(v >= 1 && v <= 100)) return res.status(400).json({ error: 'Cashback use per purchase must be between 1% and 100%.' });
+      data.cashbackUseMaxPercent = v;
+    }
     if (agentPricingEnabled !== undefined) data.agentPricingEnabled = Boolean(agentPricingEnabled);
     if (agentDiscountPercentByService !== undefined) {
       data.agentDiscountPercentByService = Object.fromEntries(Object.entries(agentDiscountPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
@@ -193,6 +199,13 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data.adminTwoFactorEnabled = Boolean(adminTwoFactorEnabled);
     }
     if (intlAirtimeEnabled !== undefined) data.intlAirtimeEnabled = Boolean(intlAirtimeEnabled);
+    if (circlesEnabled !== undefined) {
+      if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant can’t switch Ajo Circle on or off.' });
+      data.circlesEnabled = Boolean(circlesEnabled);
+    }
+    if (circleMaxAmount !== undefined) data.circleMaxAmount = Math.max(100, Math.min(5000000, Number(circleMaxAmount) || 500000));
+    if (circleMaxMembers !== undefined) data.circleMaxMembers = Math.max(2, Math.min(100, parseInt(circleMaxMembers, 10) || 30));
+    if (circleBanStrikes !== undefined) data.circleBanStrikes = Math.max(1, Math.min(10, parseInt(circleBanStrikes, 10) || 3));
     if (festivalGreetingsEnabled !== undefined) data.festivalGreetingsEnabled = Boolean(festivalGreetingsEnabled);
     if (festivalAlertDays !== undefined) data.festivalAlertDays = Math.max(1, Math.min(14, parseInt(festivalAlertDays, 10) || 3));
     if (attackWatchEnabled !== undefined) {
