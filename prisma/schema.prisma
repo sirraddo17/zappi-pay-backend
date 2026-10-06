@@ -618,6 +618,9 @@ model Settings {
   familyEnabled         Boolean @default(false)
   // Bulk SMS (VTpass Messaging), event tickets (Monnify split payments), more bills (Flutterwave Bills).
   cardCheckoutEnabled   Boolean @default(false)
+  directPayEnabled      Boolean @default(false)
+  directPayFeeFlat      Decimal @default(50) @db.Decimal(10, 2)
+  directPayFeePercent   Decimal @default(1) @db.Decimal(5, 2)
   bulkSmsEnabled        Boolean @default(false)
   ticketsEnabled        Boolean @default(false)
   moreBillsEnabled      Boolean @default(false)
@@ -1724,6 +1727,8 @@ model SpraySession {
   senderId  String
   budget    Decimal  @db.Decimal(14, 2)
   spent     Decimal  @default(0) @db.Decimal(14, 2)
+  // Paid by card straight to the host's bank (direct pay): taps only show the notes.
+  prepaid   Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
@@ -2070,5 +2075,38 @@ model CheckoutIntent {
   paidAt      DateTime?
 
   @@index([customerId, createdAt])
+  @@index([status])
+}
+
+// Direct pay: money goes from the payer's card / transfer straight to the
+// receiver's bank account (Monnify sub-account split) — never a wallet.
+model PayoutAccount {
+  customerId     String   @id
+  bankCode       String
+  accountNumber  String
+  accountName    String
+  subAccountCode String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model DirectPayment {
+  id          String    @id @default(cuid())
+  reference   String    @unique
+  kind        String    // DUES | SPRAY | REQUEST
+  refId       String
+  payerId     String
+  recipientId String
+  amount      Decimal   @db.Decimal(14, 2)
+  fee         Decimal   @db.Decimal(14, 2)
+  status      String    @default("PENDING") // PENDING | PAID | EXPIRED | FAILED
+  monnifyRef  String?
+  checkoutUrl String?
+  meta        Json?
+  createdAt   DateTime  @default(now())
+  paidAt      DateTime?
+
+  @@index([payerId, createdAt])
+  @@index([kind, refId])
   @@index([status])
 }

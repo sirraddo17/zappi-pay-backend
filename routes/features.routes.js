@@ -39,8 +39,10 @@ router.post('/spray', requireCustomerAuth, H(async (req) => ({ event: await spra
 router.get('/spray/:code/live', H(async (req) => spray.live(req.params.code, { since: req.query.since }), 'Could not load.'));
 router.post('/spray/:code/session', requireCustomerAuth, withPin(async (req) => {
   const s = await spray.startSession(req.params.code, me(req), req.body?.budget);
+  if (s.checkout) return s; // card payment straight to the host's bank
   return { sessionId: s.id, budget: Number(s.budget), left: Number(s.budget) };
 }, 'Could not start spraying.'));
+router.get('/spray/:code/my-session', requireCustomerAuth, H(async (req) => ({ session: await spray.mySession(req.params.code, me(req)) }), 'Could not load.'));
 router.post('/spray/:code/gift', requireCustomerAuth, H(async (req) => spray.spray(req.params.code, me(req), req.body || {}), 'Could not spray.'));
 router.post('/spray/:code/close', requireCustomerAuth, H(async (req) => spray.close(req.params.code, me(req)), 'Could not end the event.'));
 

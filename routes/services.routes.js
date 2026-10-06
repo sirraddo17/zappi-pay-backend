@@ -8,6 +8,7 @@ const sms = require('../lib/bulkSms');
 const tickets = require('../lib/tickets');
 const bills = require('../lib/flwBills');
 const checkout = require('../lib/checkout');
+const direct = require('../lib/directPay');
 
 // Bulk SMS, Event tickets and More bills — each behind its own switch.
 const router = express.Router();
@@ -66,6 +67,11 @@ router.get('/checkout/quote', requireCustomerAuth, H(async (req) => checkout.quo
 router.post('/checkout/start', requireCustomerAuth, H(async (req) => checkout.start(me(req), req.body || {}), 'Could not start the card payment.'));
 router.get('/checkout/:ref', requireCustomerAuth, H(async (req) => checkout.view(me(req), req.params.ref), 'Could not load the payment.'));
 
+// --- Direct pay (straight to the receiver's bank) ---
+router.get('/payout', requireCustomerAuth, H(async (req) => { const s = await getSettings(); return { account: await direct.payout(me(req)), on: direct.isOnFor(s, me(req)), feeFlat: Number(s.directPayFeeFlat), feePercent: Number(s.directPayFeePercent) }; }, 'Could not load.'));
+router.put('/payout', requireCustomerAuth, withPin(async (req) => ({ account: await direct.setPayout(me(req), req.body || {}) }), 'Could not save the bank account.'));
+router.get('/paid/:ref', requireCustomerAuth, H(async (req) => direct.view(me(req), req.params.ref), 'Could not load the payment.'));
+
 // --- Admin ---
 router.get('/admin/extra-services', requireAdminAuth, H(async () => {
   const s = await getSettings();
@@ -73,6 +79,7 @@ router.get('/admin/extra-services', requireAdminAuth, H(async () => {
     sms: await sms.adminOverview(),
     tickets: { ...(await tickets.adminOverview()), feeFlat: Number(s.ticketFeeFlat), feePercent: Number(s.ticketFeePercent) },
     bills: await bills.adminOverview(),
+    direct: { feeFlat: Number(s.directPayFeeFlat), feePercent: Number(s.directPayFeePercent) },
   };
 }, 'Could not load.'));
 router.put('/admin/extra-services/config', requireAdminAuth, H(async (req, res) => {
@@ -89,6 +96,8 @@ router.put('/admin/extra-services/config', requireAdminAuth, H(async (req, res) 
   if (b.ticketFeeFlat !== undefined) data.ticketFeeFlat = num(b.ticketFeeFlat, 0, 5000);
   if (b.ticketFeePercent !== undefined) data.ticketFeePercent = num(b.ticketFeePercent, 0, 20);
   if (b.billsFee !== undefined) data.billsFee = num(b.billsFee, 0, 5000);
+  if (b.directPayFeeFlat !== undefined) data.directPayFeeFlat = num(b.directPayFeeFlat, 0, 2000);
+  if (b.directPayFeePercent !== undefined) data.directPayFeePercent = num(b.directPayFeePercent, 0, 10);
   if (Array.isArray(b.billsHiddenCategories)) data.billsHiddenCategories = b.billsHiddenCategories.map((x) => String(x).slice(0, 40)).slice(0, 50);
   const s = await getSettings();
   await prisma.settings.update({ where: { id: s.id }, data });
@@ -114,6 +123,7 @@ function startJobs() {
     tickets.sweep().catch((e) => console.error('tickets sweep failed:', e.message));
     bills.sweep().catch((e) => console.error('bills sweep failed:', e.message));
     checkout.sweep().catch((e) => console.error('checkout sweep failed:', e.message));
+    direct.sweep().catch((e) => console.error('direct pay sweep failed:', e.message));
   };
   setTimeout(run, 3 * 60 * 1000).unref?.();
   setInterval(run, 10 * 60 * 1000).unref?.();

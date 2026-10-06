@@ -1255,6 +1255,14 @@ WHERE: on any Buy screen, when the wallet doesn't cover the price, a "💳 Pay �
 HOW: tap it, pay on the secure payment page (card, bank transfer or USSD). The amount goes into your wallet and the purchase runs straight away; you land on the receipt. A small card fee may apply (shown on the button). If the purchase itself fails after you paid, the money stays in your wallet — nothing is lost; try again. Payments are from ₦100 to ₦500,000.
 ADMIN: Admin → New features → "Pay by card at checkout" (Off / Testers only / On for everyone). Fee: Settings → Wallet funding (card fee % and cap). Uses Monnify. [setting: cardFundingFeePercent] [setting: cardFundingFeeCap]
 
+----------------------------------------------------------------------
+67. PAY STRAIGHT TO THEIR BANK (DUES, OWAMBE SPRAY, REQUEST MONEY BY CARD)
+----------------------------------------------------------------------
+WHAT IT IS: when this is switched on, Association Dues, Owambe Spray and Request money (pay-me links, split bills, group gifts) are paid by card, bank transfer or USSD, and the money goes straight into the receiver's own bank account. No wallet money moves between customers.
+RECEIVER: add your bank account once ("🏦 Where your dues / sprays / payments go" card on the Dues, Spray and Request money pages, or in Profile). It must be verified; confirm with your PIN. Money is paid into it by our payment partner, usually the next working day.
+PAYER: tap Pay (dues), set a spray budget (spray) or pay the link — you go to the secure payment page, then come back to a "Payment successful" screen. A small fee is added on top. Spray: after paying your budget, tap SPRAY to throw the notes on the screen; anything not tapped is counted when the host ends the event. Dues auto-pay isn't available in this mode (reminders still come on the due date).
+ADMIN: Admin → New features → "Pay straight to their bank" (Off / Testers only / On), plus switch on Dues / Spray / Request money themselves. Fee: Admin → SMS, Tickets & Bills. Needs Monnify sub-accounts enabled. [setting: directPayFeeFlat, default ₦50] [setting: directPayFeePercent, default 1%]
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================

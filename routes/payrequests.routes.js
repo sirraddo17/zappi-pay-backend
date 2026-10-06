@@ -9,6 +9,7 @@ const router = express.Router();
 
 function fail(res, e, what) {
   if (e instanceof P.PayRequestError) return res.status(e.status).json({ error: e.message, code: e.code });
+  if (e?.status >= 400 && e.status < 600 && e.message) return res.status(e.status).json({ error: e.message, code: e.code });
   console.error(`${what} failed:`, e);
   return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 }

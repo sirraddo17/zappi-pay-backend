@@ -151,6 +151,11 @@ router.post('/webhooks/monnify', async (req, res) => {
       const result = await monnify.creditFromTransaction(eventData.transactionReference);
       console.log('Monnify webhook:', eventData.transactionReference, JSON.stringify(result));
     }
+    // Direct pay (straight to the receiver's bank).
+    if (eventType === 'SUCCESSFUL_TRANSACTION' && String(eventData?.paymentReference || '').startsWith('DP-')) {
+      const result = await require('../lib/directPay').confirm(eventData.paymentReference);
+      console.log('Monnify direct-pay webhook:', eventData.paymentReference, JSON.stringify(result));
+    }
     // Pay-by-card checkouts (re-verified with Monnify before anything is credited).
     if (eventType === 'SUCCESSFUL_TRANSACTION' && String(eventData?.paymentReference || '').startsWith('CHK-')) {
       const result = await require('../lib/checkout').confirm(eventData.paymentReference);
