@@ -286,6 +286,8 @@ enum WalletTxType {
   CHALLENGE_REWARD
   DELIVERY_BONUS
   SHOP_COMMISSION
+  SMS
+  BILL_PAY
 }
 
 enum WalletTxStatus {
@@ -614,6 +616,20 @@ model Settings {
   p2pEnabled            Boolean @default(false)
   payRequestsEnabled    Boolean @default(false)
   familyEnabled         Boolean @default(false)
+  // Bulk SMS (VTpass Messaging), event tickets (Monnify split payments), more bills (Flutterwave Bills).
+  bulkSmsEnabled        Boolean @default(false)
+  ticketsEnabled        Boolean @default(false)
+  moreBillsEnabled      Boolean @default(false)
+  smsPublicKey          String?
+  smsSecretKey          String?
+  smsPricePerPage       Decimal @default(5) @db.Decimal(10, 2)
+  smsDndPricePerPage    Decimal @default(10) @db.Decimal(10, 2)
+  smsDefaultSender      String  @default("ZAPPIPAY")
+  smsMaxRecipients      Int     @default(1000)
+  ticketFeeFlat         Decimal @default(100) @db.Decimal(10, 2)
+  ticketFeePercent      Decimal @default(2) @db.Decimal(5, 2)
+  billsFee              Decimal @default(50) @db.Decimal(10, 2)
+  billsHiddenCategories Json    @default("[\"AIRTIME\",\"MOBILEDATA\",\"CABLEBILLS\",\"INTSERVICE\"]")
   dailyStreakReward     Decimal @default(20) @db.Decimal(14, 2)
   dailyQuizReward       Decimal @default(5) @db.Decimal(14, 2)
   dailyRewardsBudget    Decimal @default(2000) @db.Decimal(14, 2)
@@ -1912,4 +1928,124 @@ model DailyCheckin {
 
   @@unique([customerId, day])
   @@index([day])
+}
+
+// --- Bulk SMS ---
+model SmsSender {
+  id         String   @id @default(cuid())
+  customerId String
+  name       String
+  purpose    String?
+  status     String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, name])
+  @@index([status])
+}
+
+model SmsBatch {
+  id           String   @id @default(cuid())
+  customerId   String
+  sender       String
+  route        String   @default("NORMAL") // NORMAL | DND
+  message      String
+  recipients   Int
+  pages        Int
+  cost         Decimal  @db.Decimal(14, 2)
+  refunded     Decimal  @default(0) @db.Decimal(14, 2)
+  sent         Int      @default(0)
+  failed       Int      @default(0)
+  status       String   @default("SENDING") // SENDING | SENT | PARTIAL | FAILED
+  providerRef  String?
+  response     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+// --- Event tickets (money goes straight to the organiser's bank via a Monnify sub-account) ---
+model TicketEvent {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  organiserId    String
+  title          String
+  description    String?
+  venue          String
+  startsAt       DateTime
+  bankCode       String?
+  accountNumber  String?
+  accountName    String?
+  subAccountCode String?
+  status         String   @default("ON_SALE") // ON_SALE | CLOSED | CANCELLED
+  createdAt      DateTime @default(now())
+
+  @@index([organiserId])
+}
+
+model TicketType {
+  id       String  @id @default(cuid())
+  eventId  String
+  name     String
+  price    Decimal @db.Decimal(14, 2)
+  quantity Int
+
+  @@index([eventId])
+}
+
+model TicketOrder {
+  id               String    @id @default(cuid())
+  reference        String    @unique
+  eventId          String
+  typeId           String
+  buyerId          String
+  quantity         Int
+  amount           Decimal   @db.Decimal(14, 2) // ticket money (to organiser)
+  fee              Decimal   @db.Decimal(14, 2) // booking fee (to ZAPPI PAY)
+  status           String    @default("PENDING") // PENDING | PAID | FAILED | EXPIRED
+  monnifyRef       String?
+  checkoutUrl      String?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([eventId, status])
+  @@index([buyerId])
+}
+
+model Ticket {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  orderId     String
+  eventId     String
+  typeId      String
+  buyerId     String
+  checkedInAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([eventId])
+  @@index([buyerId])
+}
+
+// --- More bills (Flutterwave Bills) ---
+model BillPayment {
+  id           String   @id @default(cuid())
+  reference    String   @unique
+  customerId   String
+  category     String
+  billerCode   String
+  billerName   String
+  itemCode     String
+  itemName     String
+  customerRef  String
+  customerName String?
+  amount       Decimal  @db.Decimal(14, 2)
+  fee          Decimal  @db.Decimal(14, 2)
+  status       String   @default("PENDING") // PENDING | SUCCESS | FAILED
+  token        String?
+  providerRef  String?
+  response     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([status])
 }

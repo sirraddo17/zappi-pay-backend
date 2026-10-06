@@ -1217,6 +1217,34 @@ WHERE: More → Daily rewards (and a card on Home when it's on).
 HOW: check in once a day to grow your streak; every 7th day in a row earns the streak reward. After checking in, answer the question of the day — a right answer earns the quiz reward. Rewards go to your cashback balance. Only verified customers earn (get your account number on the Wallet page). Missing a day restarts the streak. There is a daily budget for all customers; when it's used up, rewards pause until tomorrow.
 ADMIN: Admin → New features: Off / Testers only / On for everyone (warning shown), streak reward, quiz reward, daily budget. [setting: dailyStreakReward, default ₦20] [setting: dailyQuizReward, default ₦5] [setting: dailyRewardsBudget, default ₦2,000]
 
+----------------------------------------------------------------------
+63. BULK SMS (SEND SMS TO YOUR CUSTOMERS OR MEMBERS)
+----------------------------------------------------------------------
+WHERE: More → Bulk SMS (only when switched on).
+HOW: choose the sender name (ZAPPIPAY by default, or your own approved name), paste phone numbers (one per line or separated by commas, or import a CSV/text file), type the message, check the cost, tap Send and confirm with your PIN.
+COST: price per SMS page × number of recipients. One page = 160 normal characters (153 per page when longer); emoji and some special characters make it a "unicode" SMS (70 characters, 67 per page). Maximum 6 pages. "Reach DND numbers" uses the DND route, which costs more per page. Numbers that fail are refunded automatically.
+OWN SENDER NAME: "Use my own business name" → 3–11 letters/numbers and what it's for. ZAPPI PAY approves it (usually 1–3 working days). Names that look like a bank, network, government agency or another company are refused.
+RULES: verified accounts only; Nigerian numbers only; only send to people who know you; messages asking for a PIN, OTP, BVN, password or card details are blocked.
+ADMIN: Admin → SMS, Tickets & Bills: VTpass Messaging keys, price per page, DND price, max numbers per send, default sender name, sender-name requests (approve/reject), recent sends. Switch: Admin → New features. [setting: smsPricePerPage, default ₦5] [setting: smsDndPricePerPage, default ₦10]
+
+----------------------------------------------------------------------
+64. EVENT TICKETS (SELL OR BUY TICKETS, QR CHECK-IN)
+----------------------------------------------------------------------
+WHERE: More → Event tickets. Event links look like zappipay.com.ng/t/<code>.
+ORGANISER: "Sell tickets for an event" → name, venue, date & time, details, ticket types (name, price — ₦0 for free — and how many), and the bank account ticket money should go to (the name is checked). Share the link on WhatsApp. The event dashboard shows sales per ticket type, money, guests, a guest-list download, Stop selling / Start selling again, and Cancel (only before any paid tickets are sold).
+MONEY: buyers pay by card, bank transfer or USSD on the payment page. The ticket money is paid straight into the organiser's bank account by our payment partner (usually the next working day) — ZAPPI PAY does not hold it. Buyers pay a booking fee on top. Refunds are between the organiser and the buyers.
+BUYER: open the link, choose the ticket type and how many (up to 10), pay. Tickets appear in More → Event tickets → My tickets with a QR code and an 8-character code. Each code works once.
+CHECK-IN: on the event dashboard, type the code or tap Scan to scan the QR. It says Welcome, Already used, or Not a ticket for this event.
+ADMIN: Admin → SMS, Tickets & Bills: booking fee per ticket and %, events, booking fees earned, Stop sales. Monnify sub-accounts must be enabled by Monnify support. [setting: ticketFeeFlat, default ₦100] [setting: ticketFeePercent, default 2%]
+
+----------------------------------------------------------------------
+65. MORE BILLS (TAX, WASTE, WATER, TOLLS, SCHOOL & PROFESSIONAL FEES, OFFERINGS)
+----------------------------------------------------------------------
+WHERE: More → More bills.
+HOW: choose the category (e.g. Tax Payment, Utility Bills, Schools & Professional Bodies, Religious Institutions, Transport & Logistics, Donations), then the biller, then what you're paying for. Enter the customer / account / tax ID and tap Verify (if it can't be confirmed automatically, tick that you've checked it). Enter the amount (some items have a fixed amount), check the total (amount + service fee) and pay with your PIN.
+AFTER: the receipt shows the status, any token/receipt number and the reference (Print / save). "Processing" means the biller is still confirming — you're notified, and if it fails the money comes back to your wallet automatically.
+ADMIN: Admin → SMS, Tickets & Bills: service fee, which categories customers see, recent bills, and Paid / Failed — refund for payments stuck on processing (check the Flutterwave dashboard first). Paid from the Flutterwave balance. Switch: Admin → New features. [setting: billsFee, default ₦50]
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================
