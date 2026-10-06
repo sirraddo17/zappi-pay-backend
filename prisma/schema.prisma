@@ -610,6 +610,10 @@ model Settings {
   safeBuyAutoReleaseDays Int    @default(3)
   payrollEnabled        Boolean @default(false)
   dailyRewardsEnabled   Boolean @default(false)
+  // Money between people (wallet-to-wallet, pay-me links, family wallet) — OFF until a licensed partner/lawyer confirms.
+  p2pEnabled            Boolean @default(false)
+  payRequestsEnabled    Boolean @default(false)
+  familyEnabled         Boolean @default(false)
   dailyStreakReward     Decimal @default(20) @db.Decimal(14, 2)
   dailyQuizReward       Decimal @default(5) @db.Decimal(14, 2)
   dailyRewardsBudget    Decimal @default(2000) @db.Decimal(14, 2)

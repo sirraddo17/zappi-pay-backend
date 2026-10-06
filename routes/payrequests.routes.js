@@ -20,7 +20,7 @@ function optionalCustomer(req) {
   try { const p = jwt.verify(h.slice(7), process.env.JWT_SECRET); return p.kind === 'customer' ? p.sub : null; } catch { return null; }
 }
 
-router.post('/pay-requests', requireCustomerAuth, async (req, res) => {
+router.post('/pay-requests', requireCustomerAuth, require('../lib/features').gate('requests'), async (req, res) => {
   try { res.status(201).json(await P.create(req.customer.customerId, req.body || {})); } catch (e) { fail(res, e, 'POST /pay-requests'); }
 });
 
@@ -35,7 +35,7 @@ router.get('/pay-requests/public/:token', async (req, res) => {
   try { res.json({ request: await P.view(req.params.token, optionalCustomer(req)) }); } catch (e) { fail(res, e, 'GET /pay-requests/public'); }
 });
 
-router.post('/pay-requests/:token/pay', requireCustomerAuth, async (req, res) => {
+router.post('/pay-requests/:token/pay', requireCustomerAuth, require('../lib/features').gate('requests'), async (req, res) => {
   try {
     const confirmation = await confirmTransaction(req);
     if (!confirmation.ok) return res.status(confirmation.status).json({ error: confirmation.error, code: confirmation.code });

@@ -55,6 +55,7 @@ router.get('/app/info', async (req, res) => {
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),
       intlAirtime: Boolean(settings.intlAirtimeEnabled),
       circles: Boolean(settings.circlesEnabled),
+      bankTransfer: Boolean(settings.bankTransferEnabled),
       features: Object.fromEntries(require('../lib/features').FEATURES.map((f) => [f.key, Boolean(settings[f.setting])])),
       // Which wallet funding methods are on.
       funding: {

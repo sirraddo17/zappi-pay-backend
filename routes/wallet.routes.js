@@ -195,7 +195,7 @@ router.get('/wallet/lookup', requireCustomerAuth, async (req, res) => {
 // Wallet-to-wallet transfer between two ZappiPay customers. Fully
 // internal — no external payment provider involved, so this works
 // regardless of the Monnify integration's status.
-router.post('/wallet/transfer', requireCustomerAuth, async (req, res) => {
+router.post('/wallet/transfer', requireCustomerAuth, require('../lib/features').gate('sendMoney'), async (req, res) => {
   try {
     const { identifier, amount, note } = req.body;
     const amountNum = Number(amount);

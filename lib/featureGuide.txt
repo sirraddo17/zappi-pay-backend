@@ -302,6 +302,7 @@ ADMIN SWITCH: Maintenance pause (BETTING).
 ----------------------------------------------------------------------
 10. SEND MONEY: TO ZAPPI PAY USERS (P2P, by phone, username or QR)
 ----------------------------------------------------------------------
+AVAILABILITY: switched in Admin → New features (Off / Testers only / On for everyone) [p2pEnabled, default OFF]. When it is off, customers don't see it and the app says it isn't available yet — don't tell customers how to use it.
 WHAT IT IS: Instant, free wallet-to-wallet transfers to another ZAPPI PAY customer.
 
 BENEFITS
@@ -427,6 +428,7 @@ ADMIN SWITCH: [deliveryPromiseEnabled, default OFF].
 ----------------------------------------------------------------------
 15. FAMILY WALLET
 ----------------------------------------------------------------------
+AVAILABILITY: switched in Admin → New features (Off / Testers only / On for everyone) [familyEnabled, default OFF]. When it is off, customers don't see it and the app says it isn't available yet — don't tell customers how to use it.
 WHAT IT IS: A parent links a family member's ZAPPI PAY account. The parent can then send an automatic allowance and set controls: a daily spending limit, which services the member can buy, and whether they can send money out.
 
 BENEFITS
@@ -1073,6 +1075,7 @@ AGENT WEEKLY REPORT
 ----------------------------------------------------------------------
 50. REQUEST MONEY: PAY ME LINKS, SPLIT A BILL, GROUP GIFT
 ----------------------------------------------------------------------
+AVAILABILITY: switched in Admin → New features (Off / Testers only / On for everyone) [payRequestsEnabled, default OFF]. When it is off, customers don't see it and the app says it isn't available yet — don't tell customers how to use it.
 WHAT IT IS
 - Home → More → "Request money". Make a link and share it (WhatsApp, SMS, anywhere). People open it and pay from their ZAPPI PAY wallet with their PIN; the money goes straight into your wallet. ZAPPI PAY does not hold the money in between.
 - 💸 Pay me: ask one person for a fixed amount ("Pay me ₦5,000 for rent"). It closes after one payment.

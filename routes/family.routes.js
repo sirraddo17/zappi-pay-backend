@@ -19,20 +19,20 @@ router.get('/family', requireCustomerAuth, wrap(async (req, res) => {
   const [members, managedBy] = await Promise.all([fam.forParent(me(req)), fam.forChild(me(req))]);
   res.json({ members, managedBy, services: fam.SERVICES });
 }));
-router.post('/family/invite', requireCustomerAuth, wrap(async (req, res) => {
+router.post('/family/invite', requireCustomerAuth, require('../lib/features').gate('family'), wrap(async (req, res) => {
   res.status(201).json({ link: await fam.invite(me(req), req.body || {}) });
 }));
-router.post('/family/respond', requireCustomerAuth, wrap(async (req, res) => {
+router.post('/family/respond', requireCustomerAuth, require('../lib/features').gate('family'), wrap(async (req, res) => {
   res.json({ link: await fam.respond(me(req), Boolean(req.body?.accept)) });
 }));
 router.post('/family/leave', requireCustomerAuth, wrap(async (req, res) => {
   await fam.leave(me(req));
   res.json({ ok: true });
 }));
-router.put('/family/:id', requireCustomerAuth, wrap(async (req, res) => {
+router.put('/family/:id', requireCustomerAuth, require('../lib/features').gate('family'), wrap(async (req, res) => {
   res.json({ link: await fam.update(me(req), req.params.id, req.body || {}) });
 }));
-router.post('/family/:id/send-now', requireCustomerAuth, wrap(async (req, res) => {
+router.post('/family/:id/send-now', requireCustomerAuth, require('../lib/features').gate('family'), wrap(async (req, res) => {
   await fam.sendNow(me(req), req.params.id);
   res.json({ ok: true });
 }));
