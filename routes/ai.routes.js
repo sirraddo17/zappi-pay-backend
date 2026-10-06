@@ -154,9 +154,9 @@ function customerHandlers(customerId, settings) {
   };
 }
 
-function customerSystemPrompt(firstName) {
-  return `You are the ZAPPI PAY help assistant inside the ZAPPI PAY app (Nigeria). ZAPPI PAY is a wallet app by Sirraddo Venture for airtime, data, electricity, cable TV, education PINs, internet, bet funding, airtime-to-cash, sending money to other users and to banks.
-
+function customerSystemPrompt(firstName, note = '') {
+  return `You are the ZAPPI PAY help assistant inside the ZAPPI PAY app (Nigeria). ZAPPI PAY is a wallet app by Sirraddo Venture for airtime, data, electricity, cable TV, education PINs, internet, bet funding, airtime-to-cash and other bills.
+${note}
 You are talking to a logged-in customer${firstName ? ` called ${firstName}` : ''}. Use the tools to look up THEIR OWN account, orders and transactions when it helps — do not guess amounts or statuses.
 
 Rules:
@@ -299,7 +299,7 @@ router.post('/ai/chat', requireCustomerAuth, async (req, res) => {
       kind: 'CUSTOMER',
       actorId: customerId,
       model: settings.aiCustomerModel,
-      system: customerSystemPrompt(me?.name?.split(' ')[0]) + (chatBuy ? chatBuy.PROMPT : '') + helpTools.PROMPT + extras.PROMPT,
+      system: customerSystemPrompt(me?.name?.split(' ')[0], require('../lib/features').offNote(settings, customerId)) + (chatBuy ? chatBuy.PROMPT : '') + helpTools.PROMPT + extras.PROMPT,
       history,
       tools: [...CUSTOMER_TOOLS, ...(chatBuy ? chatBuy.TOOLS : []), ...helpTools.TOOLS, ...extras.TOOLS],
       handlers: { ...customerHandlers(customerId, settings), ...(chatBuy ? chatBuy.handlers(customerId, settings, collector) : {}), ...helpHandlers, ...extras.handlers(customerId) },
@@ -897,7 +897,7 @@ router.post('/admin/ai/design-ad', requireAdminAuth, async (req, res) => {
       kind: 'ADMIN',
       actorId: req.admin.adminId,
       model: settings.aiAdminModel,
-      system: `You are the marketing designer for ZAPPI PAY, a Nigerian wallet app for airtime, data, electricity, cable TV (DStv/GOtv/Startimes), exam PINs (WAEC/NECO/JAMB), internet, bet funding, airtime-to-cash and sending money to banks. Website www.zappipay.com.ng.
+      system: `You are the marketing designer for ZAPPI PAY, a Nigerian wallet app for airtime, data, electricity, cable TV (DStv/GOtv/Startimes), exam PINs (WAEC/NECO/JAMB), internet, bet funding, airtime-to-cash and other bills. Website www.zappipay.com.ng.${require('../lib/features').offNote(settings)}
 Turn the admin's brief into 3 different ad designs. Reply with ONLY valid JSON, no other text:
 {"designs":[{"headline":"max 6 words","highlight":"1-3 words of the headline to colour gold (must appear in headline) or empty","subtext":"max 14 words","cta":"max 3 words","badges":["up to 3 short tags, max 3 words each"],"emoji":"one emoji","theme":"${AD_THEMES.join('|')}","caption":"social media caption, max 240 characters, friendly Nigerian tone, include www.zappipay.com.ng and 2-4 hashtags","link":"best in-app page for the button: /buy/airtime, /buy/data, /buy/electricity, /buy/cable, /buy/education, /buy/internet, /buy/betting, /airtime-cash, /transfer, /wallet, /refer, /bulk or empty"}]}
 Rules: make each design clearly different (angle, wording, theme). Only promise things in the brief or listed above — never invent prices, discounts, prizes or dates that the admin did not give. Punchy, simple English (a little Pidgin is fine when it fits).`,

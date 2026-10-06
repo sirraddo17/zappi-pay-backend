@@ -4,7 +4,7 @@ ZAPPI PAY: CUSTOMER FEATURE FACT SHEET (for the in-app AI assistant)
 
 HOW TO READ THIS
 - "Home" is the main screen. The bottom bar has four tabs: Home, Wallet, Orders and Profile.
-- Home shows a "Services" grid with these tiles: Airtime, Data, Electricity, Cable TV, Education, Send Money, Internet, Bet Funding and More.
+- Home shows a "Services" grid with these tiles: Airtime, Data, Electricity, Cable TV, Education, Internet, Bet Funding and More. A "Send Money" tile also shows, but only while sending money to users or to banks is switched on.
 - Home → More ("More services") has these tiles: Airtime to Cash, Print Cards, Bulk airtime & data, Best data deals, Refer & Earn and Family wallet.
 - A floating Help bubble (button labelled "Open help", window titled "ZappiPay Help") appears on every logged-in screen. It is hidden on the login, signup, password, legal and admin pages.
 - "Set by ZAPPI PAY (currently configurable)" means an admin setting. The value in brackets is the code DEFAULT, not necessarily today's live value.
@@ -730,6 +730,7 @@ ADMIN SWITCH: None, apart from maintenance.
 ----------------------------------------------------------------------
 28. BANK TRANSFER (Send to Bank)
 ----------------------------------------------------------------------
+AVAILABILITY: [bankTransferEnabled, default OFF]. While it is off, the Bank Account tab says sending to bank accounts isn't available yet — don't tell customers how to use it. Customers who close their account or want their balance back contact support, who refund it to a bank account in their own name.
 WHAT IT IS: Send money from your wallet to any Nigerian bank account. The account name is checked before you send.
 
 HOW TO GET STARTED
