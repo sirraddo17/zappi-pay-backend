@@ -613,6 +613,9 @@ model Settings {
   dailyStreakReward     Decimal @default(20) @db.Decimal(14, 2)
   dailyQuizReward       Decimal @default(5) @db.Decimal(14, 2)
   dailyRewardsBudget    Decimal @default(2000) @db.Decimal(14, 2)
+  // Features in "testers only" mode ({ key: true }) and who the testers are ([{ id, name, username }]).
+  featureTestMode       Json    @default("{}")
+  featureTesters        Json    @default("[]")
   flutterwaveEnabled    Boolean @default(false)
   flutterwavePublicKey  String?
   flutterwaveSecretKey  String?

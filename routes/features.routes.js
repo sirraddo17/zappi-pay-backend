@@ -88,6 +88,9 @@ router.post('/payroll/staff', requireCustomerAuth, H(async (req) => ({ staff: aw
 router.patch('/payroll/staff/:id', requireCustomerAuth, H(async (req) => payroll.updateStaff(me(req), req.params.id, req.body || {}), 'Could not update.'));
 router.post('/payroll/run', requireCustomerAuth, withPin(async (req) => payroll.run(me(req), req.body?.label), 'Could not run payroll.'));
 
+// Which features this customer can use (testers see testers-only ones).
+router.get('/features/mine', requireCustomerAuth, H(async (req) => ({ features: await F.flags(me(req)) }), 'Could not load features.'));
+
 // --- Daily rewards ---
 router.get('/rewards/daily', requireCustomerAuth, H(async (req) => daily.status(me(req)), 'Could not load rewards.'));
 router.post('/rewards/daily/checkin', requireCustomerAuth, H(async (req) => daily.checkin(me(req)), 'Could not check in.'));
@@ -96,14 +99,25 @@ router.post('/rewards/daily/quiz', requireCustomerAuth, H(async (req) => daily.a
 // --- Admin ---
 router.get('/admin/features', requireAdminAuth, H(async () => {
   const s = await getSettings();
-  return { features: await F.adminStatus(), safeBuy: { feePercent: Number(s.safeBuyFeePercent), feeCap: Number(s.safeBuyFeeCap), autoReleaseDays: s.safeBuyAutoReleaseDays, deals: await safe.adminList() }, daily: { streakReward: Number(s.dailyStreakReward), quizReward: Number(s.dailyQuizReward), budget: Number(s.dailyRewardsBudget) } };
+  return { features: await F.adminStatus(), testers: await F.testers(), safeBuy: { feePercent: Number(s.safeBuyFeePercent), feeCap: Number(s.safeBuyFeeCap), autoReleaseDays: s.safeBuyAutoReleaseDays, deals: await safe.adminList() }, daily: { streakReward: Number(s.dailyStreakReward), quizReward: Number(s.dailyQuizReward), budget: Number(s.dailyRewardsBudget) } };
 }, 'Could not load features.'));
 router.put('/admin/features/:key', requireAdminAuth, H(async (req, res) => {
   if (req.headers['x-admin-assistant']) { res.status(403).json({ error: 'The AI assistant can’t switch features on or off.' }); return undefined; }
-  const out = await F.setFeature(req.params.key, Boolean(req.body?.on), { acknowledged: Boolean(req.body?.acknowledged) });
-  await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'FEATURE_SWITCH', details: { feature: req.params.key, on: Boolean(req.body?.on), acknowledgedWarning: Boolean(req.body?.acknowledged) } } }).catch(() => {});
+  const mode = req.body?.mode || (req.body?.on ? 'ON' : 'OFF');
+  const out = await F.setFeature(req.params.key, mode, { acknowledged: Boolean(req.body?.acknowledged) });
+  await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'FEATURE_SWITCH', details: { feature: req.params.key, mode, acknowledgedWarning: Boolean(req.body?.acknowledged) } } }).catch(() => {});
   return { features: out };
 }, 'Could not change the feature.'));
+router.post('/admin/feature-testers', requireAdminAuth, H(async (req, res) => {
+  if (req.headers['x-admin-assistant']) { res.status(403).json({ error: 'The AI assistant can’t change testers.' }); return undefined; }
+  const testers = await F.addTester(req.body?.who);
+  await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'FEATURE_TESTER_ADD', details: { who: String(req.body?.who || '').slice(0, 60) } } }).catch(() => {});
+  return { testers };
+}, 'Could not add the tester.'));
+router.delete('/admin/feature-testers/:id', requireAdminAuth, H(async (req, res) => {
+  if (req.headers['x-admin-assistant']) { res.status(403).json({ error: 'The AI assistant can’t change testers.' }); return undefined; }
+  return { testers: await F.removeTester(req.params.id) };
+}, 'Could not remove the tester.'));
 router.put('/admin/features-config', requireAdminAuth, H(async (req, res) => {
   if (req.headers['x-admin-assistant']) { res.status(403).json({ error: 'The AI assistant can’t change these.' }); return undefined; }
   const b = req.body || {};
