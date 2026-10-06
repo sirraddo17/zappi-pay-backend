@@ -1157,6 +1157,63 @@ HOW IT WORKS FOR MEMBERS
 
 ADMIN: Admin → Ajo Circles: running circles, pots, late payments, early-release requests (approve/reject), appeals, blocked members (unblock), stop a circle (money in unpaid pots goes back to the members who paid it). Switch and limits: top of Admin → Ajo Circles (OFF until you turn it on). [setting: circleMaxAmount, default ₦500,000] [setting: circleMaxMembers, default 30] [setting: circleBanStrikes, default 3]
 
+----------------------------------------------------------------------
+56. OWAMBE SPRAY (SPRAY MONEY AT A PARTY FROM YOUR PHONE)
+----------------------------------------------------------------------
+WHERE: More → Owambe Spray (only shows when ZAPPI PAY has switched it on).
+HOW (host / celebrant):
+1. Tap "Start a spray event", enter the event title and celebrant's name.
+2. Show the QR code or share the link with guests. "Big screen" opens a full-screen display (flying notes, total, top sprayers) for a TV or projector.
+3. Every spray goes straight into the host's wallet immediately. Tap "End event" when the party is over. Up to 3 open events.
+HOW (guest):
+1. Scan the QR / open the link, set a spray budget (₦100–₦500,000) and confirm with your PIN once.
+2. Choose a note (₦100, ₦200, ₦500, ₦1,000, ₦2,000, ₦5,000) and tap SPRAY as many times as you like until the budget is used. The budget session lasts 12 hours. You can't spray your own event.
+ADMIN: Admin → New features (switch).
+
+----------------------------------------------------------------------
+57. ASSOCIATION DUES (ESTATE / CHURCH / MOSQUE / ALUMNI / CLUB DUES)
+----------------------------------------------------------------------
+WHERE: More → Association Dues.
+HOW (treasurer): create a group (name, amount, weekly/monthly/yearly, due day, what it's for), share the invite link. Dues go straight into the treasurer's wallet. You see who has paid each period, can "Remind unpaid", download the list (Excel/CSV), and mark your own dues paid.
+HOW (member): join from the link, tap "Pay" for each unpaid period (PIN), or switch on auto-pay so it's paid on each due date. A reminder comes on the due day and a notice 3 days after if unpaid. Only the treasurer sees member names.
+ADMIN: Admin → New features (switch).
+
+----------------------------------------------------------------------
+58. PAY IT FOR ME (ASK SOMEONE TO PAY YOUR AIRTIME / DATA / LIGHT / TV / EXAM PIN)
+----------------------------------------------------------------------
+WHERE: on any service page (Airtime, Data, Electricity, Cable TV, Internet, Exam PINs) fill in the details, then tap "🙏 Ask someone to pay" instead of Pay. My requests: More → Pay It For Me.
+HOW: share the link. The payer opens it, sees the price (your number is partly hidden) and pays from their own wallet with their PIN. The service goes straight to you — no cash changes hands. Electricity token shows on the request page and in your notifications. Links expire after 7 days; up to 10 open requests. If a paid purchase fails the payer is refunded and the link opens again. You can cancel an open request.
+ADMIN: Admin → New features (switch).
+
+----------------------------------------------------------------------
+59. SHARED LIGHT (HOUSEMATES PAY INTO ONE POT FOR A TOKEN)
+----------------------------------------------------------------------
+WHERE: More → Shared Light.
+HOW: the owner creates a pot (electricity company, meter number, prepaid/postpaid, token amount ₦1,000–₦200,000). The meter name is checked first. Share the invite link; members join and "Put in" money with their PIN (minimum ₦100). The moment the pot reaches the token amount, the token is bought automatically for that meter and everyone is notified; the token shows on the pot page. A new round then starts. The owner can "Buy now" with what's there (at least ₦1,000) or close the pot — money in it goes back to whoever paid it. If a purchase fails, the money goes back into the pot.
+ADMIN: Admin → New features (switch, shows a warning first).
+
+----------------------------------------------------------------------
+60. SAFEBUY (BUYER PROTECTION FOR WHATSAPP / INSTAGRAM DEALS)
+----------------------------------------------------------------------
+WHERE: More → SafeBuy.
+HOW (seller): create a SafeBuy link (item, price ₦500–₦2,000,000, details) and send it to the buyer. When the buyer pays, send the item and tap "I've sent it" (add a waybill/rider note). You're paid when the buyer confirms, minus the SafeBuy fee.
+HOW (buyer): open the link, check the seller (verified badge, completed deals), pay with your PIN — the money is HELD, not sent to the seller. When the item arrives tap "I've received it" (PIN). Problem? Tap "Report a problem" before the auto-release date; the money stays held while ZAPPI PAY checks. If the buyer says nothing, money is released to the seller automatically after the set number of days from "sent". If the seller hasn't sent within 7 days of payment the buyer can cancel for a refund; the seller can refund any time before sending.
+ADMIN: Admin → New features: switch (warning: escrow may need a CBN licence or licensed partner — speak to a lawyer first), fee, fee cap, auto-release days, deals holding money and disputes (Pay seller / Refund buyer). [setting: safeBuyFeePercent, default 1] [setting: safeBuyFeeCap, default ₦2,000] [setting: safeBuyAutoReleaseDays, default 3]
+
+----------------------------------------------------------------------
+61. PAYROLL (PAY STAFF IN ONE TAP)
+----------------------------------------------------------------------
+WHERE: More → Payroll.
+HOW: add staff — ZAPPI PAY wallet (username or phone; free and instant) or bank account (bank + 10-digit account number; name is checked). Set each salary; edit or remove any time (up to 100 staff). Tap "Pay everyone", confirm with your PIN. Wallet staff get a payslip notification; bank staff are sent through Send to Bank (normal transfer fee and limits). The result shows who was paid and who failed; past payrolls are listed.
+ADMIN: Admin → New features (switch, shows a warning first).
+
+----------------------------------------------------------------------
+62. DAILY REWARDS (CHECK-IN STREAK + QUESTION OF THE DAY)
+----------------------------------------------------------------------
+WHERE: More → Daily rewards (and a card on Home when it's on).
+HOW: check in once a day to grow your streak; every 7th day in a row earns the streak reward. After checking in, answer the question of the day — a right answer earns the quiz reward. Rewards go to your cashback balance. Only verified customers earn (get your account number on the Wallet page). Missing a day restarts the streak. There is a daily budget for all customers; when it's used up, rewards pause until tomorrow.
+ADMIN: Admin → New features: switch (warning shown), streak reward, quiz reward, daily budget. [setting: dailyStreakReward, default ₦20] [setting: dailyQuizReward, default ₦5] [setting: dailyRewardsBudget, default ₦2,000]
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================

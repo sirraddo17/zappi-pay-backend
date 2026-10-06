@@ -257,6 +257,17 @@ model WebAuthnCredential {
 
 enum WalletTxType {
   FUND
+  SPRAY_OUT
+  SPRAY_IN
+  DUES_OUT
+  DUES_IN
+  POT_OUT
+  POT_IN
+  SAFEBUY_OUT
+  SAFEBUY_IN
+  PAYROLL_OUT
+  PAYROLL_IN
+  REWARD
   CIRCLE_OUT
   CIRCLE_IN
   DEBIT
@@ -588,6 +599,20 @@ model Settings {
   circleMaxAmount       Decimal @default(500000) @db.Decimal(14, 2)
   circleMaxMembers      Int     @default(30)
   circleBanStrikes      Int     @default(3)
+  // Newer features — each off until the owner switches it on (Admin → New features).
+  sprayEnabled          Boolean @default(false)
+  duesEnabled           Boolean @default(false)
+  payForMeEnabled       Boolean @default(false)
+  sharedLightEnabled    Boolean @default(false)
+  safeBuyEnabled        Boolean @default(false)
+  safeBuyFeePercent     Decimal @default(1) @db.Decimal(5, 2)
+  safeBuyFeeCap         Decimal @default(2000) @db.Decimal(14, 2)
+  safeBuyAutoReleaseDays Int    @default(3)
+  payrollEnabled        Boolean @default(false)
+  dailyRewardsEnabled   Boolean @default(false)
+  dailyStreakReward     Decimal @default(20) @db.Decimal(14, 2)
+  dailyQuizReward       Decimal @default(5) @db.Decimal(14, 2)
+  dailyRewardsBudget    Decimal @default(2000) @db.Decimal(14, 2)
   flutterwaveEnabled    Boolean @default(false)
   flutterwavePublicKey  String?
   flutterwaveSecretKey  String?
@@ -1649,4 +1674,235 @@ model CircleAppeal {
   createdAt  DateTime  @default(now())
 
   @@index([status])
+}
+
+// ---------------- Owambe Spray ----------------
+model SprayEvent {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  hostId    String
+  title     String
+  celebrant String?
+  status    String   @default("OPEN") // OPEN, CLOSED
+  total     Decimal  @default(0) @db.Decimal(14, 2)
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  closedAt  DateTime?
+
+  @@index([hostId])
+}
+
+// A guest's "spray budget" for one event: approved once with the PIN, then
+// each tap sprays without asking again, until the budget runs out.
+model SpraySession {
+  id        String   @id @default(cuid())
+  eventId   String
+  senderId  String
+  budget    Decimal  @db.Decimal(14, 2)
+  spent     Decimal  @default(0) @db.Decimal(14, 2)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([eventId, senderId])
+}
+
+model SprayGift {
+  id        String   @id @default(cuid())
+  eventId   String
+  senderId  String
+  name      String
+  amount    Decimal  @db.Decimal(14, 2)
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@index([eventId, createdAt])
+}
+
+// ---------------- Association Dues ----------------
+model Association {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  ownerId     String
+  amount      Decimal  @db.Decimal(14, 2)
+  frequency   String // WEEKLY, MONTHLY, YEARLY
+  dueDay      Int      @default(1)
+  description String?
+  status      String   @default("ACTIVE") // ACTIVE, CLOSED
+  createdAt   DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+model AssociationMember {
+  id         String   @id @default(cuid())
+  assocId    String
+  customerId String
+  role       String   @default("MEMBER") // OWNER, MEMBER
+  autoPay    Boolean  @default(false)
+  status     String   @default("ACTIVE") // ACTIVE, LEFT
+  joinedAt   DateTime @default(now())
+
+  @@unique([assocId, customerId])
+  @@index([customerId])
+}
+
+model DuesPayment {
+  id         String   @id @default(cuid())
+  assocId    String
+  customerId String
+  period     String // e.g. 2026-10, 2026-W41, 2026
+  amount     Decimal  @db.Decimal(14, 2)
+  createdAt  DateTime @default(now())
+
+  @@unique([assocId, customerId, period])
+  @@index([assocId, period])
+}
+
+// ---------------- Pay It For Me ----------------
+model PayForMe {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  requesterId  String
+  service      String
+  serviceID    String
+  variationCode String?
+  billersCode  String
+  meterType    String?
+  amount       Decimal?  @db.Decimal(14, 2)
+  label        String
+  note         String?
+  status       String    @default("OPEN") // OPEN, PAID, CANCELLED
+  paidById     String?
+  orderId      String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  paidAt       DateTime?
+
+  @@index([requesterId])
+}
+
+// ---------------- Shared Light ----------------
+model LightPot {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  ownerId      String
+  name         String
+  serviceID    String
+  meterNumber  String
+  meterType    String   @default("prepaid")
+  meterName    String?
+  target       Decimal  @db.Decimal(14, 2)
+  collected    Decimal  @default(0) @db.Decimal(14, 2)
+  cycle        Int      @default(1)
+  status       String   @default("ACTIVE") // ACTIVE, CLOSED
+  lastOrderId  String?
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+model LightPotMember {
+  id         String   @id @default(cuid())
+  potId      String
+  customerId String
+  share      Decimal? @db.Decimal(14, 2)
+  status     String   @default("ACTIVE")
+  joinedAt   DateTime @default(now())
+
+  @@unique([potId, customerId])
+  @@index([customerId])
+}
+
+model LightPotPayment {
+  id         String   @id @default(cuid())
+  potId      String
+  customerId String
+  cycle      Int
+  amount     Decimal  @db.Decimal(14, 2)
+  createdAt  DateTime @default(now())
+
+  @@index([potId, cycle])
+}
+
+model LightPotBuy {
+  id        String   @id @default(cuid())
+  potId     String
+  cycle     Int
+  amount    Decimal  @db.Decimal(14, 2)
+  orderId   String?
+  status    String // SUCCESS, PENDING, FAILED
+  createdAt DateTime @default(now())
+
+  @@index([potId])
+}
+
+// ---------------- SafeBuy (buyer protection) ----------------
+model SafeDeal {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  sellerId      String
+  buyerId       String?
+  title         String
+  description   String?
+  amount        Decimal   @db.Decimal(14, 2)
+  fee           Decimal   @default(0) @db.Decimal(14, 2)
+  status        String    @default("AWAITING_PAYMENT") // AWAITING_PAYMENT, PAID, SENT, COMPLETED, DISPUTED, REFUNDED, CANCELLED
+  disputeReason String?
+  sentNote      String?
+  resolution    String?
+  autoReleaseAt DateTime?
+  paidAt        DateTime?
+  sentAt        DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+// ---------------- Payroll ----------------
+model PayrollStaff {
+  id            String   @id @default(cuid())
+  ownerId       String
+  name          String
+  payTo         String // WALLET, BANK
+  identifier    String? // username / phone for WALLET
+  bankCode      String?
+  accountNumber String?
+  accountName   String?
+  amount        Decimal  @db.Decimal(14, 2)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+model PayrollRun {
+  id        String   @id @default(cuid())
+  ownerId   String
+  label     String
+  total     Decimal  @db.Decimal(14, 2)
+  paid      Int      @default(0)
+  failed    Int      @default(0)
+  items     Json
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+// ---------------- Daily rewards ----------------
+model DailyCheckin {
+  id         String   @id @default(cuid())
+  customerId String
+  day        String // YYYY-MM-DD (Lagos)
+  streak     Int
+  reward     Decimal  @default(0) @db.Decimal(14, 2)
+  quizDone   Boolean  @default(false)
+  quizReward Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, day])
+  @@index([day])
 }
