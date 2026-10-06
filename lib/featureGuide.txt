@@ -1159,7 +1159,7 @@ HOW IT WORKS FOR MEMBERS
 - Need your payout early while someone is late? The member due can ask for the money already collected; they agree the rest follows later, and ZAPPI PAY approves it.
 - You can leave before the circle starts, not after. The agreement can be re-read any time on the circle page.
 
-ADMIN: Admin → Ajo Circles: running circles, pots, late payments, early-release requests (approve/reject), appeals, blocked members (unblock), stop a circle (money in unpaid pots goes back to the members who paid it). Switch and limits: top of Admin → Ajo Circles (OFF until you turn it on). [setting: circleMaxAmount, default ₦500,000] [setting: circleMaxMembers, default 30] [setting: circleBanStrikes, default 3]
+ADMIN: Admin → Ajo Circles: running circles, pots, late payments, early-release requests (approve/reject), appeals, blocked members (unblock), stop a circle (money in unpaid pots goes back to the members who paid it). Switch: Admin → New features (Off / Testers only / On for everyone; OFF until you turn it on). Limits: top of Admin → Ajo Circles. [setting: circleMaxAmount, default ₦500,000] [setting: circleMaxMembers, default 30] [setting: circleBanStrikes, default 3]
 
 ----------------------------------------------------------------------
 56. OWAMBE SPRAY (SPRAY MONEY AT A PARTY FROM YOUR PHONE)

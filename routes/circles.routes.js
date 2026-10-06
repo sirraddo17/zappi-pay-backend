@@ -28,7 +28,7 @@ const noAi = (req, res) => {
 router.get('/circles', requireCustomerAuth, async (req, res) => {
   try {
     const s = await getSettings();
-    res.json({ enabled: Boolean(s.circlesEnabled), limits: { maxAmount: Number(s.circleMaxAmount || 500000), maxMembers: Number(s.circleMaxMembers || 30), appShare: C.APP_SHARE }, ...(await C.mine(me(req))) });
+    res.json({ enabled: require('../lib/features').isOnFor(s, 'circles', me(req)), limits: { maxAmount: Number(s.circleMaxAmount || 500000), maxMembers: Number(s.circleMaxMembers || 30), appShare: C.APP_SHARE }, ...(await C.mine(me(req))) });
   } catch (error) { fail(res, error, 'Could not load your circles.'); }
 });
 
