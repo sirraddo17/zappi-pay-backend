@@ -247,6 +247,17 @@ router.post('/admin/ai/ad-image', requireAdminAuth, async (req, res) => {
     fail(res, error, 'Could not make the picture.');
   }
 });
+router.post('/admin/ai/voiceover', requireAdminAuth, async (req, res) => {
+  const X = require('../lib/openaiExtras');
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'Voiceovers cost money — make them from Ad Studio.' });
+    const buf = await X.voiceover(req.admin.adminId, { text: req.body?.text, language: req.body?.language, voice: req.body?.voice });
+    res.set('Content-Type', 'audio/mpeg').set('Cache-Control', 'no-store').send(buf);
+  } catch (error) {
+    if (error instanceof X.ExtraError) return res.status(error.status).json({ error: error.message, code: error.code });
+    fail(res, error, 'Could not make the voiceover.');
+  }
+});
 router.post('/ai/transcribe', requireCustomerAuth, async (req, res) => {
   const voice = require('../lib/voice');
   try {
