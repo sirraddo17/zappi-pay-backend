@@ -102,4 +102,16 @@ router.post('/admin/ai/video-script', requireAdminAuth, async (req, res) => {
   }
 });
 
+// 🎞️ Story video scenes (AI) for the in-app video maker.
+router.post('/admin/ai/story-scenes', requireAdminAuth, async (req, res) => {
+  const vs = require('../lib/videoScript');
+  try {
+    res.json(await vs.storyScenes(req.admin.adminId, req.body || {}));
+  } catch (error) {
+    if (error instanceof vs.ScriptError || error.code?.startsWith?.('AI_')) return res.status(400).json({ error: error.message, code: error.code });
+    console.error('POST /admin/ai/story-scenes failed:', error.message);
+    res.status(502).json({ error: 'The AI could not plan the video right now. Please try again.' });
+  }
+});
+
 module.exports = router;
