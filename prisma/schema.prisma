@@ -417,6 +417,10 @@ model SupportTicket {
   // notification and shown under the ticket in their Profile.
   adminReply String?
   repliedAt  DateTime?
+  // Away mode's automatic reply (the ticket stays OPEN for a person).
+  autoReply     String?
+  autoKind      String?
+  autoRepliedAt DateTime?
   resolvedAt DateTime?
   createdAt  DateTime     @default(now())
 
@@ -788,6 +792,17 @@ model Settings {
   // and run once it's switched back on.
   purchasesPaused          Boolean @default(false)
   pausedServices           Json    @default("[]")
+  // Auto-pause (lib/partnerHealth.js): a provider (e.g. ikeja-electric)
+  // that keeps failing for several customers is paused for a while,
+  // tried again quietly, and reopened by itself when it works.
+  autoPauseEnabled         Boolean @default(true)
+  autoPaused               Json    @default("{}")
+  // Away mode (lib/awayMode.js): OFF, HOURS (between awayFrom and
+  // awayTo, Lagos time) or ON. New support messages get a safe reply.
+  awayMode                 String  @default("OFF")
+  awayFrom                 String  @default("21:00")
+  awayTo                   String  @default("08:00")
+  awayAiReplies            Boolean @default(true)
   maintenanceMessage       String?
   // Email owners when the server crashes or VTpass keeps failing.
   errorAlertsEnabled       Boolean @default(true)
@@ -2109,4 +2124,55 @@ model DirectPayment {
   @@index([payerId, createdAt])
   @@index([kind, refId])
   @@index([status])
+}
+
+// Partner desk (lib/partnerDesk.js): who we work with and what is due.
+model Partner {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  name       String
+  email      String?
+  phone      String?
+  website    String?
+  accountRef String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PartnerTask {
+  id         String    @id @default(cuid())
+  partnerKey String
+  title      String
+  notes      String?
+  dueAt      DateTime
+  done       Boolean   @default(false)
+  remindedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([done, dueAt])
+}
+
+// Results of the weekly partner reconciliation.
+model PartnerCheck {
+  id      String   @id @default(cuid())
+  kind    String
+  ranAt   DateTime @default(now())
+  summary Json
+
+  @@index([kind, ranAt])
+}
+
+// Messages to affected customers that the owner approves before sending.
+model FollowUp {
+  id          String    @id @default(cuid())
+  kind        String
+  title       String
+  message     String
+  customerIds Json      @default("[]")
+  status      String    @default("DRAFT")
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+
+  @@index([status, createdAt])
 }

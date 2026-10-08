@@ -962,6 +962,7 @@ ADMIN SWITCHES
 - Pauses apply to app purchases, bulk, Print Cards (as Airtime) and repeats. Repeats wait and run later.
 - Service notices and banners also appear on Home and the Buy screens. Banners can be closed with "×".
 
+AUTOMATIC PAUSE: one provider (e.g. IKEDC, DStv or one network's data) can also be paused by itself for a short while when it keeps failing at our partner — see section 68. Other providers and services keep working; failed purchases are refunded automatically.
 ----------------------------------------------------------------------
 41. ACCOUNT STATEMENT
 ----------------------------------------------------------------------
@@ -1263,6 +1264,14 @@ WHAT IT IS: when this is switched on, Association Dues, Owambe Spray and Request
 RECEIVER: add your bank account once ("🏦 Where your dues / sprays / payments go" card on the Dues, Spray and Request money pages, or in Profile). It must be verified; confirm with your PIN. Money is paid into it by our payment partner, usually the next working day.
 PAYER: tap Pay (dues), set a spray budget (spray) or pay the link — you go to the secure payment page, then come back to a "Payment successful" screen. A small fee is added on top. Spray: after paying your budget, tap SPRAY to throw the notes on the screen; anything not tapped is counted when the host ends the event. Dues auto-pay isn't available in this mode (reminders still come on the due date).
 ADMIN: Admin → New features → "Pay straight to their bank" (Off / Testers only / On), plus switch on Dues / Spray / Request money themselves. Fee: Admin → SMS, Tickets & Bills. Needs Monnify sub-accounts enabled. [setting: directPayFeeFlat, default ₦50] [setting: directPayFeePercent, default 1%]
+
+
+----------------------------------------------------------------------
+68. PAUSED PROVIDERS AND AUTOMATIC SUPPORT REPLIES
+----------------------------------------------------------------------
+PAUSED PROVIDER: sometimes one provider (for example one electricity company, a TV service or one network's data) has problems at our partner. When it keeps failing for several customers, ZAPPI PAY pauses only that one for a short while and shows a notice ("… is having problems at our provider, so we've paused it for a short while to protect your money"). Everything else works as normal. Anyone whose purchase failed was refunded to their wallet automatically. It is tried again by itself, usually within 15–30 minutes, and reopens when it works — try again later. When it's back, customers who were affected may get a short message.
+AUTOMATIC REPLY: at night or when the team is away, a support message gets an instant "Automatic reply" under it (Profile → Support). If the message is about a purchase, the reply shows the purchase's real status (delivered, refunded or still being confirmed). Questions about money, refunds or account access get "a team member will check personally — your money is safe". A team member still reads and answers every message. ZAPPI PAY staff and automatic replies never ask for your PIN, password or OTP.
+ADMIN: Admin → 🤝 Partners. Auto-pause (on by default; rule: 5+ failures from 3+ different customers within 10 minutes on one provider; 15 min pause, doubled each time it still fails, max 2 hours; "Reopen now"). Away mode (Off / every night between set hours / away now; optional AI answers for simple how-to questions from this guide — needs the customer AI on). Messages for customers drafted after an outage wait for the owner to edit and send. Partner desk: contacts, deadlines with reminders, orders to raise with VTpass (one email draft for many orders — the owner sends it from his own email), Monnify "transfer not reflected" complaints with a "Check with Monnify" button, ClubKonnect wallet balance, a weekly partner check every Monday morning (re-asks VTpass about uncertain orders, credits bank transfers Monnify never notified, flags refunded-but-delivered orders) and a monthly partner report with email drafts for VTpass and Monnify. The admin AI can read the Partners page but can't change it or send anything. [setting: autoPauseEnabled, default on] [setting: awayMode, default OFF] [setting: awayFrom, default 21:00] [setting: awayTo, default 08:00]
 
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)

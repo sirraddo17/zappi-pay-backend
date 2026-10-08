@@ -52,6 +52,7 @@ router.post('/support/tickets', requireCustomerAuth, async (req, res) => {
       .then((c) => require('../lib/adminAlert').alertAdmins('New support message', `${c?.name || 'A customer'} (${c?.phone || ''}): ${message.trim().slice(0, 300)}`, '/admin/support'))
       .catch(() => {});
 
+    setImmediate(() => require('../lib/awayMode').onNewTicket(ticket.id));
     res.status(201).json({ ticket });
   } catch (error) {
     console.error('POST /support/tickets failed:', error);

@@ -624,7 +624,7 @@ Rules:
 - You can PROPOSE changes to rewards, pricing and promotions (rewards split, cashback, loyalty, referrals, discounts, agent discounts, markup, delivery promise, shop links, the giveaway safety limit, maintenance pause), create or stop challenges, create promo codes, post service notices and prepare broadcasts — using the propose_* tools. Call get_rewards_and_pricing first so you know the current values and margins. A proposal only shows a card; nothing changes until the owner taps Apply, so never say a change is done. Explain briefly why you suggest each value and mention any warnings on the card.
 - Be careful with money: keep discounts below what the business earns on a service, give challenges and promo codes a budget or usage limit, and never suggest giving back more than the owner asked for.
 - You cannot touch: VTpass/Monnify/AI keys or modes, bank and funding accounts, transfer fees and limits, security settings, staff, passwords, savings interest, customer wallets, refunds, approvals or payouts. For those, say which admin screen to use (Pending Funding, Bank Transfers, Orders, Customers, Support, Settings).
-- Morning check / "how are things?": combine get_business_summary, get_attention_items, get_vtpass_runway and get_risk_flags.
+- Morning check / "how are things?": combine get_business_summary, get_attention_items, get_vtpass_runway and get_risk_flags (and get_partner_desk when partners, VTpass/Monnify problems, deadlines or follow-ups come up).
 - Fraud: get_risk_flags; look at the customers with get_customer_profile; suggest propose_freeze_customer only when the pattern is strong, and say why.
 - Support: get_support_digest → group complaints into themes with counts, then draft replies (get_customer_profile / get_orders for facts) and use propose_ticket_replies. Suggest propose_faq for questions that keep coming back.
 - Account fixes (locked login/PIN, lost phone): propose_account_tool. Remind the owner to confirm identity before a PIN reset.
@@ -668,6 +668,8 @@ const ACTION_TOOLS = [
   { name: 'propose_service_notice', description: 'Propose a notice shown in the app (e.g. "DStv renewals are slow today").', input_schema: { type: 'object', properties: { message: { type: 'string' }, service: { type: 'string' }, level: { type: 'string', enum: ['INFO', 'WARNING'] }, hours: { type: 'integer' } }, required: ['message'] } },
   { name: 'propose_broadcast', description: 'Propose sending a notification to customers.', input_schema: { type: 'object', properties: { title: { type: 'string' }, message: { type: 'string' }, type: { type: 'string', enum: ['INFO', 'WARNING', 'MAINTENANCE'] }, audience: { type: 'string', enum: ['ALL', 'AGENTS', 'NEW_7', 'NEVER_BOUGHT', 'ACTIVE_30', 'INACTIVE_30', 'SLIPPING'] }, showBanner: { type: 'boolean' } }, required: ['title', 'message'] } },
   { name: 'get_vtpass_runway', description: 'VTpass balance, average daily spend, days left and suggested top-up.', input_schema: { type: 'object', properties: { coverDays: { type: 'integer', description: 'days to cover, default 7' } } } },
+  { name: 'get_partner_desk', description: 'Partner desk (VTpass, Monnify, ClubKonnect…): contacts, deadlines/tasks, orders to raise with VTpass, funding complaints for Monnify, ClubKonnect balance, auto-paused providers, away mode, follow-up drafts waiting, last weekly check. Read-only — tell the owner to send emails / approve follow-ups on the Partners page.', input_schema: { type: 'object', properties: {} } },
+  { name: 'get_partner_report', description: 'Monthly partner report (volume, success rate, growth by service, wallet funding) plus ready email drafts for VTpass and Monnify. month = YYYY-MM (default last month).', input_schema: { type: 'object', properties: { month: { type: 'string' } } } },
   { name: 'get_risk_flags', description: 'Fraud and abuse patterns found in the last days (many accounts from one phone, fund-then-withdraw, collectors, password guessing, negative wallets).', input_schema: { type: 'object', properties: {} } },
   { name: 'propose_dismiss_risk_flag', description: 'Propose dismissing a risk flag the owner has checked.', input_schema: { type: 'object', properties: { flagId: { type: 'string' } }, required: ['flagId'] } },
   { name: 'get_support_digest', description: 'All open tickets (with waiting time and linked order) plus recent ticket messages, to group complaints into themes and draft replies.', input_schema: { type: 'object', properties: { days: { type: 'integer' } } } },
@@ -724,6 +726,11 @@ function actionHandlers(adminId, collector) {
   };
   return {
     get_rewards_and_pricing: () => A.overview(),
+    get_partner_desk: async () => {
+      const [o, issues, pause, awayCfg, fu] = await Promise.all([require('../lib/partnerDesk').overview(), require('../lib/partnerDesk').issues(), require('../lib/partnerHealth').list(), require('../lib/awayMode').config(), require('../lib/followUps').list()]);
+      return { partners: o.partners.map((p) => ({ key: p.key, name: p.name, email: p.email, phone: p.phone, notes: p.notes })), tasks: o.tasks, lastWeeklyCheck: o.lastReconcile, issues, autoPause: pause, away: awayCfg, followUpsWaiting: fu.filter((f) => f.status === 'DRAFT') };
+    },
+    get_partner_report: ({ month }) => require('../lib/partnerDesk').report(month),
     get_vtpass_runway: ({ coverDays }) => require('../lib/adminInsights').runway({ coverDays: Math.min(30, Math.max(1, parseInt(coverDays, 10) || 7)) }),
     async get_risk_flags() {
       const ins = require('../lib/adminInsights');
