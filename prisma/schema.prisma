@@ -795,6 +795,9 @@ model Settings {
   // Auto-pause (lib/partnerHealth.js): a provider (e.g. ikeja-electric)
   // that keeps failing for several customers is paused for a while,
   // tried again quietly, and reopened by itself when it works.
+  // Bet funding (Admin → New features). Off until a supplier that
+  // actually sells betting is connected (VTpass and ClubKonnect don't).
+  betFundingEnabled        Boolean @default(false)
   autoPauseEnabled         Boolean @default(true)
   autoPaused               Json    @default("{}")
   // Away mode (lib/awayMode.js): OFF, HOURS (between awayFrom and

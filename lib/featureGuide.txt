@@ -299,7 +299,7 @@ RULES
 - Wrong ID on ClubKonnect: "That betting account ID was not found. You have been refunded."
 - A ClubKonnect order that stays "not found" for more than 30 minutes is treated as failed and refunded.
 
-ADMIN SWITCH: Maintenance pause (BETTING).
+ADMIN SWITCH: Admin → New features → "Bet Funding" (Off / Testers only / On; default Off — VTpass and ClubKonnect don't currently sell bet funding, so it stays off until a betting supplier is connected). When off, the tile and page are hidden and purchases are refused. Maintenance pause (BETTING) also works.
 
 ----------------------------------------------------------------------
 10. SEND MONEY: TO ZAPPI PAY USERS (P2P, by phone, username or QR)
