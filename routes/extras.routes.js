@@ -54,6 +54,7 @@ router.get('/app/info', async (req, res) => {
       maintenance: require('../lib/maintenance').publicInfo(settings),
       deliveryPromise: require('../lib/deliveryPromise').publicInfo(settings),
       intlAirtime: Boolean(settings.intlAirtimeEnabled),
+      printCards: Boolean(settings.ckEnabled && (settings.ckUserId || process.env.CLUBKONNECT_USER_ID)),
       circles: Boolean(settings.circlesEnabled),
       bankTransfer: Boolean(settings.bankTransferEnabled),
       features: Object.fromEntries(require('../lib/features').FEATURES.map((f) => [f.key, Boolean(settings[f.setting])])),
