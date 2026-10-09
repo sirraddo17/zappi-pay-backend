@@ -304,6 +304,7 @@ ADMIN SWITCH: Admin → New features → "Bet Funding" (Off / Testers only / On;
 ----------------------------------------------------------------------
 10. SEND MONEY: TO ZAPPI PAY USERS (P2P, by phone, username or QR)
 ----------------------------------------------------------------------
+BVN/NIN NEEDED: to send money you must first verify your BVN or NIN on the Wallet page (it protects your money). The daily limit for your verification level always applies.
 AVAILABILITY: switched in Admin → New features (Off / Testers only / On for everyone) [p2pEnabled, default OFF]. When it is off, customers don't see it and the app says it isn't available yet — don't tell customers how to use it.
 WHAT IT IS: Instant, free wallet-to-wallet transfers to another ZAPPI PAY customer.
 
@@ -732,6 +733,7 @@ ADMIN SWITCH: None, apart from maintenance.
 ----------------------------------------------------------------------
 28. BANK TRANSFER (Send to Bank)
 ----------------------------------------------------------------------
+BVN/NIN NEEDED: verify your BVN or NIN on the Wallet page before sending to a bank; your daily limit applies. SAFETY PAUSE: if the app can't confirm that all customer money is fully covered, bank transfers pause for a short while (your money stays safe in your wallet) — try again later. ADMIN: Admin → Money check → "Customer-funds guard" shows whether customer money is covered, the free Monnify balance and "Safe to withdraw (your profit)" — never move more than that out of Monnify. Guard on by default [setting: fundsGuardEnabled, default on]; switch off only for an emergency.
 AVAILABILITY: [bankTransferEnabled, default OFF]. While it is off, the Bank Account tab says sending to bank accounts isn't available yet — don't tell customers how to use it. Customers who close their account or want their balance back contact support, who refund it to a bank account in their own name.
 WHAT IT IS: Send money from your wallet to any Nigerian bank account. The account name is checked before you send.
 

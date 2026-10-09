@@ -225,6 +225,12 @@ router.post('/wallet/transfer', requireCustomerAuth, require('../lib/features').
     if (Number(sender.walletBalance) < amountNum) {
       return res.status(400).json({ error: 'Insufficient wallet balance.' });
     }
+    try {
+      await require('../lib/fundsGuard').checkSender(sender, amountNum, await getSettings());
+    } catch (e) {
+      if (e.code) return res.status(e.status || 403).json({ error: e.message, code: e.code });
+      throw e;
+    }
     const limitError = await checkDailyLimit(sender, amountNum, await getSettings());
     if (limitError) return res.status(403).json({ error: limitError, code: 'DAILY_LIMIT' });
 

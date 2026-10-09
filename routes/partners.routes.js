@@ -87,6 +87,7 @@ router.post('/admin/partners/follow-ups/:id/dismiss', requireAdminAuth, guard(as
 function startJobs() {
   health.start();
   desk.start();
+  require('../lib/fundsGuard').start();
 }
 
 module.exports = router;

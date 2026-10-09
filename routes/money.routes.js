@@ -28,6 +28,30 @@ router.get('/admin/reconciliation', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Customer-funds guard: is customer money covered, what's safe to withdraw.
+router.get('/admin/funds-guard', requireAdminAuth, async (req, res) => {
+  try {
+    res.json(await require('../lib/fundsGuard').status());
+  } catch (error) {
+    console.error('GET /admin/funds-guard failed:', error);
+    res.status(500).json({ error: 'Could not check customer money right now.' });
+  }
+});
+router.put('/admin/funds-guard', requireAdminAuth, async (req, res) => {
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant can’t change this.' });
+    const enabled = Boolean(req.body?.enabled);
+    const s = await prisma.settings.findFirst({ select: { id: true } });
+    await prisma.settings.update({ where: { id: s.id }, data: { fundsGuardEnabled: enabled } });
+    require('../lib/vtpass').invalidateSettings();
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'FUNDS_GUARD_SETTING', details: { enabled } } }).catch(() => {});
+    res.json(await require('../lib/fundsGuard').status());
+  } catch (error) {
+    console.error('PUT /admin/funds-guard failed:', error);
+    res.status(500).json({ error: 'Could not save.' });
+  }
+});
+
 // --- CSV exports -------------------------------------------------------
 
 // Stops a cell like "=HYPERLINK(...)" from running as a formula when

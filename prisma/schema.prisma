@@ -798,6 +798,10 @@ model Settings {
   // Bet funding (Admin → New features). Off until a supplier that
   // actually sells betting is connected (VTpass and ClubKonnect don't).
   betFundingEnabled        Boolean @default(false)
+  // Customer-funds guard (lib/fundsGuard.js): BVN/NIN to send money,
+  // limits by level, and money held must cover customer balances or
+  // bank transfers pause.
+  fundsGuardEnabled        Boolean @default(true)
   autoPauseEnabled         Boolean @default(true)
   autoPaused               Json    @default("{}")
   // Away mode (lib/awayMode.js): OFF, HOURS (between awayFrom and
