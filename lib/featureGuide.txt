@@ -615,14 +615,14 @@ HOW TO GET STARTED
 2. If you have no username, "Choose your username". It becomes your referral code and can be set only once.
    - 3 to 20 characters: letters, numbers and underscores, with at least one letter.
 3. Use "Copy code", copy the invite link (/signup?ref=yourcode), share from the share options, or show "My ZAPPI PAY QR".
-4. Track progress under "Your referrals": "Waiting: first ₦X+ purchase", "✓ Purchased — bonus on the way", or "+₦X".
+4. Track progress under "Your referrals": "Waiting: first ₦X+ purchase", "⏳ X% to your bonus", "✓ Purchased — bonus on the way", or "+₦X".
 
 RULES
 - Bonus: [setting: referralBonusAmount, default ₦100], paid once per friend.
 - Paid when the friend's first successful purchase or successful bank transfer is at least [setting: referralMinPurchase, default ₦500].
 - The friend must have signed up with your code. An unknown code is rejected at signup.
 - ZAPPI PAY-to-ZAPPI PAY transfers and Print Cards don't count.
-- If the rewards split is on, the bonus waits until the referral pool has enough money.
+- If the rewards split is on, the bonus is paid after a few purchases by the friend: their first qualifying purchase or bank transfer starts it, and each purchase they make after that moves it closer. "Your referrals" shows "⏳ X% to your bonus"; at 100% it lands in your wallet automatically. (Behind the scenes it is paid from the referral pool, or once the friend's own purchases have covered it — so a bigger bonus just takes a few more purchases.)
 - Missed bonuses are re-checked when you open Refer & Earn.
 - Referral contests may also appear (the "🏆 REFERRAL CONTEST" card), with their own rules. A friend counts only after they buy something or send to a bank AND verify BVN/NIN.
 

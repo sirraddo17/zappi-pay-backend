@@ -147,7 +147,7 @@ function customerHandlers(customerId, settings) {
         notices: notices.length ? notices.map((n) => `${n.service || 'All services'}: ${n.message}`) : 'No known problems right now.',
         airtimeToCash: settings.airtimeToCashEnabled,
         sendToBank: settings.bankTransferEnabled,
-        referrals: settings.referralEnabled ? `on — ${naira(settings.referralBonusAmount)} per friend after their first purchase of ${naira(settings.referralMinPurchase)}+` : 'off',
+        referrals: settings.referralEnabled ? (settings.rewardSplitEnabled ? `on — ${naira(settings.referralBonusAmount)} per friend, paid after a few purchases by the friend (starting with one of ${naira(settings.referralMinPurchase)}+); Refer & Earn shows the % progress` : `on — ${naira(settings.referralBonusAmount)} per friend after their first purchase of ${naira(settings.referralMinPurchase)}+`) : 'off',
         cashback: settings.cashbackEnabled ? (settings.rewardSplitEnabled ? 'on — every purchase earns some cashback and points (the amount depends on the purchase)' : true) : false,
       };
     },

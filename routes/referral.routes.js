@@ -14,6 +14,7 @@ router.get('/referrals/info', async (req, res) => {
       enabled: settings.referralEnabled,
       bonusAmount: Number(settings.referralBonusAmount),
       minPurchase: Number(settings.referralMinPurchase),
+      friendFunded: Boolean(settings.rewardSplitEnabled),
     };
     const code = String(req.query.code || '').trim().toLowerCase();
     if (code) {
@@ -56,11 +57,22 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
       ]);
       for (const g of [...o, ...t]) purchased.add(g.customerId);
     }
+    // Rewards split on: how close each waiting friend is to covering the
+    // bonus with their own purchases (shown as a %, never as ₦ earned).
+    const progress = new Map();
+    if (settings.rewardSplitEnabled && settings.referralEnabled && Number(settings.referralBonusAmount) > 0) {
+      const { earnedFrom } = require('../lib/referral');
+      for (const id of [...purchased].slice(0, 50)) {
+        const e = await earnedFrom(id, settings).catch(() => 0);
+        progress.set(id, Math.min(99, Math.floor((e / Number(settings.referralBonusAmount)) * 100)));
+      }
+    }
     const totalEarned = referrals.reduce((sum, r) => sum + (r.referralBonusPaidAt ? Number(r.referralBonusAmount || 0) : 0), 0);
     res.json({
       enabled: settings.referralEnabled,
       bonusAmount: Number(settings.referralBonusAmount),
       minPurchase: Number(settings.referralMinPurchase),
+      friendFunded: Boolean(settings.rewardSplitEnabled),
       code: me?.username || null,
       totalEarned,
       referrals: referrals.map((r) => ({
@@ -68,6 +80,7 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
         joinedAt: r.createdAt,
         rewarded: Boolean(r.referralBonusPaidAt),
         purchased: Boolean(r.referralBonusPaidAt) || purchased.has(r.id),
+        progress: r.referralBonusPaidAt ? null : progress.get(r.id) ?? null,
         amount: r.referralBonusPaidAt ? Number(r.referralBonusAmount || 0) : null,
       })),
     });
