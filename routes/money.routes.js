@@ -52,6 +52,33 @@ router.put('/admin/funds-guard', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Safe pricing preset (lib/safePricing.js): preview, then apply.
+router.get('/admin/safe-pricing', requireAdminAuth, async (req, res) => {
+  try {
+    res.json(require('../lib/safePricing').preview(await require('../lib/vtpass').getSettings()));
+  } catch (error) {
+    console.error('GET /admin/safe-pricing failed:', error);
+    res.status(500).json({ error: 'Could not check pricing right now.' });
+  }
+});
+router.post('/admin/safe-pricing/apply', requireAdminAuth, async (req, res) => {
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant can’t change prices — apply it from Settings.' });
+    const sp = require('../lib/safePricing');
+    const settings = await require('../lib/vtpass').getSettings();
+    const data = sp.proposed(settings);
+    const before = sp.preview(settings).changes;
+    const s = await prisma.settings.findFirst({ select: { id: true } });
+    await prisma.settings.update({ where: { id: s.id }, data });
+    require('../lib/vtpass').invalidateSettings();
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'SAFE_PRICING_APPLIED', details: { changes: before } } }).catch(() => {});
+    res.json({ applied: before, ...sp.preview(await require('../lib/vtpass').getSettings()) });
+  } catch (error) {
+    console.error('POST /admin/safe-pricing/apply failed:', error);
+    res.status(500).json({ error: 'Could not apply safe pricing.' });
+  }
+});
+
 // --- CSV exports -------------------------------------------------------
 
 // Stops a cell like "=HYPERLINK(...)" from running as a formula when
