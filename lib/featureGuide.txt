@@ -652,6 +652,7 @@ LOYALTY POINTS
 - Earning: [loyaltyPointsPer100, default 1 point per ₦100 spent].
 - Value: [loyaltyPointValue, default ₦0.50 per point].
 - Minimum to redeem: [loyaltyMinRedeem, default 200 points].
+- Points are whole numbers. When the rewards split is on, any part of a purchase's points reward too small for a whole point is added to that purchase's cashback instead, so nothing is lost.
 - HOW TO REDEEM: the points card on Home → "Redeem". It converts ALL your points at once.
 - ADMIN SWITCH: [loyaltyEnabled, default OFF]. The card is hidden when it's off.
 
