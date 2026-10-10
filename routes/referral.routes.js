@@ -15,6 +15,7 @@ router.get('/referrals/info', async (req, res) => {
       bonusAmount: Number(settings.referralBonusAmount),
       minPurchase: Number(settings.referralMinPurchase),
       friendFunded: Boolean(settings.rewardSplitEnabled),
+      spendTarget: Number(settings.referralSpendTarget || 0),
     };
     const code = String(req.query.code || '').trim().toLowerCase();
     if (code) {
@@ -47,7 +48,8 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
     // Friends who already made a qualifying purchase/transfer but got no
     // bonus (e.g. rewards were switched off at the time), so the page
     // can say "Purchased" instead of "Waiting".
-    const min = Number(settings.referralMinPurchase || 0);
+    const spendTarget = Number(settings.referralSpendTarget || 0);
+    const min = spendTarget > 0 ? 0.01 : Number(settings.referralMinPurchase || 0);
     const unpaidIds = referrals.filter((r) => !r.referralBonusPaidAt).map((r) => r.id);
     const purchased = new Set();
     if (unpaidIds.length) {
@@ -60,7 +62,13 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
     // Rewards split on: how close each waiting friend is to covering the
     // bonus with their own purchases (shown as a %, never as ₦ earned).
     const progress = new Map();
-    if (settings.rewardSplitEnabled && settings.referralEnabled && Number(settings.referralBonusAmount) > 0) {
+    if (spendTarget > 0 && settings.referralEnabled) {
+      const { spentBy } = require('../lib/referral');
+      for (const id of [...purchased].slice(0, 50)) {
+        const spent = await spentBy(id).catch(() => 0);
+        progress.set(id, Math.min(99, Math.floor((spent / spendTarget) * 100)));
+      }
+    } else if (settings.rewardSplitEnabled && settings.referralEnabled && Number(settings.referralBonusAmount) > 0) {
       const { earnedFrom } = require('../lib/referral');
       for (const id of [...purchased].slice(0, 50)) {
         const e = await earnedFrom(id, settings).catch(() => 0);
@@ -73,6 +81,7 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
       bonusAmount: Number(settings.referralBonusAmount),
       minPurchase: Number(settings.referralMinPurchase),
       friendFunded: Boolean(settings.rewardSplitEnabled),
+      spendTarget,
       code: me?.username || null,
       totalEarned,
       referrals: referrals.map((r) => ({

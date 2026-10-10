@@ -45,7 +45,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, markupCapByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
       airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
-      referralEnabled, referralBonusAmount, referralMinPurchase, bankFundingFeePercent, bankFundingFeeCap,
+      referralEnabled, referralBonusAmount, referralMinPurchase, referralSpendTarget, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, cashbackSeparate, cashbackUseMaxPercent, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, circlesEnabled, circleMaxAmount, circleMaxMembers, circleBanStrikes, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
@@ -80,7 +80,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       return res.status(400).json({ error: 'airtimeToCashNumbers must be an object.' });
     }
 
-    for (const [label, v] of [['Referral bonus', referralBonusAmount], ['Referral minimum purchase', referralMinPurchase]]) {
+    for (const [label, v] of [['Referral bonus', referralBonusAmount], ['Referral minimum purchase', referralMinPurchase], ['Referral spend target', referralSpendTarget]]) {
       if (v !== undefined && (!Number.isFinite(Number(v)) || Number(v) < 0)) {
         return res.status(400).json({ error: `${label} must be 0 or more.` });
       }
@@ -146,6 +146,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (referralEnabled !== undefined) data.referralEnabled = Boolean(referralEnabled);
     if (referralBonusAmount !== undefined) data.referralBonusAmount = Number(referralBonusAmount);
     if (referralMinPurchase !== undefined) data.referralMinPurchase = Number(referralMinPurchase);
+    if (referralSpendTarget !== undefined) data.referralSpendTarget = Number(referralSpendTarget);
     if (bankFundingFeePercent !== undefined) data.bankFundingFeePercent = Number(bankFundingFeePercent);
     if (bankFundingFeeCap !== undefined) data.bankFundingFeeCap = Number(bankFundingFeeCap);
     if (monnifyMode !== undefined) data.monnifyMode = monnifyMode;

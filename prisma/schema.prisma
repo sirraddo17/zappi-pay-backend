@@ -592,6 +592,10 @@ model Settings {
   referralEnabled     Boolean @default(false)
   referralBonusAmount Decimal @default(100) @db.Decimal(14, 2)
   referralMinPurchase Decimal @default(500) @db.Decimal(14, 2)
+  // Spend target (0 = off): the bonus is paid once the friend's successful
+  // purchases add up to this much across airtime, data, internet, TV and
+  // light (lib/referral.js). Set it so your profit on that spend covers it.
+  referralSpendTarget Decimal @default(0) @db.Decimal(14, 2)
   // Fee kept from automatic bank-transfer funding: percent of the
   // amount, capped at bankFundingFeeCap (0 = no cap). Both 0 = free.
   bankFundingFeePercent Decimal @default(0) @db.Decimal(5, 2)
