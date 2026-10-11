@@ -201,6 +201,8 @@ HOW TO GET STARTED
 4. Enter the "Meter number". The name is checked automatically once 10 to 13 digits are entered, or you can tap "Verify".
 5. Tap a quick amount (₦1,000 to ₦20,000 — each shows what you pay including any service charge) or type it under "Or enter an amount (₦)", then tap "Pay ₦X".
 
+- Before you enter your PIN, "Confirm payment" shows a full summary: company/provider, number, name, meter type or package, price, service charge, any discount, promo or cashback used, and the Total.
+
 RULES
 - The meter number must be verified (the customer's name shows in green) before you can pay. Wrong meter = you can't pay, so no wrong-meter purchases.
 - Minimum: [minPurchaseAmount, default ₦50]. Some discos have their own higher minimum; if so, the screen shows an error before you pay.
@@ -228,7 +230,7 @@ BENEFITS
 HOW TO GET STARTED
 1. Home → "Cable TV".
 2. Under "Choose your TV", tap DStv, GOtv, Startimes or Showmax, then enter the "Smartcard / IUC number". It is verified automatically, or you can tap "Verify". The name shows with "current plan ends [date]".
-3. Packages show as a list with tabs (All / Monthly / Quarterly / Yearly) and a search box; each shows your price, and any service charge is shown under it. Tap one, then "Pay ₦X".
+3. Packages show as 2-column cards with tabs (All / Monthly / Quarterly / Yearly) and a search box. Each card shows your price; a "POPULAR" tag marks a favourite and longer plans show "save X%". Any service charge is shown under the cards. Tap one, then "Pay ₦X".
 
 RULES
 - The smartcard / IUC number must be verified (name shows in green) before you can pay (not needed for Showmax).
