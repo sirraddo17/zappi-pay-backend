@@ -82,6 +82,7 @@ const CUSTOMER_TOOLS = [
   { name: 'get_my_wallet_history', description: "The customer's recent wallet credits and debits (funding, refunds, transfers, cashback), newest first.", input_schema: { type: 'object', properties: { limit: { type: 'integer', description: '1-10, default 6' } } } },
   { name: 'get_my_bank_transfers', description: "The customer's recent Send-to-Bank transfers and their status.", input_schema: { type: 'object', properties: { limit: { type: 'integer', description: '1-5, default 3' } } } },
   { name: 'get_my_support_tickets', description: "The customer's recent support messages and any replies.", input_schema: { type: 'object', properties: {} } },
+  { name: 'get_my_referrals', description: "The customer's own Refer & Earn: their code, the live referral rules (bonus, spend target, welcome bonus, milestones, any boost), friends who joined and how close each is (as a %), milestones and total earned. Use for 'how does referral work?', 'when do I get my bonus?', 'how far is my friend?'.", input_schema: { type: 'object', properties: {} } },
   { name: 'get_service_status', description: 'Current service notices (outages, delays) and which optional features are switched on.', input_schema: { type: 'object', properties: {} } },
   { name: 'get_feature_guide', description: 'The official ZAPPI PAY guide for a feature: what it is, benefits, exact steps with real button names, rules, limits and live on/off values. ALWAYS call this before explaining how any feature works or how to get started. topic = the feature or the question (e.g. "family wallet", "print cards", "forgot pin") or a section number from the topic list.', input_schema: { type: 'object', properties: { topic: { type: 'string' } }, required: ['topic'] } },
 ];
@@ -89,6 +90,7 @@ const CUSTOMER_TOOLS = [
 function customerHandlers(customerId, settings) {
   return {
     get_feature_guide: ({ topic }) => require('../lib/featureGuide').lookup(String(topic || '').slice(0, 200), { settings, audience: 'customer' }),
+    get_my_referrals: () => require('../lib/referralPlus').mine(customerId, settings),
     async get_my_account() {
       const c = await prisma.customer.findUnique({
         where: { id: customerId },
@@ -147,7 +149,7 @@ function customerHandlers(customerId, settings) {
         notices: notices.length ? notices.map((n) => `${n.service || 'All services'}: ${n.message}`) : 'No known problems right now.',
         airtimeToCash: settings.airtimeToCashEnabled,
         sendToBank: settings.bankTransferEnabled,
-        referrals: settings.referralEnabled ? (Number(settings.referralSpendTarget) > 0 ? `on — ${naira(settings.referralBonusAmount)} per friend, paid instantly once the friend has spent ${naira(settings.referralSpendTarget)} in total on airtime, data, internet, TV or light` : settings.rewardSplitEnabled ? `on — ${naira(settings.referralBonusAmount)} per friend, paid after a few purchases by the friend (starting with one of ${naira(settings.referralMinPurchase)}+); Refer & Earn shows the % progress` : `on — ${naira(settings.referralBonusAmount)} per friend after their first purchase of ${naira(settings.referralMinPurchase)}+`) : 'off',
+        referrals: require('../lib/referralPlus').summary(settings),
         cashback: settings.cashbackEnabled ? (settings.rewardSplitEnabled ? 'on — every purchase earns some cashback and points (the amount depends on the purchase)' : true) : false,
       };
     },
@@ -171,7 +173,7 @@ Rules:
 - Only discuss ZAPPI PAY and the customer's own account. Politely decline unrelated requests.
 
 Explaining features (how it works, benefits, how to start, fees, limits):
-- ALWAYS call get_feature_guide first and answer ONLY from what it returns. Use the exact screen names and button labels it gives (e.g. Home → More → "Family wallet"). Never guess steps, buttons, fees or limits, and never mix up two features.
+- ALWAYS call get_feature_guide first and answer ONLY from what it returns. For Refer & Earn questions also call get_my_referrals (live rules and their own friends' progress); only share a friend's progress as a %. Use the exact screen names and button labels it gives (e.g. Home → More → "Family wallet"). Never guess steps, buttons, fees or limits, and never mix up two features.
 - Check the LIVE VALUES it returns: if a feature is OFF, say it isn't available yet instead of explaining how to use it. Use live amounts, not defaults.
 - Explain simply: what it is (1 sentence), 2-3 benefits, then numbered steps to get started. Offer a [[link:...]] to the screen.
 - If the guide doesn't cover the question, say you're not sure rather than guessing, and add [[support]].
@@ -601,7 +603,7 @@ function adminHandlers(settings) {
         sendToBank: s.bankTransferEnabled ? { fee: `${naira(s.bankTransferFee)} under ₦10k, ${naira(s.bankTransferFeeMid ?? s.bankTransferFee)} ₦10k–₦49,999, ${naira(s.bankTransferFeeHigh ?? s.bankTransferFee)} from ₦50k`, min: naira(s.bankTransferMin), max: naira(s.bankTransferMax), dailyMax: naira(s.bankTransferDailyMax) } : 'off',
         fraudHold: s.fraudHoldEnabled ? `transfers ≥ ${naira(s.fraudHoldAmount)} within ${s.fraudHoldHours}h of signup/security change` : 'off',
         kycLimits: s.kycLimitsEnabled ? { unverified: naira(s.dailyLimitUnverified), verified: naira(s.dailyLimitVerified) } : 'off',
-        referral: s.referralEnabled ? `${naira(s.referralBonusAmount)} after ${naira(s.referralMinPurchase)} first purchase` : 'off',
+        referral: require('../lib/referralPlus').summary(s),
         cashback: s.cashbackEnabled ? s.cashbackPercentByService : 'off',
         loyalty: s.loyaltyEnabled,
         agentPricing: s.agentPricingEnabled ? s.agentDiscountPercentByService : 'off',
