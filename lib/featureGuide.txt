@@ -146,8 +146,8 @@ BENEFITS
 
 HOW TO GET STARTED
 1. Home → "Airtime".
-2. Choose the "Airtime provider" (network).
-3. Enter the "Phone number" and the "Amount (₦)".
+2. Your own registered number is filled in already ("📱 Your number — change it to top up someone else"). To recharge another line, type that number (or tap "📇 Contacts"); "↩ Use my number" puts yours back. The network is picked from the number — tap another network button if the number was ported.
+3. Tap a quick amount (₦100, ₦200, ₦500, ₦1,000, ₦2,000, ₦5,000 — each shows what you pay after any discount) or type it under "Or enter an amount (₦)".
 4. Tap "Pay ₦X" and enter your PIN.
 
 RULES
@@ -173,7 +173,7 @@ BENEFITS
 
 HOW TO GET STARTED
 1. Home → "Data".
-2. Choose the provider, enter the "Phone number", and pick from the "Data plan" list. Each plan shows your price.
+2. Your own number is filled in already (change it to buy for someone else; "↩ Use my number" puts yours back). The network is picked from the number. Plans show as cards in tabs: "🔥 Best value" (cheapest per GB), "Daily", "Weekly", "Monthly", "2 Months+", and where available "Night", "Social", "Broadband", "Others", plus "All". Each card shows the size, how long it lasts and your price (with the old price crossed out when there's a discount). With many plans there is also a search box (e.g. "2GB" or "30 days"). Tap a card to choose it.
 3. Tap "Pay ₦X".
 4. Tip: the link "🔎 Find the best deal for your budget ›" at the top opens the deals finder.
 
