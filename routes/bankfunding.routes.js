@@ -106,6 +106,8 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       // Name and date of birth now match the ID — lock them.
       await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
     }
+    // Invited friend just verified: welcome cashback (lib/referralPlus.js).
+    require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
     res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: Boolean(verifiedDob) });
   } catch (error) {
     console.error('POST /wallet/bank-account failed:', error.message, JSON.stringify(error.body || {}));

@@ -140,6 +140,10 @@ model Customer {
   referrals           Customer[] @relation("Referrals")
   referralBonusPaidAt DateTime?
   referralBonusAmount Decimal?   @db.Decimal(14, 2)
+  // Referral extras (lib/referralPlus.js): welcome cashback this customer
+  // got for joining with a code, and the referrer milestones already paid.
+  referralWelcomePaidAt DateTime?
+  referralMilestonesPaid Json     @default("[]")
   // Personal bank account number for automatic wallet funding
   // (payment provider "reserved account"). The BVN/NIN used to create
   // it is sent to the provider only — never stored here; kycType just
@@ -596,6 +600,18 @@ model Settings {
   // purchases add up to this much across airtime, data, internet, TV and
   // light (lib/referral.js). Set it so your profit on that spend covers it.
   referralSpendTarget Decimal @default(0) @db.Decimal(14, 2)
+  // Referral extras (lib/referralPlus.js):
+  // welcome cashback for the invited friend once they verify BVN/NIN;
+  referralWelcomeBonus  Decimal   @default(0) @db.Decimal(14, 2)
+  // milestone bonuses for the referrer, e.g. [{"count":3,"bonus":200}],
+  // paid from the referral pool (they wait if it's short);
+  referralMilestones    Json      @default("[]")
+  // a time-limited boost: this bonus/target instead, until the date;
+  referralBoostAmount   Decimal   @default(0) @db.Decimal(14, 2)
+  referralBoostTarget   Decimal   @default(0) @db.Decimal(14, 2)
+  referralBoostUntil    DateTime?
+  // show real recent payouts ("Ad*** just earned ₦100").
+  referralTickerEnabled Boolean   @default(true)
   // Fee kept from automatic bank-transfer funding: percent of the
   // amount, capped at bankFundingFeeCap (0 = no cap). Both 0 = free.
   bankFundingFeePercent Decimal @default(0) @db.Decimal(5, 2)

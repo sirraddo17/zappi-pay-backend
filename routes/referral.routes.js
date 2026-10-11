@@ -10,12 +10,16 @@ const router = express.Router();
 router.get('/referrals/info', async (req, res) => {
   try {
     const settings = await getSettings();
+    const plus = require('../lib/referralPlus');
+    const eff = plus.effective(settings);
     const out = {
       enabled: settings.referralEnabled,
-      bonusAmount: Number(settings.referralBonusAmount),
+      bonusAmount: eff.bonus,
       minPurchase: Number(settings.referralMinPurchase),
       friendFunded: Boolean(settings.rewardSplitEnabled),
-      spendTarget: Number(settings.referralSpendTarget || 0),
+      spendTarget: eff.target,
+      welcomeBonus: settings.cashbackSeparate ? Number(settings.referralWelcomeBonus || 0) : 0,
+      boostUntil: eff.boost?.until || null,
     };
     const code = String(req.query.code || '').trim().toLowerCase();
     if (code) {
@@ -48,7 +52,9 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
     // Friends who already made a qualifying purchase/transfer but got no
     // bonus (e.g. rewards were switched off at the time), so the page
     // can say "Purchased" instead of "Waiting".
-    const spendTarget = Number(settings.referralSpendTarget || 0);
+    const plus = require('../lib/referralPlus');
+    const eff = plus.effective(settings);
+    const spendTarget = eff.target;
     const min = spendTarget > 0 ? 0.01 : Number(settings.referralMinPurchase || 0);
     const unpaidIds = referrals.filter((r) => !r.referralBonusPaidAt).map((r) => r.id);
     const purchased = new Set();
@@ -75,10 +81,20 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
         progress.set(id, Math.min(99, Math.floor((e / Number(settings.referralBonusAmount)) * 100)));
       }
     }
-    const totalEarned = referrals.reduce((sum, r) => sum + (r.referralBonusPaidAt ? Number(r.referralBonusAmount || 0) : 0), 0);
+    const earnedAgg = await prisma.walletTransaction.aggregate({ where: { customerId: req.customer.customerId, type: 'REFERRAL_BONUS', status: 'APPROVED' }, _sum: { amount: true } });
+    const totalEarned = Number(earnedAgg._sum.amount || 0);
+    const meFull = await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { referralMilestonesPaid: true } });
+    const paidMs = new Set((Array.isArray(meFull?.referralMilestonesPaid) ? meFull.referralMilestonesPaid : []).map(Number));
+    const rewardedCount = referrals.filter((r) => r.referralBonusPaidAt).length;
     res.json({
       enabled: settings.referralEnabled,
-      bonusAmount: Number(settings.referralBonusAmount),
+      bonusAmount: eff.bonus,
+      normalBonus: Number(settings.referralBonusAmount),
+      boostUntil: eff.boost?.until || null,
+      welcomeBonus: settings.cashbackSeparate ? Number(settings.referralWelcomeBonus || 0) : 0,
+      milestones: plus.milestones(settings).map((m) => ({ ...m, reached: rewardedCount >= m.count, paid: paidMs.has(m.count) })),
+      rewardedCount,
+      tickerEnabled: settings.referralTickerEnabled !== false,
       minPurchase: Number(settings.referralMinPurchase),
       friendFunded: Boolean(settings.rewardSplitEnabled),
       spendTarget,
@@ -103,6 +119,28 @@ router.get('/referrals', requireCustomerAuth, async (req, res) => {
 // Every shared receipt can carry the sender's referral link + QR code.
 const DEFAULT_INVITE = 'Pay bills, buy airtime & data in seconds. Join me on ZAPPI PAY — scan or use my link:';
 const cleanMsg = (m) => String(m || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120);
+
+// Real recent referral payouts, names masked (for the live ticker).
+router.get('/referrals/ticker', async (req, res) => {
+  try {
+    const settings = await getSettings();
+    if (!settings.referralEnabled || settings.referralTickerEnabled === false) return res.json({ items: [] });
+    res.json({ items: await require('../lib/referralPlus').ticker(10) });
+  } catch (error) {
+    console.error('GET /referrals/ticker failed:', error.message);
+    res.json({ items: [] });
+  }
+});
+
+// Admin: friends still working toward the referral bonus, ₦ spent so far.
+router.get('/admin/referrals/progress', requireAdminAuth, async (req, res) => {
+  try {
+    res.json(await require('../lib/referralPlus').adminProgress(100));
+  } catch (error) {
+    console.error('GET /admin/referrals/progress failed:', error.message);
+    res.status(500).json({ error: 'Could not load referral progress.' });
+  }
+});
 
 router.get('/receipt-invite', requireCustomerAuth, async (req, res) => {
   try {
