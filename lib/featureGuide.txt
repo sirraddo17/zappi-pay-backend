@@ -7,7 +7,8 @@ HOW TO READ THIS
 - Home: the wallet card at the top (tap the eye to hide/show the balance; a gold chip shows cashback to spend and cashback earned this month) with quick buttons Add money, Airtime, Data and History. Under it a 4-column "Services" grid: Airtime, Data, Electricity, Cable TV, Education, Internet, Bet Funding and More (a "Send Money" tile shows only while sending money is switched on). Then "Buy again" chips for recent purchases.
 - Airtime / Data: the network is picked automatically from the number (e.g. 0803 → MTN) and shown as a badge in the number box; tap "change network" if the number was ported. A "Recent" row of circles fills in your own line or numbers you used before. On Android there is a "Contacts" button to pick a number from the phone.
 - Electricity: after typing a meter you bought for before, a box shows the last token, when, and "Same amount again". ZAPPI PAY also sends a "Time for light?" reminder when you usually top up (from your past purchases; turn off with bill reminders).
-- Home → More ("More services") has these tiles: Airtime to Cash, Print Cards, Bulk airtime & data, Best data deals, Refer & Earn and Family wallet.
+- Home → More ("More services") is a list grouped into "Pay & top up", "For your business", "Money with others" and "Earn & rewards". Each row shows the service name and a one-line description; tap it to open. With many services there is a search box at the top ("Search services"). Bulk airtime & data carries an "AGENTS" tag. Only services that are switched on appear (e.g. Airtime to Cash, Print Cards, Bulk airtime & data, Best data deals, Refer & Earn, Family wallet).
+- Every More service screen starts the same way: a coloured icon with the title, one line about it, and a 1-2-3 "how it works" strip. Forms are split into numbered steps, and before paying a dashed summary shows each cost and "You pay" (with your wallet balance in red if it isn't enough).
 - A floating Help bubble (button labelled "Open help", window titled "ZappiPay Help") appears on every logged-in screen. It is hidden on the login, signup, password, legal and admin pages.
 - "Set by ZAPPI PAY (currently configurable)" means an admin setting. The value in brackets is the code DEFAULT, not necessarily today's live value.
 - Every purchase and transfer needs the 4-digit transaction PIN, or fingerprint / Face ID on a device where that is set up.
@@ -349,10 +350,10 @@ BENEFITS
 
 HOW TO GET STARTED
 1. Home → More → "Airtime to Cash". Or open an airtime receipt in Orders and tap "Bought by mistake? Convert to cash".
-2. Optionally choose "Which purchase was a mistake?".
-3. Choose the "Network" and enter the "Phone number the airtime is on" (11 digits starting with 0) and the "Airtime amount (₦)".
+2. Optionally tap the purchase under "Which purchase was a mistake?" (your recent airtime buys, with network badge, number, date and amount) — it fills in the rest. Tap it again to unlink.
+3. Tap the "Network" chip, enter the "Phone number the airtime is on" (11 digits starting with 0), and type the "Airtime amount" in the big ₦ box. The summary shows "Airtime value", "Service fee (X%)" and "You’ll receive", plus the line to send the airtime to.
 4. Check the summary: "Airtime value", "Service fee (X%)" and "You'll receive".
-5. Tap "Submit Request".
+5. Tap "Submit · get ₦X". Requests show under "My requests" with a status tag: Checking, Paid or Declined.
 6. Then send the airtime from that line to the number shown, using your network's Share & Sell or transfer option.
 
 RULES
@@ -377,7 +378,7 @@ HOW TO GET STARTED
    - Home → the card "🔎 Best data for your budget"
    - Home → More → "Best data deals"
    - the link on the Data buy screen
-2. Set "My budget (₦)", or use the quick chips ₦300 / ₦500 / ₦1,000 / ₦2,000 / ₦5,000.
+2. Type "My budget" in the big ₦ box, or tap ₦300 / ₦500 / ₦1,000 / ₦2,000 / ₦5,000. Results are rows with the network badge, size, validity, price, "₦X per GB" and a value bar (gold = 🏆 Best value). Switch "Most data" / "Best value" to sort; tap a row to buy it.
 3. Optionally fill in "For this number". This guesses the network from the number's prefix; since numbers can be ported, it's only a hint.
 4. Optionally filter by network and by length: Any length / 1–2 days / Week-ish / Month / Longer.
 5. Sort by "Most data" or "Best value".
@@ -481,10 +482,10 @@ WHAT IT IS: Top up as many as 50 numbers on one network in one go.
 
 HOW TO GET STARTED
 1. Open Home → the card "Bulk airtime & data", or Home → More → "Bulk airtime & data".
-2. Choose airtime or data, then the "Network (all numbers must be on it)".
-3. Enter the "Amount per number (₦)" or pick a "Data plan for every number".
-4. Paste the "Phone numbers (one per line, or separated by commas)".
-5. Tap "Review & pay", then enter your PIN.
+2. Choose "📞 Airtime" or "📶 Data" at the top, then tap the network (all numbers must be on one network — the first number you add picks it automatically).
+3. Airtime: tap an amount tile (₦100–₦5,000, showing what you pay) or type one. Data: pick a plan from the same tabs and value-bar rows as the Data screen.
+4. Type or paste the "Phone numbers" (one per line or separated by commas), or tap "📋 Paste" / "+ My number". Each number appears as a chip with its network badge — tap × to remove one. A gold chip means the number looks like another network (fine if it was ported); red means it isn't a valid number. The counter shows how many of 50.
+5. Check the summary (each costs, × numbers, wallet balance, total), tap "Send airtime/data to N numbers · ₦X", then enter your PIN. Progress shows each number with a tag: Sent ✓, Processing, Failed · refunded or Not bought.
 
 RULES
 - Up to 50 numbers. Duplicates are removed. Numbers can start with 0 or 234.
@@ -559,10 +560,10 @@ WHAT IT IS: Buy airtime PINs (e-PINs) to print and sell in your shop.
 
 HOW TO GET STARTED
 1. Home → More → "Print Cards" (the screen is called "Print recharge cards").
-2. Choose the "Network": MTN, Glo, Airtel, or 9mobile (shown as T2mobile).
-3. Choose the "Card value": ₦100, ₦200 or ₦500.
-4. Choose "How many cards?" and an optional "Name on the cards".
-5. Check "You pay", then tap "Buy & print N cards" and enter your PIN.
+2. Tap the "Network" chip: MTN, Glo, Airtel, or T2 / 9mobile.
+3. Tap a "Card value" tile: ₦100, ₦200 or ₦500 (each shows "you pay ₦X").
+4. Set "How many cards?" with − / + or the quick chips (5, 10, 20, 50, 100), and an optional "Name on the cards".
+5. Check the summary ("Airtime value", wallet balance, "You pay" and "Your profit at face value"), then tap "Buy & print N cards · ₦X" and enter your PIN.
 6. Open the batch under "Your cards" and pick a "Print layout":
    - "A4 sheet (3 across)"
    - "Small (4 across)"
@@ -1114,14 +1115,14 @@ RULES
 ----------------------------------------------------------------------
 51. INTERNATIONAL AIRTIME & DATA
 ----------------------------------------------------------------------
-- Home → More → "International airtime". Choose the country, then "Mobile Top Up" or "Mobile Data", the network, the bundle or amount (in the local currency for top-ups), and their number (without the country code).
+- Home → More → "International airtime". Choose the country (a "Popular" grid of flags, a search box, then the full list), then "Mobile Top Up" or "Mobile Data", the network, the bundle or amount (in the local currency for top-ups), and their number (without the country code).
 - You pay in naira from your wallet. The price shown is what you pay.
 - Check the number carefully — delivered international top-ups can't be reversed. If it fails, you're refunded automatically.
 
 ----------------------------------------------------------------------
 52. CAR INSURANCE (THIRD-PARTY MOTOR INSURANCE)
 ----------------------------------------------------------------------
-- Home → More → "Car insurance". Third-party cover from Universal Insurance (through VTpass), required by law in Nigeria.
+- Home → More → "Car insurance". Third-party cover from Universal Insurance (through VTpass), required by law in Nigeria. Step 1 is a tile per vehicle type (Private, Commercial, Tricycle, Motorcycle) with the yearly price; step 2 the vehicle papers; step 3 where it's registered; a summary shows cover, plate and "You pay" before the PIN.
 - Choose the vehicle type (private car, commercial, tricycle/keke, motorcycle), then enter the owner's name, plate number, chassis number (VIN), year, make, model, colour, engine capacity, state, local government and email.
 - After payment the certificate is ready: Orders → the purchase → "📄 Download certificate" (also emailed). Keep a copy in the vehicle.
 - Third-party cover pays for damage or injury you cause to other people; it does not cover your own vehicle. It lasts one year.
@@ -1130,7 +1131,7 @@ RULES
 53. EXAM PINS IN BULK (WAEC RESULT CHECKER)
 ----------------------------------------------------------------------
 - Home → More → "Exam PINs (bulk)". For schools, cyber cafés and agents.
-- Choose how many WAEC result checker PINs (1–50), optionally the name to print on the sheet (school or shop), and pay once from the wallet with your PIN.
+- The WAEC result checker card shows the price per PIN. Set how many (1–50) with − / + or the 5 / 10 / 20 / 50 chips, optionally the name to print on the sheet (school or shop), check the summary (price per PIN × quantity, wallet balance, "You pay"), tap "Buy N PINs · ₦X" and enter your PIN.
 - The PINs and serial numbers show as soon as the order is Successful (never while Pending): 🖨️ Print (A4 sheet 2 across, a list, or a 58mm POS printer; Print can also save as PDF), Copy all, or Download (Excel).
 - Find them again under "Your recent PINs" on the same page, or Orders → the purchase → "Open the PINs to print".
 - If VTpass can't deliver them, the full amount is refunded automatically. Agent prices and discounts apply. Results are checked at waecdirect.org.
