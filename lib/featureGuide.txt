@@ -5,7 +5,7 @@ ZAPPI PAY: CUSTOMER FEATURE FACT SHEET (for the in-app AI assistant)
 HOW TO READ THIS
 - "Home" is the main screen. The bottom bar has four tabs: Home, Wallet, Orders and Profile.
 - Home: the wallet card at the top (tap the eye to hide/show the balance; a gold chip shows cashback to spend and cashback earned this month) with quick buttons Add money, Airtime, Data and History. Under it a 4-column "Services" grid: Airtime, Data, Electricity, Cable TV, Education, Internet, Bet Funding and More (a "Send Money" tile shows only while sending money is switched on). Then "Buy again" chips for recent purchases.
-- Airtime / Data: the network is picked automatically from the number (e.g. 0803 → MTN); tap another network if the number was ported. On Android there is a "Contacts" button to pick a number from the phone.
+- Airtime / Data: the network is picked automatically from the number (e.g. 0803 → MTN) and shown as a badge in the number box; tap "change network" if the number was ported. A "Recent" row of circles fills in your own line or numbers you used before. On Android there is a "Contacts" button to pick a number from the phone.
 - Electricity: after typing a meter you bought for before, a box shows the last token, when, and "Same amount again". ZAPPI PAY also sends a "Time for light?" reminder when you usually top up (from your past purchases; turn off with bill reminders).
 - Home → More ("More services") has these tiles: Airtime to Cash, Print Cards, Bulk airtime & data, Best data deals, Refer & Earn and Family wallet.
 - A floating Help bubble (button labelled "Open help", window titled "ZappiPay Help") appears on every logged-in screen. It is hidden on the login, signup, password, legal and admin pages.
@@ -146,8 +146,8 @@ BENEFITS
 
 HOW TO GET STARTED
 1. Home → "Airtime".
-2. Your own registered number is filled in already ("📱 Your number — change it to top up someone else"). To recharge another line, type that number (or tap "📇 Contacts"); "↩ Use my number" puts yours back. The network is picked from the number — tap another network button if the number was ported.
-3. Tap a quick amount (₦100, ₦200, ₦500, ₦1,000, ₦2,000, ₦5,000 — each shows what you pay after any discount) or type it under "Or enter an amount (₦)".
+2. Your own registered number is filled in already, in one big "Phone number" box with a coloured network badge (e.g. MTN) on the left. Under it: "MTN detected · change network" — tap "change network" only if the number was ported. To top up another line, type the number, tap "📇" (Contacts, Android) or tap a circle in the "Recent" row ("Me / My line", numbers you saved or bought for before, and "Contacts").
+3. Under "How much?" type the amount in large digits (it shows "You pay ₦X" underneath), or tap a quick amount (₦100, ₦200, ₦500, ₦1,000, ₦2,000, ₦5,000 — each shows what you pay after any discount).
 4. Tap "Pay ₦X" and enter your PIN.
 
 RULES
@@ -173,7 +173,7 @@ BENEFITS
 
 HOW TO GET STARTED
 1. Home → "Data".
-2. Your own number is filled in already (change it to buy for someone else; "↩ Use my number" puts yours back). The network is picked from the number. Plans show as cards in tabs: "🔥 Best value" (cheapest per GB), "Daily", "Weekly", "Monthly", "2 Months+", and where available "Night", "Social", "Broadband", "Others", plus "All". Each card shows the size, how long it lasts and your price (with the old price crossed out when there's a discount). With many plans there is also a search box (e.g. "2GB" or "30 days") and "Show all X plans ▾". Cards on discount show "Save ₦X". Tap a card to choose it; a bar with the chosen plan and its price appears — tap the price to jump to "Pay ₦X".
+2. Your own number is filled in already, with the network badge, "change network" link and the "Recent" row of circles (same as Airtime). Plans are in tabs: "🔥 Best value" (cheapest per GB), "Daily", "Weekly", "Monthly", "2 Months+", and where available "Night", "Social", "Broadband", "Others", plus "All". Each plan is a row showing the size in big letters (e.g. 3GB), how long it lasts, your price (old price crossed out when discounted), "₦X per GB", and a value bar — the fuller the bar, the more data per naira. The cheapest per GB in the tab is gold and tagged "🏆 Best deal"; night and social plans are tagged "🌙 Night" / "💬 Social"; discounted ones show "save ₦X". With many plans there is a search box (e.g. "2GB" or "30 days") and "Show all X plans ▾". Tap a row to choose it (✓ shows); a bar with the chosen plan and its price appears — tap the price to jump to "Pay ₦X".
 3. Tap "Pay ₦X".
 4. Tip: the link "🔎 Find the best deal for your budget ›" at the top opens the deals finder.
 
