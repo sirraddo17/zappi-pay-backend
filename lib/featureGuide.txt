@@ -196,10 +196,10 @@ BENEFITS
 
 HOW TO GET STARTED
 1. Home → "Electricity".
-2. Choose the provider (disco).
-3. Set "Meter type" to "Prepaid" or "Postpaid".
+2. Under "Your electricity company", tap your disco's tile (e.g. IBEDC, EKO, AEDC); there's a search box to find it quickly.
+3. Tap "Prepaid" (token meter) or "Postpaid" (monthly bill).
 4. Enter the "Meter number". The name is checked automatically once 10 to 13 digits are entered, or you can tap "Verify".
-5. Enter the "Amount (₦)" and tap "Pay ₦X".
+5. Tap a quick amount (₦1,000 to ₦20,000 — each shows what you pay including any service charge) or type it under "Or enter an amount (₦)", then tap "Pay ₦X".
 
 RULES
 - The meter number must be verified (the customer's name shows in green) before you can pay. Wrong meter = you can't pay, so no wrong-meter purchases.
@@ -227,8 +227,8 @@ BENEFITS
 
 HOW TO GET STARTED
 1. Home → "Cable TV".
-2. Choose the provider and enter the "Smartcard / IUC number". It is verified automatically, or you can tap "Verify". The name shows with "current plan ends [date]".
-3. Choose a "Package" and tap "Pay ₦X".
+2. Under "Choose your TV", tap DStv, GOtv, Startimes or Showmax, then enter the "Smartcard / IUC number". It is verified automatically, or you can tap "Verify". The name shows with "current plan ends [date]".
+3. Packages show as a list with tabs (All / Monthly / Quarterly / Yearly) and a search box; each shows your price, and any service charge is shown under it. Tap one, then "Pay ₦X".
 
 RULES
 - The smartcard / IUC number must be verified (name shows in green) before you can pay (not needed for Showmax).
@@ -243,9 +243,9 @@ WHAT IT IS: Buy exam PINs, for example WAEC and JAMB, from whatever products the
 
 HOW TO GET STARTED
 1. Home → "Education".
-2. Choose the provider.
+2. Under "Choose an exam", tap the PIN you need (e.g. WAEC Result Checker, WAEC Registration, JAMB).
 3. Enter the "Profile ID (if any)".
-4. Choose the "Exam type" and tap "Pay ₦X".
+4. Tap the "Exam type" card (picked for you when there is only one) and tap "Pay ₦X".
 5. The PIN or code shows on the receipt under Orders as "PIN / code".
 
 RULES
