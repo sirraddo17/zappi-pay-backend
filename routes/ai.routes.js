@@ -705,7 +705,7 @@ const ACTION_TOOLS = [
       type: 'object',
       properties: {
         headline: { type: 'string', description: 'max 6 words' }, highlight: { type: 'string', description: '1-3 words of the headline in gold' }, subtext: { type: 'string', description: 'max 14 words' }, cta: { type: 'string', description: 'max 3 words' },
-        badges: { type: 'array', items: { type: 'string' } }, emoji: { type: 'string' }, theme: { type: 'string', enum: ['purple', 'gold', 'green', 'blue', 'dark', 'red'] }, caption: { type: 'string', description: 'social caption with www.zappipay.com.ng and 2-4 hashtags' },
+        badges: { type: 'array', items: { type: 'string' } }, emoji: { type: 'string' }, theme: { type: 'string', enum: ['teal', 'gold', 'green', 'blue', 'dark', 'red'], description: 'teal = the ZAPPI PAY brand colour (deep teal with gold) — use it unless another colour suits the message better' }, caption: { type: 'string', description: 'social caption with www.zappipay.com.ng and 2-4 hashtags' },
         link: { type: 'string', description: 'in-app page for the button, e.g. /buy/data' },
         sizes: { type: 'array', items: {} },
       },
@@ -815,7 +815,7 @@ function actionHandlers(adminId, collector) {
         cta: String(d.cta || '').slice(0, 24),
         badges: (Array.isArray(d.badges) ? d.badges : []).map((b) => String(b).slice(0, 24)).slice(0, 3),
         emoji: String(d.emoji || '').slice(0, 8),
-        theme: AD_THEMES.includes(d.theme) ? d.theme : 'purple',
+        theme: adTheme(d.theme),
         caption: String(d.caption || '').slice(0, 400),
         link: /^\/[a-z/-]*$/.test(String(d.link || '')) ? d.link : '',
         sizes,
@@ -906,7 +906,8 @@ router.post('/admin/ai/draft-reply', requireAdminAuth, async (req, res) => {
 
 // Ad designer: turns a short brief into ready-to-draw ad designs. The
 // app draws them (brand templates) as pictures and 3-second videos.
-const AD_THEMES = ['purple', 'gold', 'green', 'blue', 'dark', 'red'];
+const AD_THEMES = ['teal', 'gold', 'green', 'blue', 'dark', 'red'];
+const adTheme = (t) => (t === 'purple' ? 'teal' : AD_THEMES.includes(t) ? t : 'teal');
 router.post('/admin/ai/design-ad', requireAdminAuth, async (req, res) => {
   try {
     const settings = await ai.ensureAvailable('ADMIN');
@@ -917,7 +918,7 @@ router.post('/admin/ai/design-ad', requireAdminAuth, async (req, res) => {
       kind: 'ADMIN',
       actorId: req.admin.adminId,
       model: settings.aiAdminModel,
-      system: `You are the marketing designer for ZAPPI PAY, a Nigerian wallet app for airtime, data, electricity, cable TV (DStv/GOtv/Startimes), exam PINs (WAEC/NECO/JAMB), internet, bet funding, airtime-to-cash and other bills. Website www.zappipay.com.ng.${require('../lib/features').offNote(settings)}
+      system: `You are the marketing designer for ZAPPI PAY, a Nigerian wallet app for airtime, data, electricity, cable TV (DStv/GOtv/Startimes), exam PINs (WAEC/NECO/JAMB), internet, bet funding, airtime-to-cash and other bills. Website www.zappipay.com.ng. Brand look: deep teal with gold highlights and a gold lion logo — prefer the "teal" theme for brand ads; use another colour only when it suits the message (e.g. gold for big rewards, green for festivals). Never describe the brand as purple.${require('../lib/features').offNote(settings)}
 Turn the admin's brief into 3 different ad designs. Reply with ONLY valid JSON, no other text:
 {"designs":[{"headline":"max 6 words","highlight":"1-3 words of the headline to colour gold (must appear in headline) or empty","subtext":"max 14 words","cta":"max 3 words","badges":["up to 3 short tags, max 3 words each"],"emoji":"one emoji","theme":"${AD_THEMES.join('|')}","caption":"social media caption, max 240 characters, friendly Nigerian tone, include www.zappipay.com.ng and 2-4 hashtags","link":"best in-app page for the button: /buy/airtime, /buy/data, /buy/electricity, /buy/cable, /buy/education, /buy/internet, /buy/betting, /airtime-cash, /transfer, /wallet, /refer, /bulk or empty"}]}
 Rules: make each design clearly different (angle, wording, theme). Only promise things in the brief or listed above — never invent prices, discounts, prizes or dates that the admin did not give. Punchy, simple English (a little Pidgin is fine when it fits).`,
@@ -935,7 +936,7 @@ Rules: make each design clearly different (angle, wording, theme). Only promise 
       cta: String(d.cta || '').slice(0, 24),
       badges: (Array.isArray(d.badges) ? d.badges : []).map((b) => String(b).slice(0, 24)).slice(0, 3),
       emoji: String(d.emoji || '').slice(0, 8),
-      theme: AD_THEMES.includes(d.theme) ? d.theme : 'purple',
+      theme: adTheme(d.theme),
       caption: String(d.caption || '').slice(0, 400),
       link: /^\/[a-z/-]*$/.test(String(d.link || '')) ? d.link : '',
     })).filter((d) => d.headline);
