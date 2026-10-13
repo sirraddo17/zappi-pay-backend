@@ -3,7 +3,7 @@ ZAPPI PAY: CUSTOMER FEATURE FACT SHEET (for the in-app AI assistant)
 ======================================================================
 
 HOW TO READ THIS
-- "Home" is the main screen. The bottom bar has four tabs: Home, Wallet, Orders and Profile.
+- "Home" is the main screen. The bottom bar has four tabs: Home, Wallet, History and Profile. ("History" was called "Orders" before.)
 - Home: the wallet card at the top (tap the eye to hide/show the balance; a gold chip shows cashback to spend and cashback earned this month) with quick buttons Add money, Airtime, Data and History. Under it a 4-column "Services" grid: Airtime, Data, Electricity, Cable TV, Education, Internet, Bet Funding and More (a "Send Money" tile shows only while sending money is switched on). Then "Buy again" chips for recent purchases.
 - Airtime / Data: the network is picked automatically from the number (e.g. 0803 → MTN) and shown as a badge in the number box; tap "change network" if the number was ported. A "Recent" row of circles fills in your own line or numbers you used before. On Android there is a "Contacts" button to pick a number from the phone.
 - Electricity: after typing a meter you bought for before, a box shows the last token, when, and "Same amount again". ZAPPI PAY also sends a "Time for light?" reminder when you usually top up (from your past purchases; turn off with bill reminders).
@@ -210,12 +210,12 @@ RULES
 - If the meter can't be verified, the app says "Could not verify this number — double-check it before continuing", but you can still pay.
 
 WHERE IS THE TOKEN?
-Orders → tap the electricity purchase. "Your token" is shown with a "Copy" button. You can also use "Save image" or "Share receipt".
+History → tap the electricity purchase. "Your token" is shown with a "Copy" button. You can also use "Save image" or "Share receipt".
 
 ADMIN SWITCH: Maintenance pause (ELECTRICITY).
 
 COMMON QUESTIONS
-- "I can't find my token." Open it from the Orders tab.
+- "I can't find my token." Open it from the History tab.
 - "Wrong meter." A delivered token can't be reversed. Contact support through "Report Issue" on the order.
 
 ----------------------------------------------------------------------
@@ -249,7 +249,7 @@ HOW TO GET STARTED
 2. Under "Choose an exam", tap the PIN you need (e.g. WAEC Result Checker, WAEC Registration, JAMB).
 3. Enter the "Profile ID (if any)".
 4. Tap the "Exam type" card (picked for you when there is only one) and tap "Pay ₦X".
-5. The PIN or code shows on the receipt under Orders as "PIN / code".
+5. The PIN or code shows on the receipt under History as "PIN / code".
 
 RULES
 - Fixed plan prices.
@@ -349,7 +349,7 @@ BENEFITS
 - The payout is shown before you submit.
 
 HOW TO GET STARTED
-1. Home → More → "Airtime to Cash". Or open an airtime receipt in Orders and tap "Bought by mistake? Convert to cash".
+1. Home → More → "Airtime to Cash". Or open an airtime receipt in History and tap "Bought by mistake? Convert to cash".
 2. Optionally tap the purchase under "Which purchase was a mistake?" (your recent airtime buys, with network badge, number, date and amount) — it fills in the rest. Tap it again to unlink.
 3. Tap the "Network" chip, enter the "Phone number the airtime is on" (11 digits starting with 0), and type the "Airtime amount" in the big ₦ box. The summary shows "Airtime value", "Service fee (X%)" and "You’ll receive", plus the line to send the airtime to.
 4. Check the summary: "Airtime value", "Service fee (X%)" and "You'll receive".
@@ -404,7 +404,7 @@ HOW TO GET STARTED
 1. On the Airtime or Data buy screen, enter someone else's number and tick "🎁 Send as a gift with a message".
 2. Pick a theme (Birthday, Thank you, Love, Congrats, Just because) and write a message.
 3. Pay. You are taken to the receipt with the gift card.
-4. To turn a past purchase into a gift: Orders → open the purchase → "🎁 Send as a gift card" → "Create gift card".
+4. To turn a past purchase into a gift: History → open the purchase → "🎁 Send as a gift card" → "Create gift card".
 5. Share the gift with "Send on WhatsApp" or "Copy link". You can change it later with "Edit message".
 
 RULES
@@ -738,7 +738,7 @@ ADMIN SWITCH: None, apart from maintenance.
 ----------------------------------------------------------------------
 27. ORDER HISTORY, RECEIPTS, "BUY AGAIN" AND REPORT ISSUE
 ----------------------------------------------------------------------
-- The Orders tab is called "Order History" and shows your last 100 orders. Tap one to see the "Payment Receipt".
+- The History tab (bottom bar) shows EVERYTHING in one list, newest first: purchases (with their receipts), recharge card batches, and every wallet movement — funding, money sent and received, bank transfers, refunds, cashback, rewards, Ajo, wrong-transfer holds. Tabs: All / Purchases / Money in / Money out. Every line can be tapped: purchases open the "Payment Receipt"; wallet lines open a receipt with type, details, beneficiary and bank (for bank transfers), date and reference, plus "📤 Share" and "⬇️ Download" to send or save it again. Home → "Recent Transactions" lines are tappable too, with "See all ›" opening History.
 - The receipt shows: Service, Provider, Recipient, Discount, Name, Date and Reference, plus the token or PIN with a "Copy" button.
 - Buttons on the receipt: "Save image", "Share receipt", "Buy again" (opens the Buy screen already filled in), and, for airtime only, "Bought by mistake? Convert to cash".
 - "Report Issue" opens a "What went wrong?" box. You can add screenshots ("📎 Add a screenshot (e.g. bank alert)", up to 3). "Submit Report" sends it to support with the order attached.
@@ -1136,7 +1136,7 @@ RULES
 ----------------------------------------------------------------------
 - Home → More → "Car insurance". Third-party cover from Universal Insurance (through VTpass), required by law in Nigeria. Step 1 is a tile per vehicle type (Private, Commercial, Tricycle, Motorcycle) with the yearly price; step 2 the vehicle papers; step 3 where it's registered; a summary shows cover, plate and "You pay" before the PIN.
 - Choose the vehicle type (private car, commercial, tricycle/keke, motorcycle), then enter the owner's name, plate number, chassis number (VIN), year, make, model, colour, engine capacity, state, local government and email.
-- After payment the certificate is ready: Orders → the purchase → "📄 Download certificate" (also emailed). Keep a copy in the vehicle.
+- After payment the certificate is ready: History → the purchase → "📄 Download certificate" (also emailed). Keep a copy in the vehicle.
 - Third-party cover pays for damage or injury you cause to other people; it does not cover your own vehicle. It lasts one year.
 
 ----------------------------------------------------------------------
@@ -1145,7 +1145,7 @@ RULES
 - Home → More → "Exam PINs (bulk)". For schools, cyber cafés and agents.
 - The WAEC result checker card shows the price per PIN. Set how many (1–50) with − / + or the 5 / 10 / 20 / 50 chips, optionally the name to print on the sheet (school or shop), check the summary (price per PIN × quantity, wallet balance, "You pay"), tap "Buy N PINs · ₦X" and enter your PIN.
 - The PINs and serial numbers show as soon as the order is Successful (never while Pending): 🖨️ Print (A4 sheet 2 across, a list, or a 58mm POS printer; Print can also save as PDF), Copy all, or Download (Excel).
-- Find them again under "Your recent PINs" on the same page, or Orders → the purchase → "Open the PINs to print".
+- Find them again under "Your recent PINs" on the same page, or History → the purchase → "Open the PINs to print".
 - If VTpass can't deliver them, the full amount is refunded automatically. Agent prices and discounts apply. Results are checked at waecdirect.org.
 - For one PIN for yourself, Home → Education works as before.
 

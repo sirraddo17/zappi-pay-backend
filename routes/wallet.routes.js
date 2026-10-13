@@ -51,6 +51,23 @@ router.get('/wallet/transactions', requireCustomerAuth, async (req, res) => {
   }
 });
 
+// One wallet transaction with what we know about it, for its receipt.
+router.get('/wallet/transactions/:id', requireCustomerAuth, async (req, res) => {
+  try {
+    const t = await prisma.walletTransaction.findUnique({ where: { id: String(req.params.id) } });
+    if (!t || t.customerId !== req.customer.customerId) return res.status(404).json({ error: 'Transaction not found.' });
+    let bank = null;
+    if (t.reference && (t.type === 'TRANSFER_OUT' || t.type === 'REFUND')) {
+      const b = await prisma.bankTransfer.findFirst({ where: { reference: t.reference, customerId: t.customerId } }).catch(() => null);
+      if (b) bank = { accountName: b.accountName, accountNumber: b.accountNumber, bankName: b.bankName, amount: Number(b.amount), fee: Number(b.fee || 0), status: b.status, narration: b.narration, reference: b.reference, completedAt: b.completedAt };
+    }
+    res.json({ transaction: { id: t.id, type: t.type, amount: Number(t.amount), status: t.status, note: t.note, reference: t.providerRef || t.reference || t.id, createdAt: t.createdAt }, bank });
+  } catch (error) {
+    console.error('GET /wallet/transactions/:id failed:', error);
+    res.status(500).json({ error: 'Could not load the transaction.' });
+  }
+});
+
 // Submits a funding request for admin review — doesn't touch the wallet
 // balance itself. The customer has already sent a bank transfer outside
 // this app; reference/note are whatever proof they can give (transfer
