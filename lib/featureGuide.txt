@@ -354,7 +354,12 @@ HOW TO GET STARTED
 3. Tap the "Network" chip, enter the "Phone number the airtime is on" (11 digits starting with 0), and type the "Airtime amount" in the big ₦ box. The summary shows "Airtime value", "Service fee (X%)" and "You’ll receive", plus the line to send the airtime to.
 4. Check the summary: "Airtime value", "Service fee (X%)" and "You'll receive".
 5. Tap "Submit · get ₦X". Requests show under "My requests" with a status tag: Checking, Paid or Declined.
-6. Then send the airtime from that line to the number shown, using your network's Share & Sell or transfer option.
+6. Then send the airtime from that line to the number shown. When you pick the network, a "How to send on <network>" box shows the exact code with our number and your amount filled in, a "📞 Dial now" button (MTN and Glo — it types everything except your PIN; add your PIN and #) and "Copy code". The same box appears again in "Next step: send the airtime" after submitting.
+   - MTN (Share & Sell): *321*number*amount*PIN# — default PIN 0000, change with *321*0000*NEWPIN*NEWPIN#.
+   - Airtel (Me2U): dial *321#, choose "Airtel to Airtel" — default PIN 1234, change via *321# → PIN management.
+   - Glo (EasyShare): *131*number*amount*PIN# — default PIN 00000, change with *132*00000*NEWPIN*NEWPIN#.
+   - T2/9mobile: *223*PIN*amount*number# (or *321# → Airtime Transfer) — default PIN 0000, change with *247*0000*NEWPIN#.
+   Networks change these codes sometimes; if one doesn't work, dial *321# and use the menu. Never share the transfer PIN with anyone, including ZAPPI PAY.
 
 RULES
 - Fee: set by ZAPPI PAY (currently configurable) [setting: airtimeToCashFeePercent, default 20%]. The payout is rounded down to whole naira.
@@ -1094,6 +1099,7 @@ AGENT WEEKLY REPORT
 ----------------------------------------------------------------------
 AVAILABILITY: switched in Admin → New features (Off / Testers only / On for everyone) [payRequestsEnabled, default OFF]. When it is off, customers don't see it and the app says it isn't available yet — don't tell customers how to use it.
 WHAT IT IS
+- Every send-money PIN sheet (to a ZAPPI PAY user, to a bank, payroll, paying a link, spray, dues) shows "⚠️ Check before you confirm — a successful transfer can’t be reversed".
 - Home → More → "Request money". Make a link and share it (WhatsApp, SMS, anywhere). People open it and pay from their ZAPPI PAY wallet with their PIN; the money goes straight into your wallet. ZAPPI PAY does not hold the money in between.
 - 💸 Pay me: ask one person for a fixed amount ("Pay me ₦5,000 for rent"). It closes after one payment.
 - 🍽️ Split bill: enter the total and the number of people. Each person pays their share once; you see who has paid and who hasn't. Tick "Count me as one of them" if you pay your own share.

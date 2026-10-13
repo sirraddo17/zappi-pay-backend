@@ -3,6 +3,7 @@ const prisma = require('../lib/prisma');
 const { getSettings } = require('../lib/vtpass');
 const { notify } = require('../lib/notify');
 const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
+const { CODES } = require('../lib/airtimeTransferCodes');
 
 const router = express.Router();
 
@@ -38,7 +39,7 @@ router.get('/airtime-cash/config', requireCustomerAuth, async (req, res) => {
       maxAmount: MAX_AMOUNT,
       networks: Object.keys(NETWORKS)
         .filter((key) => numbers[key])
-        .map((key) => ({ key, label: NETWORKS[key], receivingNumber: numbers[key] })),
+        .map((key) => ({ key, label: NETWORKS[key], receivingNumber: numbers[key], transfer: CODES[key] || null })),
     });
   } catch (error) {
     console.error('GET /airtime-cash/config failed:', error);
