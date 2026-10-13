@@ -28,7 +28,7 @@ const noAi = (req, res) => {
 router.get('/circles', requireCustomerAuth, async (req, res) => {
   try {
     const s = await getSettings();
-    res.json({ enabled: require('../lib/features').isOnFor(s, 'circles', me(req)), limits: { maxAmount: Number(s.circleMaxAmount || 500000), maxMembers: Number(s.circleMaxMembers || 30), appShare: C.APP_SHARE }, ...(await C.mine(me(req))) });
+    res.json({ enabled: require('../lib/features').isOnFor(s, 'circles', me(req)), limits: { maxAmount: Number(s.circleMaxAmount || 500000), maxMembers: Number(s.circleMaxMembers || 30), appShare: C.APP_SHARE, serviceFeePct: Number(s.circleServiceFeePercent || 0), serviceFeeCap: Number(s.circleServiceFeeCap || 0) }, ...(await C.mine(me(req))) });
   } catch (error) { fail(res, error, 'Could not load your circles.'); }
 });
 
@@ -44,8 +44,9 @@ router.post('/circles', requireCustomerAuth, async (req, res) => {
 router.post('/circles/agreement-preview', requireCustomerAuth, async (req, res) => {
   try {
     const b = req.body || {};
-    const draft = { name: String(b.name || 'Your circle').slice(0, 50), amount: Number(b.amount) || 0, size: parseInt(b.size, 10) || 2, frequency: ['DAILY', 'WEEKLY', 'MONTHLY'].includes(b.frequency) ? b.frequency : 'WEEKLY', payoutFee: b.payoutFeeOn ? Number(b.payoutFee) || 0 : 0, penaltyFee: Number(b.penaltyFee) || 0, graceHours: parseInt(b.graceHours, 10) || 24, strikesToLast: parseInt(b.strikesToLast, 10) || 2, extraRules: String(b.extraRules || '').slice(0, 1500) || null };
-    res.json({ agreement: require('../lib/circleAgreement').terms(draft, { appShare: C.APP_SHARE }) });
+    const s = await getSettings();
+    const draft = { agreementVersion: require('../lib/circleAgreement').VERSION, serviceFeePct: Number(s.circleServiceFeePercent || 0), serviceFeeCap: Number(s.circleServiceFeeCap || 0), name: String(b.name || 'Your circle').slice(0, 50), amount: Number(b.amount) || 0, size: parseInt(b.size, 10) || 2, frequency: ['DAILY', 'WEEKLY', 'MONTHLY'].includes(b.frequency) ? b.frequency : 'WEEKLY', payoutFee: b.payoutFeeOn ? Number(b.payoutFee) || 0 : 0, penaltyFee: Number(b.penaltyFee) || 0, graceHours: parseInt(b.graceHours, 10) || 24, strikesToLast: parseInt(b.strikesToLast, 10) || 2, extraRules: String(b.extraRules || '').slice(0, 1500) || null };
+    res.json({ agreement: require('../lib/circleAgreement').terms(draft, { appShare: C.APP_SHARE, fees: C.feeSplit(draft) }) });
   } catch (error) { fail(res, error, 'Could not load the agreement.'); }
 });
 
@@ -101,7 +102,24 @@ router.post('/circles/:id/release', requireCustomerAuth, async (req, res) => {
   } catch (error) { fail(res, error, 'Could not send the request.'); }
 });
 
+// "Someone asked me to pay outside the app".
+router.post('/circles/:id/report', requireCustomerAuth, async (req, res) => {
+  try { res.status(201).json({ ok: Boolean(await C.report(req.params.id, me(req), { message: req.body?.message })) }); } catch (error) { fail(res, error, 'Could not send the report.'); }
+});
+
 // --- Admin ---
+router.get('/admin/circles/reports', requireAdminAuth, async (req, res) => {
+  try { res.json({ reports: await C.adminReports(String(req.query.status || 'OPEN').toUpperCase()) }); } catch (error) { fail(res, error, 'Could not load reports.'); }
+});
+router.post('/admin/circles/reports/:id', requireAdminAuth, async (req, res) => {
+  try {
+    if (noAi(req, res)) return;
+    const out = await C.reviewReport(req.params.id, { uphold: Boolean(req.body?.uphold), note: req.body?.note });
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'CIRCLE_REPORT', details: { reportId: req.params.id, ...out } } }).catch(() => {});
+    res.json(out);
+  } catch (error) { fail(res, error, 'Could not review the report.'); }
+});
+
 router.get('/admin/circles', requireAdminAuth, async (req, res) => {
   try { res.json(await C.adminList()); } catch (error) { fail(res, error, 'Could not load circles.'); }
 });
@@ -131,7 +149,7 @@ router.post('/admin/circles/appeals/:id', requireAdminAuth, async (req, res) => 
 router.post('/admin/circles/unban/:customerId', requireAdminAuth, async (req, res) => {
   try {
     if (noAi(req, res)) return;
-    await prisma.customer.update({ where: { id: req.params.customerId }, data: { circleBannedAt: null, circleBanReason: null } });
+    await prisma.customer.update({ where: { id: req.params.customerId }, data: { circleBannedAt: null, circleBanReason: null, circleCreatorStrikes: 0 } });
     await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'CIRCLE_UNBAN', details: { customerId: req.params.customerId } } }).catch(() => {});
     res.json({ ok: true });
   } catch (error) { fail(res, error, 'Could not unblock.'); }

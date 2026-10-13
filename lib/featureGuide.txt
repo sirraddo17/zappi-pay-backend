@@ -1165,7 +1165,7 @@ BENEFITS
 
 HOW TO GET STARTED (CREATOR)
 1. Home → More → "Ajo Circle" → "Start a circle".
-2. Name, amount, how often (daily / weekly / monthly), number of members, start day. Optional: payout fee (max 5% of the pot; 80% to you, 20% to ZAPPI PAY), late fee (max 10% of the contribution), grace hours, missed payments before a payout number moves to the end, extra rules.
+2. Name, amount, how often (daily / weekly / monthly), number of members, start day. Optional: your own payout fee (max 5% of the pot — you keep 100% of it), late fee (max 10% of the contribution), grace hours, missed payments before a payout number moves to the end, extra rules.
 3. Accept the agreement and confirm with your PIN.
 4. Share the invite link on WhatsApp, or invite people by username. Members join after reading the rules and agreement and confirming with their PIN.
 5. When everyone has joined, set the payout order (move people up/down or "Shuffle"), then tap "Start circle".
@@ -1181,7 +1181,17 @@ HOW IT WORKS FOR MEMBERS
 - Need your payout early while someone is late? The member due can ask for the money already collected; they agree the rest follows later, and ZAPPI PAY approves it.
 - You can leave before the circle starts, not after. The agreement can be re-read any time on the circle page.
 
-ADMIN: Admin → Ajo Circles: running circles, pots, late payments, early-release requests (approve/reject), appeals, blocked members (unblock), stop a circle (money in unpaid pots goes back to the members who paid it). Switch: Admin → New features (Off / Testers only / On for everyone; OFF until you turn it on). Limits: top of Admin → Ajo Circles. [setting: circleMaxAmount, default ₦500,000] [setting: circleMaxMembers, default 30] [setting: circleBanStrikes, default 3]
+FEES
+- ZAPPI PAY service fee: a small % of the pot taken from each payout for running the circle (shown as "ZAPPI PAY service fee" in the rules). It is fixed when the circle is created. [setting: circleServiceFeePercent, default 0 = off] [setting: circleServiceFeeCap, default ₦2,000 per payout]
+- Creator's fee (optional): set by the creator, max 5% of the pot, goes 100% to the creator (shown as "Creator's fee").
+- These are the ONLY fees. Nobody — including the creator — may ask members for extra money, commission or "settlement" outside the app, before or after a payout. Older circles (agreement version 1) keep their old split: 80% of the payout fee to the creator, 20% to ZAPPI PAY.
+
+ASKED TO PAY OUTSIDE THE APP?
+- On the circle page, members see "🚫 Asked to pay outside the app?" → "Report it to ZAPPI PAY" → describe what was asked → "Send report". The creator is not told who reported.
+- ZAPPI PAY also flags it automatically when a member sends the creator money (Send Money or a pay-me link) within 72 hours of receiving their payout; when 2+ members of the same circle do this, the admin is alerted.
+- If ZAPPI PAY upholds a report, the creator gets a strike. 2 strikes = blocked from starting or joining Ajo Circles (appeal on the Ajo Circle page).
+
+ADMIN: Admin → Ajo Circles: running circles, pots, late payments, 🚫 off-app fee reports and automatic flags (Uphold / Dismiss / View circle), early-release requests (approve/reject), appeals, blocked members (unblock), stop a circle (money in unpaid pots goes back to the members who paid it). Switch: Admin → New features (Off / Testers only / On for everyone; OFF until you turn it on). Limits: top of Admin → Ajo Circles. [setting: circleMaxAmount, default ₦500,000] [setting: circleMaxMembers, default 30] [setting: circleBanStrikes, default 3] Service fee % and cap are set at the top of Admin → Ajo Circles.
 
 ----------------------------------------------------------------------
 56. OWAMBE SPRAY (SPRAY MONEY AT A PARTY FROM YOUR PHONE)

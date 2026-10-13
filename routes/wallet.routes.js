@@ -253,6 +253,7 @@ router.post('/wallet/transfer', requireCustomerAuth, require('../lib/features').
     }
 
     notify(receiver.id, 'Money Received', `${sender.name} sent you ₦${amountNum.toLocaleString()}.`);
+    require('../lib/circles').checkOffAppFee({ senderId: sender.id, receiverId: receiver.id, amount: amountNum });
     require('../lib/circles').onDeposit(receiver.id).catch(() => {});
     notify(sender.id, 'Money Sent', `You sent ₦${amountNum.toLocaleString()} to ${receiver.name}.`);
 

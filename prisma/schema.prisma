@@ -97,6 +97,7 @@ model Customer {
   // Ajo Circle: kept out of new circles after repeated missed payments
   // (lifted by an admin after an appeal).
   circleBannedAt   DateTime?
+  circleCreatorStrikes Int   @default(0)
   circleBanReason  String?
   // Savings pocket (off until the owner turns it on in Settings).
   // savingsLowBalance is the lowest the pocket has been since the last
@@ -625,6 +626,10 @@ model Settings {
   circleMaxAmount       Decimal @default(500000) @db.Decimal(14, 2)
   circleMaxMembers      Int     @default(30)
   circleBanStrikes      Int     @default(3)
+  // ZAPPI PAY's own service fee on each Ajo payout (separate from the
+  // creator's optional fee, which goes 100% to the creator). 0 = off.
+  circleServiceFeePercent Decimal @default(0) @db.Decimal(5, 2)
+  circleServiceFeeCap     Decimal @default(2000) @db.Decimal(14, 2)
   // Newer features — each off until the owner switches it on (Admin → New features).
   sprayEnabled          Boolean @default(false)
   duesEnabled           Boolean @default(false)
@@ -1628,6 +1633,9 @@ model Circle {
   status           String    @default("FORMING") // FORMING, ACTIVE, COMPLETED, CANCELLED
   startAt          DateTime?
   payoutFee        Decimal   @default(0) @db.Decimal(14, 2)
+  // Locked when the circle is created (members agree to it).
+  serviceFeePct    Decimal   @default(0) @db.Decimal(5, 2)
+  serviceFeeCap    Decimal   @default(0) @db.Decimal(14, 2)
   penaltyFee       Decimal   @default(0) @db.Decimal(14, 2)
   graceHours       Int       @default(24)
   strikesToLast    Int       @default(2)
@@ -2202,4 +2210,24 @@ model FollowUp {
   sentAt      DateTime?
 
   @@index([status, createdAt])
+}
+
+// "Someone asked me to pay outside the app" reports, and automatic flags
+// (members sending the creator money soon after a payout).
+model CircleReport {
+  id         String    @id @default(cuid())
+  circleId   String
+  reporterId String
+  creatorId  String
+  kind       String    @default("MEMBER") // MEMBER, AUTO
+  message    String?
+  amount     Decimal?  @db.Decimal(14, 2)
+  status     String    @default("OPEN") // OPEN, UPHELD, DISMISSED
+  adminNote  String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([status])
+  @@index([circleId])
+  @@index([creatorId])
 }
