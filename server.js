@@ -97,6 +97,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-ba
 // Support staff (role SUPPORT) may only reach customer-care admin routes;
 // everything sensitive needs an owner (lib/staffAccess.js).
 app.use('/api', require('./lib/staffAccess').staffGate);
+app.use('/api', require('./routes/disputes.routes'));
 app.use('/api', escalationsRouter);
 app.use('/api', savingsRouter);
 app.use('/api', challengesRouter);
@@ -161,6 +162,7 @@ app.listen(PORT, () => {
   require('./lib/festivals').start();
   require('./lib/flutterwave').startSweeper();
   require('./lib/circles').startJob();
+  require('./lib/disputes').startJob();
   require('./routes/features.routes').startJobs();
   require('./routes/services.routes').startJobs();
   require('./routes/partners.routes').startJobs();

@@ -98,6 +98,8 @@ model Customer {
   // (lifted by an admin after an appeal).
   circleBannedAt   DateTime?
   circleCreatorStrikes Int   @default(0)
+  // Kept money sent to them by mistake after a decision (CBN: watch-list).
+  wrongTransferFlaggedAt DateTime?
   circleBanReason  String?
   // Savings pocket (off until the owner turns it on in Settings).
   // savingsLowBalance is the lowest the pocket has been since the last
@@ -262,6 +264,10 @@ model WebAuthnCredential {
 
 enum WalletTxType {
   FUND
+  DISPUTE_HOLD
+  DISPUTE_RELEASE
+  DISPUTE_RETURN_OUT
+  DISPUTE_RETURN_IN
   SPRAY_OUT
   SPRAY_IN
   DUES_OUT
@@ -2230,4 +2236,37 @@ model CircleReport {
   @@index([status])
   @@index([circleId])
   @@index([creatorId])
+}
+
+// "I sent this by mistake" — wallet-to-wallet (we hold the amount in the
+// recipient's wallet for up to 14 days and ask them to return it) or to
+// a bank (we raise a recall with the payment partner). Follows the CBN
+// instant-transfer rules on erroneous transfers.
+model TransferDispute {
+  id             String    @id @default(cuid())
+  kind           String // WALLET, BANK
+  senderId       String
+  recipientId    String?
+  transferId     String?   @unique
+  bankTransferId String?   @unique
+  amount         Decimal   @db.Decimal(14, 2)
+  held           Decimal   @default(0) @db.Decimal(14, 2)
+  recovered      Decimal   @default(0) @db.Decimal(14, 2)
+  reason         String?
+  // WALLET: AWAITING_RECIPIENT, RECIPIENT_DISPUTES, RETURNED, RESOLVED_SENDER,
+  //         RESOLVED_RECIPIENT, REVERSED_SYSTEM, EXPIRED, CANCELLED
+  // BANK:   RECALL_REQUESTED, RECALL_SENT, RECOVERED, NOT_RECOVERED, CANCELLED
+  status         String
+  recipientReply String?
+  holdUntil      DateTime?
+  adminNote      String?
+  partnerRef     String?
+  remindedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  resolvedAt     DateTime?
+
+  @@index([status])
+  @@index([senderId])
+  @@index([recipientId])
 }
