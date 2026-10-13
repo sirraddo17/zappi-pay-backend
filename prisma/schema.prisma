@@ -476,6 +476,8 @@ model Notification {
   // TRANSACTION (money in/out) / ACCOUNT (security, family, support) /
   // UPDATE (announcements, promos, reminders) — the Notifications tabs.
   category   String?
+  // Optional in-app screen to open when tapped (e.g. /disputes/abc).
+  link       String?
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
 
