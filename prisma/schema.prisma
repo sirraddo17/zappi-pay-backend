@@ -599,6 +599,8 @@ model Settings {
   airtimeToCashFeePercent Decimal @default(20) @db.Decimal(5, 2)
   airtimeToCashMinAmount  Decimal @default(500) @db.Decimal(14, 2)
   airtimeToCashMaxAmount  Decimal @default(50000) @db.Decimal(14, 2)
+  // "Service is back" notices to customers whose transaction failed on our/partner side.
+  recoveryNoticesEnabled  Boolean @default(true)
   airtimeToCashNumbers    Json    @default("{}")
   // Referral program: fixed bonus paid to the referrer once, when the
   // person they invited completes a first successful purchase of at
@@ -2272,4 +2274,24 @@ model TransferDispute {
   @@index([status])
   @@index([senderId])
   @@index([recipientId])
+}
+
+// A customer whose transaction failed because of us or a partner (network,
+// provider, bank, system). When that service works again they get a polite
+// "it's working now — please try again" notice (once).
+model RecoveryNotice {
+  id         String    @id @default(cuid())
+  customerId String
+  key        String // provider serviceID (mtn-data), 'bank-transfer', 'send-money', 'bills'
+  label      String
+  amount     Decimal?  @db.Decimal(14, 2)
+  retryLink  String?
+  reason     String?
+  failedAt   DateTime  @default(now())
+  notifiedAt DateTime?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([key, notifiedAt, resolvedAt])
+  @@index([customerId, key])
 }

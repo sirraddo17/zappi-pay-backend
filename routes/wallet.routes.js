@@ -273,10 +273,13 @@ router.post('/wallet/transfer', requireCustomerAuth, require('../lib/features').
     require('../lib/circles').checkOffAppFee({ senderId: sender.id, receiverId: receiver.id, amount: amountNum });
     require('../lib/circles').onDeposit(receiver.id).catch(() => {});
     notify(sender.id, 'Money Sent', `You sent ₦${amountNum.toLocaleString()} to ${receiver.name}.`);
+    require('../lib/recovery').worked('send-money', { customerId: sender.id });
 
     res.status(201).json({ transfer });
   } catch (error) {
     console.error('POST /wallet/transfer failed:', error);
+    // A system error (not the customer's): tell them when sending works again.
+    require('../lib/recovery').failed({ customerId: req.customer?.customerId, key: 'send-money', label: 'Send money', amount: Number(req.body?.amount) || null, retryLink: '/transfer', reason: 'system error' });
     res.status(500).json({ error: 'Could not complete transfer.' });
   }
 });
