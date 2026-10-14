@@ -10,7 +10,8 @@ const router = express.Router();
 // Keys match VTpass's airtime serviceIDs, so an existing airtime
 // Order's provider can be used directly to pre-fill a request.
 const NETWORKS = { mtn: 'MTN', glo: 'Glo', airtel: 'Airtel', etisalat: '9mobile' };
-const MAX_AMOUNT = 50000;
+// Maximum per request is set in Admin → Settings → Airtime to Cash.
+const maxOf = (s) => Number(s.airtimeToCashMaxAmount || 50000);
 const MAX_PENDING_PER_CUSTOMER = 3;
 
 // Payout is always rounded DOWN to whole naira, so rounding can never
@@ -36,7 +37,7 @@ router.get('/airtime-cash/config', requireCustomerAuth, async (req, res) => {
       enabled: s.airtimeToCashEnabled,
       feePercent: Number(s.airtimeToCashFeePercent),
       minAmount: Number(s.airtimeToCashMinAmount),
-      maxAmount: MAX_AMOUNT,
+      maxAmount: maxOf(s),
       networks: Object.keys(NETWORKS)
         .filter((key) => numbers[key])
         .map((key) => ({ key, label: NETWORKS[key], receivingNumber: numbers[key], transfer: CODES[key] || null })),
@@ -82,8 +83,9 @@ router.post('/airtime-cash/requests', requireCustomerAuth, async (req, res) => {
       return res.status(400).json({ error: 'Enter the 11-digit phone number the airtime is on.' });
     }
     const minAmount = Number(s.airtimeToCashMinAmount);
-    if (!Number.isFinite(amount) || amount < minAmount || amount > MAX_AMOUNT) {
-      return res.status(400).json({ error: `Amount must be between ${naira(minAmount)} and ${naira(MAX_AMOUNT)}.` });
+    const maxAmount = maxOf(s);
+    if (!Number.isFinite(amount) || amount < minAmount || amount > maxAmount) {
+      return res.status(400).json({ error: `Amount must be between ${naira(minAmount)} and ${naira(maxAmount)}.` });
     }
 
     // A linked order has to be this customer's own successful airtime

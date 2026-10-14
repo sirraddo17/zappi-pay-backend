@@ -598,6 +598,7 @@ model Settings {
   airtimeToCashEnabled    Boolean @default(false)
   airtimeToCashFeePercent Decimal @default(20) @db.Decimal(5, 2)
   airtimeToCashMinAmount  Decimal @default(500) @db.Decimal(14, 2)
+  airtimeToCashMaxAmount  Decimal @default(50000) @db.Decimal(14, 2)
   airtimeToCashNumbers    Json    @default("{}")
   // Referral program: fixed bonus paid to the referrer once, when the
   // person they invited completes a first successful purchase of at

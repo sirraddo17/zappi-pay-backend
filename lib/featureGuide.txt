@@ -363,7 +363,7 @@ HOW TO GET STARTED
 
 RULES
 - Fee: set by ZAPPI PAY (currently configurable) [setting: airtimeToCashFeePercent, default 20%]. The payout is rounded down to whole naira.
-- Minimum: [setting: airtimeToCashMinAmount, default ₦500]. Maximum: ₦50,000 (fixed in the code).
+- Minimum: [setting: airtimeToCashMinAmount, default ₦500]. Maximum: [setting: airtimeToCashMaxAmount, default ₦50,000] — both set in Admin → Settings → Airtime to Cash (the maximum must be at least the minimum, up to ₦500,000).
 - Only networks with a receiving line set up can be chosen [setting: airtimeToCashNumbers]. Supported networks are MTN, Glo, Airtel and 9mobile.
 - At most 3 requests can be waiting at a time.
 - The admin can approve a smaller "received" amount if less airtime arrived. The payout is then recalculated.

@@ -44,7 +44,7 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, markupCapByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
-      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashNumbers,
+      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashMaxAmount, airtimeToCashNumbers,
       referralEnabled, referralBonusAmount, referralMinPurchase, referralSpendTarget, referralWelcomeBonus, referralMilestones, referralBoostAmount, referralBoostTarget, referralBoostUntil, referralTickerEnabled, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
@@ -143,6 +143,15 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (airtimeToCashEnabled !== undefined) data.airtimeToCashEnabled = Boolean(airtimeToCashEnabled);
     if (airtimeToCashFeePercent !== undefined) data.airtimeToCashFeePercent = Number(airtimeToCashFeePercent);
     if (airtimeToCashMinAmount !== undefined) data.airtimeToCashMinAmount = Number(airtimeToCashMinAmount);
+    if (airtimeToCashMaxAmount !== undefined) data.airtimeToCashMaxAmount = Number(airtimeToCashMaxAmount);
+    if (airtimeToCashMinAmount !== undefined || airtimeToCashMaxAmount !== undefined) {
+      const cur = await prisma.settings.findFirst({ select: { airtimeToCashMinAmount: true, airtimeToCashMaxAmount: true } }).catch(() => null);
+      const lo = Number(data.airtimeToCashMinAmount ?? cur?.airtimeToCashMinAmount ?? 500);
+      const hi = Number(data.airtimeToCashMaxAmount ?? cur?.airtimeToCashMaxAmount ?? 50000);
+      if (!(lo >= 50)) return res.status(400).json({ error: 'Airtime to Cash minimum must be at least ₦50.' });
+      if (!(hi >= lo)) return res.status(400).json({ error: 'Airtime to Cash maximum must be at least the minimum.' });
+      if (hi > 500000) return res.status(400).json({ error: 'Airtime to Cash maximum can be at most ₦500,000.' });
+    }
     if (referralEnabled !== undefined) data.referralEnabled = Boolean(referralEnabled);
     if (referralBonusAmount !== undefined) data.referralBonusAmount = Number(referralBonusAmount);
     if (referralMinPurchase !== undefined) data.referralMinPurchase = Number(referralMinPurchase);
