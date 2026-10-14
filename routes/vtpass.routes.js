@@ -361,6 +361,11 @@ router.post('/webhooks/vtpass', async (req, res) => {
 });
 
 const ORDER_STATUSES = ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'];
+// VTpass response codes with plain meanings (Admin → Orders help).
+router.get('/admin/vtpass-codes', requireAdminAuth, (req, res) => {
+  res.json({ codes: require('../lib/vtpassCodes').list() });
+});
+
 router.get('/admin/orders', requireAdminAuth, async (req, res) => {
   try {
     const status = ORDER_STATUSES.includes(String(req.query.status || '').toUpperCase()) ? String(req.query.status).toUpperCase() : null;
@@ -381,8 +386,11 @@ router.get('/admin/orders', requireAdminAuth, async (req, res) => {
       // pinsGiven: VTpass already handed out PINs/token — never refund without checking.
       orders: orders.map((o) => {
         const p = o.responsePayload || {};
-        const reason = o.status === 'FAILED' ? String(p.content?.error || p.response_description || p.content?.transactions?.status || o.vtpassStatus || '').slice(0, 160) || null : null;
-        return { ...o, pinsGiven: hasDeliverable(o.responsePayload), held: o.vtpassStatus === HELD, vtpassReason: reason };
+        let reason = o.status === 'FAILED' ? String(p.content?.error || p.response_description || p.content?.transactions?.status || o.vtpassStatus || '').slice(0, 160) || null : null;
+        // Spell out VTpass codes: "027 — IP not whitelisted … Fix: …"
+        const d = o.status === 'FAILED' && !String(o.provider || '').startsWith('ck:') ? require('../lib/vtpassCodes').describe(/^\d{1,3}$/.test(String(o.vtpassStatus || '')) ? o.vtpassStatus : p) : null;
+        if (d && d.text) reason = `${d.code} ${d.text} — ${d.meaning}${d.fix ? ` Fix: ${d.fix}` : ''}`;
+        return { ...o, pinsGiven: hasDeliverable(o.responsePayload), held: o.vtpassStatus === HELD, vtpassReason: reason, vtpassWho: d?.who || null };
       }),
       counts: { total, PENDING: pending, SUCCESS: success, FAILED: failed, revenue: Number(revenue?._sum?.amount || 0) },
     });
