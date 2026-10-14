@@ -599,6 +599,7 @@ model Settings {
   airtimeToCashFeePercent Decimal @default(20) @db.Decimal(5, 2)
   airtimeToCashMinAmount  Decimal @default(500) @db.Decimal(14, 2)
   airtimeToCashMaxAmount  Decimal @default(50000) @db.Decimal(14, 2)
+  electricityMinAmount    Decimal @default(1000) @db.Decimal(14, 2) // most DisCos reject less
   // "Service is back" notices to customers whose transaction failed on our/partner side.
   recoveryNoticesEnabled  Boolean @default(true)
   airtimeToCashNumbers    Json    @default("{}")

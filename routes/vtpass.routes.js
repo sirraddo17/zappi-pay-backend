@@ -165,6 +165,7 @@ router.get('/pricing', requireCustomerAuth, async (req, res) => {
       markupCapByService: settings.markupCapByService || {},
       discountPercentByService: settings.discountPercentByService || {},
       agentPricing: settings !== raw,
+      electricityMinAmount: Number(raw.electricityMinAmount ?? 1000),
       // Separate cashback balance used at checkout (lib/cashback.js).
       cashback: raw.cashbackSeparate !== false ? { balance: Number((await prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { cashbackBalance: true } }))?.cashbackBalance || 0), maxPercent: Number(raw.cashbackUseMaxPercent ?? 20) } : null,
     });

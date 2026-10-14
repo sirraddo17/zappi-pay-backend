@@ -44,7 +44,7 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, markupCapByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
-      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashMaxAmount, airtimeToCashNumbers,
+      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashMaxAmount, airtimeToCashNumbers, electricityMinAmount,
       referralEnabled, referralBonusAmount, referralMinPurchase, referralSpendTarget, referralWelcomeBonus, referralMilestones, referralBoostAmount, referralBoostTarget, referralBoostUntil, referralTickerEnabled, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
@@ -140,6 +140,11 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
     if (minFundingAmount !== undefined) data.minFundingAmount = Number(minFundingAmount);
     if (minPurchaseAmount !== undefined) data.minPurchaseAmount = Number(minPurchaseAmount);
+    if (electricityMinAmount !== undefined) {
+      const v = Number(electricityMinAmount);
+      if (!Number.isFinite(v) || v < 0 || v > 100000) return res.status(400).json({ error: 'Electricity minimum must be between ₦0 and ₦100,000.' });
+      data.electricityMinAmount = v;
+    }
     if (airtimeToCashEnabled !== undefined) data.airtimeToCashEnabled = Boolean(airtimeToCashEnabled);
     if (airtimeToCashFeePercent !== undefined) data.airtimeToCashFeePercent = Number(airtimeToCashFeePercent);
     if (airtimeToCashMinAmount !== undefined) data.airtimeToCashMinAmount = Number(airtimeToCashMinAmount);

@@ -192,6 +192,7 @@ WHAT IT IS: Pay for prepaid or postpaid electricity for any distribution company
 
 BENEFITS
 - The meter name is checked before you pay.
+- MINIMUM: electricity has its own minimum (LIVE VALUE: Admin → Settings → Limits "Minimum electricity purchase" [electricityMinAmount, default ₦1,000]); the Buy page shows "Minimum ₦X" under the amount and a red warning below it. If the meter check returns a higher minimum for that company, that one applies. A purchase below the company's minimum fails at the company and is refunded.
 - The token is shown on the receipt and can be copied.
 - You can save meters.
 
