@@ -164,6 +164,7 @@ COMMON QUESTIONS
 ----------------------------------------------------------------------
 4. BUY DATA
 ----------------------------------------------------------------------
+PLAN CONDITIONS (read before you buy): every plan card shows the full plan name from the network and a tag when the plan is restricted: "📅 Weekend only" (works only on Saturday and Sunday, or only the day named), "🌙 Night only" (night hours, e.g. 12am–5am when the name says), "💬 Social" (only for the apps named), "📶 Broadband" (routers/MiFi). Restricted plans have their own tabs (Weekend, Night, Social) and are never shown under Best value, Daily/Weekly/Monthly or Deals. When a weekend/night/social plan is picked, the bar at the bottom and the PIN sheet show a ⚠️ warning (e.g. "Works only on Saturday and Sunday. Today is Thursday — it won't work today"). A wrong plan bought by mistake can't be reversed by the network.
 WHAT IT IS: Buy data plans for any network.
 
 BENEFITS
