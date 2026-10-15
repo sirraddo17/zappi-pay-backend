@@ -2,6 +2,8 @@
 ZAPPI PAY: CUSTOMER FEATURE FACT SHEET (for the in-app AI assistant)
 ======================================================================
 
+WHO RUNS ZAPPI PAY: SIRRADDO GLOBAL LIMITED, a private company limited by shares registered with the Corporate Affairs Commission of Nigeria (RC 9939920), Ibadan, Oyo State. Website www.zappipay.com.ng · support@zappipay.com.ng.
+
 HOW TO READ THIS
 - "Home" is the main screen. The bottom bar has four tabs: Home, Wallet, History and Profile. ("History" was called "Orders" before.)
 - Home: the wallet card at the top (tap the eye to hide/show the balance; a gold chip shows cashback to spend and cashback earned this month) with quick buttons Add money, Airtime, Data and History. Under it a 4-column "Services" grid: Airtime, Data, Electricity, Cable TV, Education, Internet, Bet Funding and More (a "Send Money" tile shows only while sending money is switched on). Then "Buy again" chips for recent purchases.

@@ -414,8 +414,8 @@ router.post('/admin/orders/:id/vtpass-escalate', requireAdminAuth, async (req, r
       ['VTpass status', t.status || order.vtpassStatus || '—'],
       ['Environment', settings.vtpassMode === 'live' ? 'Live' : 'Sandbox'],
     ];
-    const text = `Hello VTpass Support,\n\nPlease help us check this transaction.\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nIssue: ${note}\n\nThank you,\nZAPPI PAY (Sirraddo Venture) support`;
-    const html = `<p>Hello VTpass Support,</p><p>Please help us check this transaction.</p><table cellpadding="4">${rows.map(([k, v]) => `<tr><td><b>${k}</b></td><td>${String(v).replace(/</g, '&lt;')}</td></tr>`).join('')}</table><p><b>Issue:</b> ${note.replace(/</g, '&lt;')}</p><p>Thank you,<br>ZAPPI PAY (Sirraddo Venture) support</p>`;
+    const text = `Hello VTpass Support,\n\nPlease help us check this transaction.\n\n${rows.map(([k, v]) => `${k}: ${v}`).join('\n')}\n\nIssue: ${note}\n\nThank you,\nZAPPI PAY (SIRRADDO GLOBAL LIMITED) support`;
+    const html = `<p>Hello VTpass Support,</p><p>Please help us check this transaction.</p><table cellpadding="4">${rows.map(([k, v]) => `<tr><td><b>${k}</b></td><td>${String(v).replace(/</g, '&lt;')}</td></tr>`).join('')}</table><p><b>Issue:</b> ${note.replace(/</g, '&lt;')}</p><p>Thank you,<br>ZAPPI PAY (SIRRADDO GLOBAL LIMITED) support</p>`;
     const sent = await require('../lib/email').sendEmail({ to, subject: `Transaction issue — request ID ${order.vtpassRequestId}`, html, text });
     if (!sent?.sent && sent?.reason === 'not_configured') return res.status(503).json({ error: 'Email isn’t set up (Resend), so the report couldn’t be sent. Contact VTpass on 07080631810 or support@vtpass.com with the request ID.' });
     if (sent && sent.sent === false) return res.status(502).json({ error: 'The email could not be sent. Try again, or contact VTpass directly.' });
