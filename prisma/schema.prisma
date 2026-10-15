@@ -652,6 +652,7 @@ model Settings {
   safeBuyFeeCap         Decimal @default(2000) @db.Decimal(14, 2)
   safeBuyAutoReleaseDays Int    @default(3)
   payrollEnabled        Boolean @default(false)
+  connectedAppsEnabled  Boolean @default(false) // business apps (e.g. StoreWatch) can ask to pay suppliers; owner approves in ZAPPI PAY
   dailyRewardsEnabled   Boolean @default(false)
   // Money between people (wallet-to-wallet, pay-me links, family wallet) — OFF until a licensed partner/lawyer confirms.
   p2pEnabled            Boolean @default(false)
@@ -2295,4 +2296,48 @@ model RecoveryNotice {
 
   @@index([key, notifiedAt, resolvedAt])
   @@index([customerId, key])
+}
+
+// A business app the customer connected (e.g. StoreWatch). Its API key
+// can only CREATE payment requests; money moves only after the customer
+// approves the request in ZAPPI PAY with their PIN.
+model ConnectedApp {
+  id          String    @id @default(cuid())
+  customerId  String
+  name        String
+  keyHash     String    @unique
+  keyHint     String
+  secretSalt  String
+  callbackUrl String?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([customerId])
+}
+
+// A batch of bank payments a connected app asks for (e.g. supplier
+// payments per branch). items: [{ label, bankCode, bankName, accountNumber,
+// accountName, expectedName, nameMismatch, amount, fee, narration, meta }]
+// results: [{ index, status, transferId, reference, walletTxId, error }]
+model PayoutRequest {
+  id          String    @id @default(cuid())
+  appId       String
+  customerId  String
+  externalRef String
+  title       String
+  items       Json
+  total       Decimal   @db.Decimal(14, 2)
+  fees        Decimal   @default(0) @db.Decimal(14, 2)
+  status      String    @default("AWAITING_APPROVAL") // AWAITING_APPROVAL, PROCESSING, DONE, PARTIAL, FAILED, DECLINED, EXPIRED
+  results     Json?
+  callbackUrl String?
+  returnUrl   String?
+  expiresAt   DateTime
+  approvedAt  DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([appId, externalRef])
+  @@index([customerId, createdAt])
 }

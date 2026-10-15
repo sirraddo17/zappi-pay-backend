@@ -123,6 +123,7 @@ app.use('/api', require('./routes/circles.routes'));
 app.use('/api', require('./routes/features.routes'));
 app.use('/api', require('./routes/services.routes'));
 app.use('/api', require('./routes/partners.routes'));
+app.use('/api', require('./routes/connect.routes'));
 
 // Before adminRouter so /admin/customers/list isn't taken as a customer id.
 app.use('/api', customersRouter);
