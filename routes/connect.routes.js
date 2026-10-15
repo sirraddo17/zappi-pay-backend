@@ -8,6 +8,7 @@ const F = require('../lib/features');
 //   App side (server to server, Authorization: Bearer zpk_live_…):
 //     POST /api/connect/payout-requests        create a request to approve
 //     GET  /api/connect/payout-requests/:id    status (id or your reference)
+//     GET  /api/connect/banks, /api/connect/account-lookup?bankCode=&accountNumber=
 //   Customer side (ZAPPI PAY app):
 //     GET/POST /api/connected-apps, PATCH/DELETE /api/connected-apps/:id
 //     GET /api/payout-requests, GET /api/payout-requests/:id
@@ -43,6 +44,24 @@ router.get('/connect/payout-requests/:id', requireApp, async (req, res) => {
 });
 
 router.get('/connect/ping', requireApp, (req, res) => res.json({ ok: true, app: req.connectedApp.name }));
+
+// Bank list and account-name check, so the app can save a supplier's
+// bank details correctly before asking for a payment.
+router.get('/connect/banks', requireApp, async (req, res) => {
+  try { res.json({ banks: await require('../lib/disbursement').listBanks() }); } catch (error) { fail(res, error, 'GET /connect/banks failed:'); }
+});
+router.get('/connect/account-lookup', requireApp, async (req, res) => {
+  try {
+    const bankCode = String(req.query.bankCode || '').trim();
+    const accountNumber = String(req.query.accountNumber || '').replace(/\D/g, '');
+    if (!bankCode || accountNumber.length !== 10) return res.status(400).json({ error: 'bankCode and a 10-digit accountNumber are required.' });
+    const acct = await require('../lib/disbursement').lookupAccount(bankCode, accountNumber);
+    res.json({ accountNumber: acct.accountNumber, accountName: acct.accountName });
+  } catch (error) {
+    if (error && error.status && error.status < 500) return res.status(400).json({ error: error.message });
+    fail(res, error, 'GET /connect/account-lookup failed:');
+  }
+});
 
 // --- Customer side ---
 const gate = F.gate('connectedApps');

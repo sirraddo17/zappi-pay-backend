@@ -19,6 +19,9 @@ Keep both on the **server only**. Never send them to the browser.
 
 Check the key: `GET /api/connect/ping` with `Authorization: Bearer <key>` returns `{ ok: true, app: "StoreWatch" }`.
 
+Banks and name check (for saving supplier details):
+`GET /api/connect/banks` → `{ banks: [{ code, name }] }` · `GET /api/connect/account-lookup?bankCode=058&accountNumber=0123456789` → `{ accountNumber, accountName }`
+
 ## 2. Create a payment request
 
 `POST /api/connect/payout-requests`
