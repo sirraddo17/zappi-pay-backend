@@ -60,7 +60,7 @@ router.get('/app/info', async (req, res) => {
       features: Object.fromEntries(require('../lib/features').FEATURES.map((f) => [f.key, Boolean(settings[f.setting])])),
       // Which wallet funding methods are on.
       funding: {
-        bank: settings.monnifyFundingEnabled !== false,
+        bank: settings.monnifyFundingEnabled !== false || Boolean(settings.squadFundingEnabled && (settings.squadSecretKey || process.env.SQUAD_SECRET_KEY)),
         card: Boolean(settings.flutterwaveEnabled && (settings.flutterwaveSecretKey || process.env.FLW_SECRET_KEY)),
         cardFeePercent: Number(settings.cardFundingFeePercent || 0),
         cardFeeCap: Number(settings.cardFundingFeeCap || 0),

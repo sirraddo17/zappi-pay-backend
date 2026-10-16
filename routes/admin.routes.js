@@ -24,6 +24,7 @@ function safeSettings(settings) {
   delete out.flutterwaveSecretKey;
   delete out.flutterwaveSecretHash;
   delete out.flutterwavePublicKey;
+  delete out.squadSecretKey;
   return out;
 }
 

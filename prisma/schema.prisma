@@ -158,6 +158,10 @@ model Customer {
   // identity can only verify one ZAPPI PAY account.
   kycHash         String?   @unique
   bankAccountAt   DateTime?
+  // Squad GTBank account number (lib/squad.js): our customer ID at Squad.
+  // The account itself is listed in bankAccounts with provider "squad".
+  squadAccountRef String?   @unique
+  squadAccountAt  DateTime?
   // Email alerts for money in/out and new logins (customer can switch
   // off). lastLoginFingerprint spots a login from a new device.
   // Agent / reseller: buys at agent prices (extra admin-set discount)
@@ -690,6 +694,14 @@ model Settings {
   cardFundingFeeCap     Decimal @default(0) @db.Decimal(14, 2)
   // Monnify keys set from Admin → Settings. When the API key here is
   // empty, the MONNIFY_* environment variables on Render are used.
+  // Squad (GTBank account numbers for wallet funding, lib/squad.js).
+  // squadPrimary = new customers get a Squad account instead of Monnify.
+  // Secret key here overrides the SQUAD_SECRET_KEY env var; never shown back.
+  squadFundingEnabled     Boolean @default(false)
+  squadPrimary            Boolean @default(false)
+  squadMode               String  @default("sandbox")
+  squadSecretKey          String?
+  squadBeneficiaryAccount String?
   monnifyMode         String  @default("sandbox")
   monnifyApiKey       String?
   monnifySecretKey    String?

@@ -119,6 +119,7 @@ app.use('/api', heygenRouter);
 app.use('/api', require('./routes/attackwatch.routes'));
 app.use('/api', require('./routes/payrequests.routes'));
 app.use('/api', require('./routes/flutterwave.routes'));
+app.use('/api', require('./routes/squad.routes'));
 app.use('/api', require('./routes/circles.routes'));
 app.use('/api', require('./routes/features.routes'));
 app.use('/api', require('./routes/services.routes'));
@@ -162,6 +163,7 @@ app.listen(PORT, () => {
   require('./lib/attackWatch').start();
   require('./lib/festivals').start();
   require('./lib/flutterwave').startSweeper();
+  require('./lib/squad').startSweeper();
   require('./lib/circles').startJob();
   require('./lib/disputes').startJob();
   require('./routes/features.routes').startJobs();

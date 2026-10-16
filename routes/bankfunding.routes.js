@@ -3,6 +3,7 @@ const prisma = require('../lib/prisma');
 const { requireCustomerAuth } = require('../lib/auth');
 const { getSettings } = require('../lib/vtpass');
 const monnify = require('../lib/monnify');
+const squad = require('../lib/squad');
 const { visibleReservedAccounts } = require('../lib/funding');
 
 // Hides banks the admin has paused (network problems) and says how many.
@@ -32,11 +33,22 @@ async function feeInfo() {
   return { feePercent: Number(s.bankFundingFeePercent || 0), feeCap: Number(s.bankFundingFeeCap || 0), feeIsPassThrough: require('../lib/earnings').fundingFeeIsPassThrough(s) };
 }
 
+// Which partner new account numbers come from: Squad (GTBank) when the
+// owner made it the main one (or Monnify is off), else Monnify.
+async function providers() {
+  const [m, q, s] = await Promise.all([monnifyOn(), squad.fundingOn(), getSettings()]);
+  return { monnify: m, squad: q, primary: q && (s.squadPrimary || !m) ? 'squad' : m ? 'monnify' : null };
+}
+
 router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
   try {
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
+    const p = await providers();
     res.json({
-      available: await monnifyOn(),
+      available: Boolean(p.primary),
+      provider: p.primary,
+      // Already has (Monnify) account numbers: can add a GTBank one too.
+      squadAddable: p.squad && !customer.squadAccountRef && Array.isArray(customer.bankAccounts) && customer.bankAccounts.length > 0,
       ...(await shown(customer.bankAccounts)),
       kycType: customer.kycType || null,
       idMatch: Boolean((await getSettings()).idMatchEnabled),
@@ -51,6 +63,11 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
 
 router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
   try {
+    const p = await providers();
+    if (req.body?.provider === 'squad' || (!req.body?.provider && p.primary === 'squad')) {
+      if (!p.squad) return res.status(503).json({ error: 'This option is not available right now. Please use another way to fund.' });
+      return await createSquadAccount(req, res);
+    }
     if (!(await monnifyOn())) return res.status(503).json({ error: 'Bank transfer funding is not available right now. Please use another way to fund.' });
     const idType = String(req.body.idType || '').toUpperCase();
     const idNumber = String(req.body.idNumber || '').replace(/\D/g, '');
@@ -128,8 +145,10 @@ router.post('/wallet/bank-account/check', requireCustomerAuth, async (req, res) 
     lastCheck.set(id, Date.now());
 
     const customer = await prisma.customer.findUnique({ where: { id } });
-    if (!customer.bankAccountRef || !(await monnify.isConfigured())) return res.json({ credited: 0, amount: 0 });
-    const result = await monnify.syncCustomerPayments(customer);
+    const result = { credited: 0, amount: 0 };
+    const add = (r) => { result.credited += r.credited || 0; result.amount += r.amount || 0; };
+    if (customer.bankAccountRef && (await monnify.isConfigured())) add(await monnify.syncCustomerPayments(customer).catch((e) => { console.error('monnify sync:', e.message); return {}; }));
+    if (customer.squadAccountRef && (await squad.isConfigured())) add(await squad.syncCustomerPayments(customer).catch((e) => { console.error('squad sync:', e.message); return {}; }));
     const fresh = await prisma.customer.findUnique({ where: { id }, select: { walletBalance: true } });
     res.json({ ...result, walletBalance: fresh.walletBalance });
   } catch (error) {
@@ -181,6 +200,79 @@ router.post('/webhooks/monnify', async (req, res) => {
   } catch (error) {
     console.error('POST /webhooks/monnify failed:', error.message);
     res.status(500).json({ error: 'Processing failed.' });
+  }
+});
+
+// GTBank account number through Squad. Squad needs the BVN (not NIN)
+// and checks it strictly against name, date of birth and phone.
+async function createSquadAccount(req, res) {
+  const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
+  if (customer.squadAccountRef) return res.json({ ...(await shown(customer.bankAccounts)), kycType: customer.kycType });
+  const bvn = String(req.body.idNumber || req.body.bvn || '').replace(/\D/g, '');
+  if (String(req.body.idType || 'BVN').toUpperCase() !== 'BVN') return res.status(400).json({ error: 'This account needs your BVN.' });
+  if (bvn.length !== 11) return res.status(400).json({ error: 'Your BVN must be 11 digits.' });
+  const gender = String(req.body.gender || '').toLowerCase();
+  if (!['male', 'female'].includes(gender)) return res.status(400).json({ error: 'Choose male or female (as on your BVN).', code: 'GENDER_NEEDED' });
+  const address = String(req.body.address || '').trim();
+  if (address.length < 5) return res.status(400).json({ error: 'Enter your home address (street and town).', code: 'ADDRESS_NEEDED' });
+  const phone = squad.localPhone(req.body.phone || customer.phone);
+  if (!/^0\d{10}$/.test(phone)) return res.status(400).json({ error: 'Enter the phone number linked to your BVN (11 digits).', code: 'PHONE_NEEDED' });
+  if (!req.body.consent) return res.status(400).json({ error: 'Tick the box to let us check your details with your BVN.', code: 'CONSENT_NEEDED' });
+  let dob = customer.dateOfBirth;
+  if (!dob) {
+    const parsed = require('../lib/identity').parseDob(req.body.dateOfBirth);
+    if (parsed.error) return res.status(400).json({ error: parsed.error, code: 'DOB_NEEDED' });
+    dob = parsed.date;
+  }
+
+  // One BVN = one ZAPPI PAY account (only a keyed hash is kept).
+  const kycHash = identityHash('BVN', bvn);
+  const other = await prisma.customer.findFirst({ where: { kycHash, NOT: { id: customer.id } }, select: { id: true } });
+  if (other) return res.status(409).json({ error: 'This BVN is already linked to another ZAPPI PAY account. Each person can have only one account — contact support if this is a mistake.', code: 'IDENTITY_IN_USE' });
+  let claimed = false;
+  if (!customer.kycHash) {
+    try {
+      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash } });
+      claimed = true;
+    } catch (error) {
+      if (error.code === 'P2002') return res.status(409).json({ error: 'This BVN is already linked to another ZAPPI PAY account.', code: 'IDENTITY_IN_USE' });
+      throw error;
+    }
+  }
+  let updated;
+  try {
+    updated = await squad.createVirtualAccount(customer, { bvn, dateOfBirth: dob, gender, address, phone });
+  } catch (error) {
+    if (claimed) await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
+    console.error('Squad account failed:', error.message, JSON.stringify(error.body || {}));
+    if (error instanceof squad.SquadError && error.status && error.status < 500) return res.status(400).json({ error: `Could not create your account: ${error.message}` });
+    return res.status(502).json({ error: 'Could not create your account number right now. Please try again shortly.' });
+  }
+  // Squad accepted the BVN with this name, date of birth and phone → verified.
+  await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: customer.kycVerifiedAt || new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: dob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
+  require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
+  return res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: true });
+}
+
+// Squad calls this when money lands in a GTBank account number.
+// Signature-checked with our secret key. Answering non-200 keeps it in
+// Squad's error log, which lib/squad.js re-checks every 10 minutes.
+router.post('/webhooks/squad', async (req, res) => {
+  const ref = String(req.body?.transaction_reference || '');
+  const reply = (code, description) => res.status(code).json({ response_code: code, transaction_reference: ref, response_description: description });
+  try {
+    if (!(await squad.isValidSignature(req.rawBody, req.body, req.headers['x-squad-signature']))) {
+      console.warn('Squad webhook rejected: bad signature');
+      require('../lib/attackWatch').record('WEBHOOK_BAD_SIGNATURE', req, { detail: 'Someone sent a payment message that was not signed by Squad. It was rejected — no money moved.' });
+      return reply(401, 'Invalid signature');
+    }
+    const result = await squad.creditPayment(req.body, { source: 'webhook' });
+    console.log('Squad webhook:', ref, JSON.stringify(result));
+    if (!result.done) return reply(400, `Not processed: ${result.reason}`);
+    return reply(200, 'Success');
+  } catch (error) {
+    console.error('POST /webhooks/squad failed:', error.message);
+    return reply(500, 'System malfunction');
   }
 });
 
