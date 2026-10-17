@@ -5,13 +5,15 @@ const { requireCustomerAuth, requireAdminAuth } = require('../lib/auth');
 const { confirmTransaction } = require('../lib/security');
 const monnify = require('../lib/monnify');
 const d = require('../lib/disbursement');
+const { SquadError } = require('../lib/squad');
+const partnerRefusal = (e) => (e instanceof monnify.MonnifyError || e instanceof SquadError) && e.status && e.status < 500;
 
 // Send to Bank (wallet → any Nigerian bank account).
 const router = express.Router();
 
 function fail(res, error, fallback) {
   if (error instanceof d.TransferError) return res.status(error.status).json({ error: error.message, code: error.code });
-  if (error instanceof monnify.MonnifyError && error.status && error.status < 500) {
+  if (partnerRefusal(error)) {
     return res.status(400).json({ error: error.message });
   }
   console.error(fallback, error.message || error);
@@ -23,7 +25,7 @@ function fail(res, error, fallback) {
 router.get('/wallet/bank-transfer/config', requireCustomerAuth, async (req, res) => {
   try {
     const cfg = await d.transferSettings();
-    const available = cfg.enabled && Boolean(cfg.walletAccount) && (await monnify.isConfigured());
+    const available = cfg.enabled && cfg.ready;
     res.json({ available, fee: cfg.fee, feeTiers: cfg.feeTiers, min: cfg.min, max: cfg.max, dailyMax: cfg.dailyMax });
   } catch (error) {
     fail(res, error, 'Could not load transfer settings.');
@@ -55,7 +57,7 @@ router.get('/wallet/bank-transfer/lookup', requireCustomerAuth, async (req, res)
 
     res.json(await d.lookupAccount(bankCode, accountNumber));
   } catch (error) {
-    if (error instanceof monnify.MonnifyError && error.status && error.status < 500) {
+    if (partnerRefusal(error)) {
       console.warn('Bank lookup failed:', error.message); return res.status(400).json({ error: `We could not find that account. (${error.message})` });
     }
     fail(res, error, 'Could not check that account right now.');
@@ -216,7 +218,14 @@ router.get('/admin/monnify/overview', requireAdminAuth, async (req, res) => {
       prisma.bankTransfer.count({ where: { status: 'PROCESSING' } }),
     ]);
     out.held = await prisma.bankTransfer.count({ where: { status: 'HELD' } });
-    Object.assign(out, { accountsCount, waitingOtp, processing, transfersEnabled: settings.enabled, walletAccount: settings.walletAccount || null });
+    Object.assign(out, { accountsCount, waitingOtp, processing, transfersEnabled: settings.enabled, walletAccount: settings.walletAccount || null, payoutProvider: settings.provider });
+    if (settings.provider === 'squad') {
+      try {
+        out.squadBalance = await require('../lib/squad').walletBalance();
+      } catch (error) {
+        out.squadBalanceError = error.message;
+      }
+    }
 
     if (configured && settings.walletAccount) {
       if (Date.now() - balanceCache.at < 60 * 1000 && balanceCache.key === settings.walletAccount + cfg.mode) {

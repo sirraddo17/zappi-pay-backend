@@ -266,6 +266,16 @@ router.post('/webhooks/squad', async (req, res) => {
       require('../lib/attackWatch').record('WEBHOOK_BAD_SIGNATURE', req, { detail: 'Someone sent a payment message that was not signed by Squad. It was rejected — no money moved.' });
       return reply(401, 'Invalid signature');
     }
+    // Send-to-Bank result: the body is only a hint — refreshStatus asks
+    // Squad's API for the real status before anything is refunded.
+    const transfer = ref ? await prisma.bankTransfer.findUnique({ where: { reference: ref } }) : null;
+    if (transfer) {
+      if (transfer.provider === 'squad') {
+        const r = await require('../lib/disbursement').refreshStatus(transfer);
+        console.log('Squad transfer webhook:', ref, JSON.stringify(r));
+      }
+      return reply(200, 'Success');
+    }
     const result = await squad.creditPayment(req.body, { source: 'webhook' });
     console.log('Squad webhook:', ref, JSON.stringify(result));
     if (!result.done) return reply(400, `Not processed: ${result.reason}`);

@@ -702,6 +702,10 @@ model Settings {
   squadMode               String  @default("sandbox")
   squadSecretKey          String?
   squadBeneficiaryAccount String?
+  // Send to Bank goes out through "monnify" (default) or "squad".
+  // squadMerchantId is put in front of every Squad transfer reference.
+  payoutProvider          String  @default("monnify")
+  squadMerchantId         String?
   monnifyMode         String  @default("sandbox")
   monnifyApiKey       String?
   monnifySecretKey    String?
@@ -1013,6 +1017,8 @@ model BankTransfer {
   accountName    String
   narration      String?
   reference      String    @unique
+  // Which partner sent it ("monnify" | "squad"); status checks ask that one.
+  provider       String    @default("monnify")
   status         String    @default("PROCESSING")
   providerStatus String?
   failureReason  String?
