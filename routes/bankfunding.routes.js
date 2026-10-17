@@ -329,6 +329,11 @@ async function createNombaAccount(req, res) {
 router.post('/webhooks/nomba', async (req, res) => {
   try {
     if (!(await nomba.isValidSignature(req.body, req.headers))) {
+      // Nomba checks the URL with a test call when the webhook is created.
+      // A call with no transaction moves no money, so it gets a 200;
+      // anything carrying a transaction must be signed.
+      const t0 = req.body?.data?.transaction || {};
+      if (!t0.transactionId && !t0.merchantTxRef && !t0.sessionId) return res.json({ ok: true, test: true });
       console.warn('Nomba webhook rejected: bad signature');
       require('../lib/attackWatch').record('WEBHOOK_BAD_SIGNATURE', req, { detail: 'Someone sent a payment message that was not signed by Nomba. It was rejected — no money moved.' });
       return res.status(401).json({ error: 'Invalid signature.' });
