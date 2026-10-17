@@ -295,6 +295,7 @@ HOW TO GET STARTED
 1. Home → "Bet Funding".
 2. Choose the company and enter the "Betting account ID". It is checked automatically, or you can tap "Verify".
 3. Enter the "Amount (₦)" and tap "Pay ₦X".
+- Or in the Help chat: say e.g. "Fund my SportyBet 5702 with ₦1,000". The assistant checks the betting account name and shows a confirmation card; the customer checks the name and pays with their PIN (same rules and refunds as the Bet Funding page). Only when Bet Funding is switched on.
 
 SUPPLIER SWITCH
 - ZAPPI PAY chooses who handles bet funding [setting: bettingSupplier, default "VTPASS"; the other options are "CLUBKONNECT" and "NOMBA"].
