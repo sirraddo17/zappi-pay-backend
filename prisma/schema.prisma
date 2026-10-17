@@ -162,6 +162,10 @@ model Customer {
   // The account itself is listed in bankAccounts with provider "squad".
   squadAccountRef String?   @unique
   squadAccountAt  DateTime?
+  // Nomba account number (lib/nomba.js): our accountRef at Nomba; the
+  // account itself is listed in bankAccounts with provider "nomba".
+  nombaAccountRef String?   @unique
+  nombaAccountAt  DateTime?
   // Email alerts for money in/out and new logins (customer can switch
   // off). lastLoginFingerprint spots a login from a new device.
   // Agent / reseller: buys at agent prices (extra admin-set discount)
@@ -702,7 +706,18 @@ model Settings {
   squadMode               String  @default("sandbox")
   squadSecretKey          String?
   squadBeneficiaryAccount String?
-  // Send to Bank goes out through "monnify" (default) or "squad".
+  // Nomba (account numbers + Send to Bank, lib/nomba.js). Keys here
+  // override the NOMBA_* env vars; never shown back.
+  nombaFundingEnabled     Boolean @default(false)
+  nombaMode               String  @default("sandbox")
+  nombaClientId           String?
+  nombaClientSecret       String?
+  nombaAccountId          String?
+  nombaWebhookKey         String?
+  // Which partner gives NEW customers their account number: "monnify",
+  // "squad" or "nomba". Empty = old rule (squadPrimary, else Monnify).
+  fundingPrimary          String  @default("")
+  // Send to Bank goes out through "monnify" (default), "squad" or "nomba".
   // squadMerchantId is put in front of every Squad transfer reference.
   payoutProvider          String  @default("monnify")
   // Use the other partner automatically when the main one clearly can't

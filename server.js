@@ -120,6 +120,7 @@ app.use('/api', require('./routes/attackwatch.routes'));
 app.use('/api', require('./routes/payrequests.routes'));
 app.use('/api', require('./routes/flutterwave.routes'));
 app.use('/api', require('./routes/squad.routes'));
+app.use('/api', require('./routes/nomba.routes'));
 app.use('/api', require('./routes/circles.routes'));
 app.use('/api', require('./routes/features.routes'));
 app.use('/api', require('./routes/services.routes'));

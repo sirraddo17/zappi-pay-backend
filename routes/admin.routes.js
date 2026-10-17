@@ -25,6 +25,10 @@ function safeSettings(settings) {
   delete out.flutterwaveSecretHash;
   delete out.flutterwavePublicKey;
   delete out.squadSecretKey;
+  delete out.nombaClientSecret;
+  delete out.nombaWebhookKey;
+  delete out.nombaClientId;
+  delete out.nombaAccountId;
   return out;
 }
 

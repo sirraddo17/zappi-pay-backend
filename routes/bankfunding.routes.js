@@ -4,6 +4,7 @@ const { requireCustomerAuth } = require('../lib/auth');
 const { getSettings } = require('../lib/vtpass');
 const monnify = require('../lib/monnify');
 const squad = require('../lib/squad');
+const nomba = require('../lib/nomba');
 const { visibleReservedAccounts } = require('../lib/funding');
 
 // Hides banks the admin has paused (network problems) and says how many.
@@ -36,8 +37,11 @@ async function feeInfo() {
 // Which partner new account numbers come from: Squad (GTBank) when the
 // owner made it the main one (or Monnify is off), else Monnify.
 async function providers() {
-  const [m, q, s] = await Promise.all([monnifyOn(), squad.fundingOn(), getSettings()]);
-  return { monnify: m, squad: q, primary: q && (s.squadPrimary || !m) ? 'squad' : m ? 'monnify' : null };
+  const [m, q, n, s] = await Promise.all([monnifyOn(), squad.fundingOn(), nomba.fundingOn(), getSettings()]);
+  const on = { monnify: m, squad: q, nomba: n };
+  let primary = on[s.fundingPrimary] ? s.fundingPrimary : null;
+  if (!primary) primary = q && (s.squadPrimary || !m) ? 'squad' : m ? 'monnify' : q ? 'squad' : n ? 'nomba' : null;
+  return { ...on, primary };
 }
 
 router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
@@ -49,6 +53,7 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       provider: p.primary,
       // Already has (Monnify) account numbers: can add a GTBank one too.
       squadAddable: p.squad && !customer.squadAccountRef && Array.isArray(customer.bankAccounts) && customer.bankAccounts.length > 0,
+      nombaAddable: p.nomba && !customer.nombaAccountRef && Array.isArray(customer.bankAccounts) && customer.bankAccounts.length > 0,
       ...(await shown(customer.bankAccounts)),
       kycType: customer.kycType || null,
       idMatch: Boolean((await getSettings()).idMatchEnabled),
@@ -67,6 +72,10 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     if (req.body?.provider === 'squad' || (!req.body?.provider && p.primary === 'squad')) {
       if (!p.squad) return res.status(503).json({ error: 'This option is not available right now. Please use another way to fund.' });
       return await createSquadAccount(req, res);
+    }
+    if (req.body?.provider === 'nomba' || (!req.body?.provider && p.primary === 'nomba')) {
+      if (!p.nomba) return res.status(503).json({ error: 'This option is not available right now. Please use another way to fund.' });
+      return await createNombaAccount(req, res);
     }
     if (!(await monnifyOn())) return res.status(503).json({ error: 'Bank transfer funding is not available right now. Please use another way to fund.' });
     const idType = String(req.body.idType || '').toUpperCase();
@@ -148,6 +157,7 @@ router.post('/wallet/bank-account/check', requireCustomerAuth, async (req, res) 
     const result = { credited: 0, amount: 0 };
     const add = (r) => { result.credited += r.credited || 0; result.amount += r.amount || 0; };
     if (customer.bankAccountRef && (await monnify.isConfigured())) add(await monnify.syncCustomerPayments(customer).catch((e) => { console.error('monnify sync:', e.message); return {}; }));
+    if (customer.nombaAccountRef && (await nomba.isConfigured())) add(await nomba.syncCustomerPayments(customer).catch((e) => { console.error('nomba sync:', e.message); return {}; }));
     if (customer.squadAccountRef && (await squad.isConfigured())) add(await squad.syncCustomerPayments(customer).catch((e) => { console.error('squad sync:', e.message); return {}; }));
     const fresh = await prisma.customer.findUnique({ where: { id }, select: { walletBalance: true } });
     res.json({ ...result, walletBalance: fresh.walletBalance });
@@ -253,6 +263,103 @@ async function createSquadAccount(req, res) {
   require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
   return res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: true });
 }
+
+// Nomba account number. Takes BVN or NIN (like Monnify).
+async function createNombaAccount(req, res) {
+  const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
+  if (customer.nombaAccountRef) return res.json({ ...(await shown(customer.bankAccounts)), kycType: customer.kycType });
+  const idType = String(req.body.idType || '').toUpperCase();
+  const idNumber = String(req.body.idNumber || '').replace(/\D/g, '');
+  if (!['BVN', 'NIN'].includes(idType)) return res.status(400).json({ error: 'Choose BVN or NIN.' });
+  if (idNumber.length !== 11) return res.status(400).json({ error: `Your ${idType} must be 11 digits.` });
+
+  const kycHash = identityHash(idType, idNumber);
+  const other = await prisma.customer.findFirst({ where: { kycHash, NOT: { id: customer.id } }, select: { id: true } });
+  if (other) return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account. Each person can have only one account — contact support if this is a mistake.`, code: 'IDENTITY_IN_USE' });
+
+  const settings = await getSettings();
+  let verifiedDob = null;
+  if (settings.idMatchEnabled) {
+    if (!req.body.consent) return res.status(400).json({ error: `Tick the box to let us check your name and date of birth with your ${idType}.`, code: 'CONSENT_NEEDED' });
+    let dob = customer.dateOfBirth;
+    if (!dob) {
+      const parsed = require('../lib/identity').parseDob(req.body.dateOfBirth);
+      if (parsed.error) return res.status(400).json({ error: parsed.error, code: 'DOB_NEEDED' });
+      dob = parsed.date;
+    }
+    const idCheck = require('../lib/idCheck');
+    try {
+      await idCheck.verify(customer, { idType, idNumber, dateOfBirth: dob });
+    } catch (e) {
+      if (e instanceof idCheck.IdCheckError) return res.status(e.status).json({ error: e.message, code: e.code });
+      throw e;
+    }
+    verifiedDob = dob;
+  }
+  let claimed = false;
+  if (!customer.kycHash) {
+    try {
+      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash } });
+      claimed = true;
+    } catch (error) {
+      if (error.code === 'P2002') return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account.`, code: 'IDENTITY_IN_USE' });
+      throw error;
+    }
+  }
+  let updated;
+  try {
+    updated = await nomba.createVirtualAccount(customer, { idType, idNumber });
+  } catch (error) {
+    if (claimed) await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
+    console.error('Nomba account failed:', error.message, JSON.stringify(error.body || {}));
+    if (error instanceof nomba.NombaError && error.status && error.status < 500) return res.status(400).json({ error: `Could not create your account: ${error.message}` });
+    return res.status(502).json({ error: 'Could not create your account number right now. Please try again shortly.' });
+  }
+  if (verifiedDob) {
+    await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: customer.kycVerifiedAt || new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
+  }
+  require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
+  return res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: Boolean(verifiedDob) });
+}
+
+// Nomba → us: money into an account number, or a transfer result.
+// Signature-checked with our webhook key. Non-2xx makes Nomba retry
+// (5 more times over about 1.5 hours).
+router.post('/webhooks/nomba', async (req, res) => {
+  try {
+    if (!(await nomba.isValidSignature(req.body, req.headers))) {
+      console.warn('Nomba webhook rejected: bad signature');
+      require('../lib/attackWatch').record('WEBHOOK_BAD_SIGNATURE', req, { detail: 'Someone sent a payment message that was not signed by Nomba. It was rejected — no money moved.' });
+      return res.status(401).json({ error: 'Invalid signature.' });
+    }
+    const ev = String(req.body?.event_type || '');
+    const t = req.body?.data?.transaction || {};
+    if (/^payout_/.test(ev)) {
+      const ref = String(t.merchantTxRef || '');
+      const transfer = ref ? await prisma.bankTransfer.findUnique({ where: { reference: ref } }) : null;
+      if (transfer && transfer.provider === 'nomba') {
+        // Only a hint — refreshStatus asks Nomba's API before any refund.
+        const r = await require('../lib/disbursement').refreshStatus(transfer);
+        console.log('Nomba transfer webhook:', ref, ev, JSON.stringify(r));
+      }
+      return res.json({ ok: true });
+    }
+    if (ev === 'payment_success' && (t.aliasAccountReference || t.aliasAccountNumber)) {
+      let accountRef = t.aliasAccountReference;
+      if (!accountRef && t.aliasAccountNumber) {
+        const c = await prisma.customer.findFirst({ where: { nombaAccountRef: { not: null }, bankAccounts: { array_contains: [{ accountNumber: String(t.aliasAccountNumber) }] } }, select: { nombaAccountRef: true } }).catch(() => null);
+        accountRef = c?.nombaAccountRef;
+      }
+      const r = await nomba.creditInflow({ transactionId: t.transactionId, sessionId: t.sessionId, amount: t.transactionAmount, accountRef, accountNumber: t.aliasAccountNumber }, { source: 'webhook' });
+      console.log('Nomba webhook:', t.transactionId, JSON.stringify(r));
+      if (!r.done) return res.status(500).json({ error: `Not processed: ${r.reason}` });
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('POST /webhooks/nomba failed:', error.message);
+    res.status(500).json({ error: 'Processing failed.' });
+  }
+});
 
 // Squad calls this when money lands in a GTBank account number.
 // Signature-checked with our secret key. Answering non-200 keeps it in
