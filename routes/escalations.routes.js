@@ -121,11 +121,9 @@ router.post('/admin/escalations', requireAdminAuth, async (req, res) => {
       checks.bankReference = String(b.bankReference || '').trim().slice(0, 80) || null;
       // Ask Monnify first — most "not credited" payments land here on their own.
       const full = await prisma.customer.findUnique({ where: { id: customer.id } });
-      if (full.bankAccountRef && (await require('../lib/monnify').isConfigured())) {
-        const r = await require('../lib/monnify').syncCustomerPayments(full).catch(() => null);
-        if (r?.credited > 0) return res.json({ resolved: true, message: `Found it — ${naira(r.amount)} was just added to the customer's wallet. No approval needed.` });
-        checks.monnifySync = 'No uncredited payment found at Monnify';
-      }
+      const r = await require('../lib/fundingCheck').checkAll(full, checks.bankReference || '').catch(() => null);
+      if (r?.credited > 0) return res.json({ resolved: true, message: `Found it — ${naira(r.amount)} was just added to the customer's wallet. No approval needed.` });
+      if (r?.checked.length) checks.partnerSync = `No uncredited payment found at ${r.checked.join(', ')}`;
     }
     if (type === 'TRANSFER_ISSUE') {
       transfer = await prisma.bankTransfer.findUnique({ where: { id: String(b.transferId || '') } });
@@ -355,35 +353,26 @@ router.post('/admin/customers/:id/account-tool', requireAdminAuth, async (req, r
 // were paid into this customer's account, and never the same one twice.
 router.post('/admin/customers/:id/check-funding', requireAdminAuth, async (req, res) => {
   try {
-    const monnify = require('../lib/monnify');
     const customer = await prisma.customer.findUnique({ where: { id: req.params.id } });
     if (!customer) return res.status(404).json({ error: 'Customer not found.' });
-    if (!customer.bankAccountRef) return res.json({ credited: 0, message: 'This customer has no personal account number yet, so bank funding can’t reach their wallet. For manual funding, the owner approves it under Pending Funding.' });
-    if (!(await monnify.isConfigured())) return res.status(503).json({ error: 'Monnify isn’t connected.' });
     const reference = String(req.body?.reference || '').trim();
-    let credited = 0;
-    let amount = 0;
-    let note = '';
-    if (reference) {
-      const r = await monnify.creditFromTransaction(reference).catch((e) => ({ credited: false, reason: e.message }));
-      if (r.credited && r.customerId !== customer.id) note = ' (it belonged to a different customer’s account and was credited to them)';
-      if (r.credited && r.customerId === customer.id) { credited += 1; amount += r.amount; }
-      if (!r.credited) note = r.reason === 'already credited' ? ' That reference was already credited earlier — check their wallet history.' : ` Monnify didn’t confirm that reference (${r.reason || 'not found'}).`;
-    }
-    const s = await monnify.syncCustomerPayments(customer);
-    credited += s.credited;
-    amount += s.amount;
-    await audit(req, 'FUNDING_CHECKED', { customerId: customer.id, reference: reference || undefined, credited, amount });
+    const r = await require('../lib/fundingCheck').checkAll(customer, reference);
+    if (!r.hasAccounts) return res.json({ credited: 0, message: 'This customer has no personal account number yet, so bank funding can’t reach their wallet. For manual funding, the owner approves it under Pending Funding.' });
+    if (!r.checked.length && r.failed.length) return res.status(502).json({ error: `Couldn’t reach ${r.failed.join(' or ')} right now. Try again in a few minutes.` });
+    if (!r.checked.length) return res.status(503).json({ error: 'None of this customer’s payment partners is connected.' });
+    await audit(req, 'FUNDING_CHECKED', { customerId: customer.id, reference: reference || undefined, credited: r.credited, amount: r.amount, checked: r.checked });
+    const note = [reference && !r.refFound ? `No partner confirmed reference ${reference}.` : '', ...r.notes, r.failed.length ? `Couldn’t reach ${r.failed.join(', ')} — try again later.` : ''].filter(Boolean).join(' ');
     res.json({
-      credited,
-      amount,
-      message: credited > 0
-        ? `Found ${credited} payment${credited === 1 ? '' : 's'} — ${naira(amount)} added to the wallet. The customer was notified.${note}`
-        : `Monnify shows no uncredited payment into this customer’s account.${note} If they have a debit alert, ask for the bank's session ID and send it for approval.`,
+      credited: r.credited,
+      amount: r.amount,
+      checked: r.checked,
+      message: r.credited > 0
+        ? `Found ${r.credited} payment${r.credited === 1 ? '' : 's'} — ${naira(r.amount)} added to the wallet. The customer was notified. ${note}`.trim()
+        : `Checked ${r.checked.join(', ')}: no uncredited payment into this customer’s account numbers. ${note} If they have a debit alert, ask which account number they paid into and the bank's session ID, and send it for approval.`.replace(/\s+/g, ' ').trim(),
     });
   } catch (error) {
     console.error('POST /admin/customers/:id/check-funding failed:', error);
-    res.status(500).json({ error: 'Could not check with Monnify.' });
+    res.status(500).json({ error: 'Could not check with the payment partners.' });
   }
 });
 

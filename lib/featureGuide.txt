@@ -1025,7 +1025,8 @@ AUTOMATIC PAUSE: one provider (e.g. IKEDC, DStv or one network's data) can also 
 ----------------------------------------------------------------------
 WHAT IT IS
 - In the Help chat, say "I sent money but my wallet is not credited" and add a screenshot of the bank alert ("📷 Add a screenshot").
-- The assistant reads the amount, time and reference, asks the bank partner again for your personal account (anything missed is credited at once), then looks for the money in your wallet history.
+- The assistant reads the amount, time and reference, asks every bank partner you have a personal account number with again — Monnify, Squad (GTBank) and Nomba (Nombank) — (anything missed is credited at once), then looks for the money in your wallet history.
+- Support has the same check: Admin → Customers → open the customer → "🏦 Funding not showing? Check with the bank partners" (optional: the transaction reference from the alert). It asks every partner the customer has an account number with and credits only what the partner confirms, never twice. Creating a "funding missing" request runs it first too.
 
 WHAT YOU GET
 - "It's in your wallet" with the time and amount (a small bank fee may have been taken off), or
