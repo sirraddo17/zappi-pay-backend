@@ -98,7 +98,7 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     // Name + date of birth must match the BVN/NIN (when switched on).
     const settings = await getSettings();
     let verifiedDob = null;
-    if (settings.idMatchEnabled) {
+    if (settings.idMatchEnabled && !(customer.kycVerifiedAt && customer.kycHash === kycHash)) {
       if (!req.body.consent) return res.status(400).json({ error: `Tick the box to let us check your name and date of birth with your ${idType}.`, code: 'CONSENT_NEEDED' });
       let dob = customer.dateOfBirth;
       if (!dob) {
@@ -280,7 +280,8 @@ async function createNombaAccount(req, res) {
 
   const settings = await getSettings();
   let verifiedDob = null;
-  if (settings.idMatchEnabled) {
+  // Already passed with this same BVN/NIN → no need to check (or pay) again.
+  if (settings.idMatchEnabled && !(customer.kycVerifiedAt && customer.kycHash === kycHash)) {
     if (!req.body.consent) return res.status(400).json({ error: `Tick the box to let us check your name and date of birth with your ${idType}.`, code: 'CONSENT_NEEDED' });
     let dob = customer.dateOfBirth;
     if (!dob) {

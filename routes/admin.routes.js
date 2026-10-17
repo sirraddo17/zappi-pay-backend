@@ -471,6 +471,10 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     customer.quickLoginDevices = customer._count.trustedDevices;
     customer.fingerprintLogins = customer._count.webauthnCredentials;
     customer.pinLocked = Boolean(customer.pinLockedUntil && new Date(customer.pinLockedUntil) > new Date());
+    const ids = require('../lib/idCheck');
+    customer.idChecks = await ids.history(id).catch(() => []);
+    customer.idTriesLeft = await ids.triesLeft(id).catch(() => null);
+    customer.idTriesMax = ids.MAX_CHECKS_PER_DAY;
     customer.loginLocked = Boolean(customer.loginLockedUntil && new Date(customer.loginLockedUntil) > new Date());
     delete customer._count;
 

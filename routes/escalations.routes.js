@@ -324,6 +324,13 @@ router.post('/admin/customers/:id/account-tool', requireAdminAuth, async (req, r
     else if (action === 'UNLOCK_PIN') summary = await tools.unlockPin(id);
     else if (action === 'UNLOCK_LOGIN') summary = await tools.unlockLogin(id);
     else if (action === 'REMOVE_DEVICES') summary = await tools.removeDevices(id);
+    else if (action === 'RESET_ID_TRIES') {
+      if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'Only a person can give fresh ID-check tries.' });
+      const ids = require('../lib/idCheck');
+      await ids.resetTries(id, (await prisma.adminUser.findUnique({ where: { id: req.admin.adminId }, select: { name: true } }).catch(() => null))?.name);
+      summary = `Fresh BVN/NIN tries given (${ids.MAX_CHECKS_PER_DAY})`;
+      notify(id, 'You can try again', `You can try your BVN/NIN again now (${ids.MAX_CHECKS_PER_DAY} tries). Make sure your name in Profile and your date of birth are exactly as on your ID.`);
+    }
     else if (action === 'CHANGE_CONTACT') {
       try {
         summary = (await tools.changeContact(id, { phone: req.body.phone, email: req.body.email })).summary;
