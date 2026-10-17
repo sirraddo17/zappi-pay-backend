@@ -31,7 +31,8 @@ async function monnifyOn() {
 
 async function feeInfo() {
   const s = await getSettings();
-  return { feePercent: Number(s.bankFundingFeePercent || 0), feeCap: Number(s.bankFundingFeeCap || 0), feeIsPassThrough: require('../lib/earnings').fundingFeeIsPassThrough(s) };
+  // Top-level fee = Monnify's (older app versions); feeByProvider = each partner's.
+  return { feePercent: Number(s.bankFundingFeePercent || 0), feeCap: Number(s.bankFundingFeeCap || 0), feeIsPassThrough: require('../lib/earnings').fundingFeeIsPassThrough(s), feeByProvider: require('../lib/fundingFees').publicFees(s) };
 }
 
 // Which partner new account numbers come from: Squad (GTBank) when the

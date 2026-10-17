@@ -706,6 +706,12 @@ model Settings {
   squadMode               String  @default("sandbox")
   squadSecretKey          String?
   squadBeneficiaryAccount String?
+  // Wallet-funding fee for Squad / Nomba account numbers (lib/fundingFees.js).
+  // Empty = same as the main bank funding fee (Monnify).
+  squadFundingFeePercent  Decimal? @db.Decimal(5, 2)
+  squadFundingFeeCap      Decimal? @db.Decimal(14, 2)
+  nombaFundingFeePercent  Decimal? @db.Decimal(5, 2)
+  nombaFundingFeeCap      Decimal? @db.Decimal(14, 2)
   // Nomba (account numbers + Send to Bank, lib/nomba.js). Keys here
   // override the NOMBA_* env vars; never shown back.
   nombaFundingEnabled     Boolean @default(false)
