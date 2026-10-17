@@ -297,7 +297,8 @@ HOW TO GET STARTED
 3. Enter the "Amount (₦)" and tap "Pay ₦X".
 
 SUPPLIER SWITCH
-- ZAPPI PAY chooses who handles bet funding [setting: bettingSupplier, default "VTPASS"; the other option is "CLUBKONNECT"].
+- ZAPPI PAY chooses who handles bet funding [setting: bettingSupplier, default "VTPASS"; the other options are "CLUBKONNECT" and "NOMBA"].
+- On Nomba, the list of betting companies comes from Nomba, the customer's betting account name is checked before they pay, and each payment comes out of ZAPPI PAY's Nomba wallet. If Nomba hasn't confirmed a payment yet it shows as processing and is re-checked automatically; it's refunded only if Nomba says it was refunded/cancelled, refuses it, or has no record of it after 30 minutes. Nomba is used only when its keys are saved (Settings → Wallet funding & payment partners → Nomba).
 - On VTpass, the companies are Bet9ja, BetKing, SportyBet, BangBet, 1xBet, NairaBet and MerryBet.
 - On ClubKonnect, the list comes from ClubKonnect and may include more companies.
 - ClubKonnect is used only when its keys are saved. Otherwise VTpass is used.
@@ -309,7 +310,7 @@ RULES
 - Wrong ID on ClubKonnect: "That betting account ID was not found. You have been refunded."
 - A ClubKonnect order that stays "not found" for more than 30 minutes is treated as failed and refunded.
 
-ADMIN SWITCH: Admin → New features → "Bet Funding" (Off / Testers only / On; default Off — VTpass and ClubKonnect don't currently sell bet funding, so it stays off until a betting supplier is connected). When off, the tile and page are hidden and purchases are refused. Maintenance pause (BETTING) also works.
+ADMIN SWITCH: Admin → New features → "Bet Funding" (Off / Testers only / On; default Off — VTpass and ClubKonnect don't currently sell bet funding, so it stays off until a betting supplier is connected; Nomba does). The supplier is chosen in Admin → Settings → "🖨️ ClubKonnect & Bet Funding" → "Bet Funding goes through". When off, the tile and page are hidden and purchases are refused. Maintenance pause (BETTING) also works.
 
 ----------------------------------------------------------------------
 10. SEND MONEY: TO ZAPPI PAY USERS (P2P, by phone, username or QR)
@@ -1368,7 +1369,7 @@ SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 - epinAgentDiscountPct: 2%. Print Cards discount for agents.
 - epinDailyCards: 300. Maximum cards per customer per day. (1 to 100 per order is fixed in code.)
 - ckEnabled: off. Print Cards on or off.
-- bettingSupplier: VTPASS. Which supplier handles bet funding (VTPASS or CLUBKONNECT).
+- bettingSupplier: VTPASS. Which supplier handles bet funding (VTPASS, CLUBKONNECT or NOMBA).
 - deliveryPromiseEnabled: off. Delivery promise on or off.
 - deliveryPromiseSeconds: 60. Promised delivery time.
 - deliveryPromiseBonus: ₦20. Bonus when late.

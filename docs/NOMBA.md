@@ -22,3 +22,14 @@ Code: `lib/nomba.js`, `routes/nomba.routes.js` (admin + payment partners), `rout
 
 ## To confirm with Nomba
 Amount unit is assumed to be naira (all their examples). Whether customer BVN/NIN is required in live.
+
+## Bet funding (Bill Payments API)
+
+`lib/nombaBetting.js` — used when Settings → "🖨️ ClubKonnect & Bet Funding" → *Bet Funding goes through* = **Nomba**.
+
+- Companies: `GET /v1/bill/betting/providers` (cached 6 h), shown to the app as serviceID `nb:<id>` (e.g. `nb:bet9ja`).
+- Name check: `GET /v1/bill/betting/lookup?providerId=&customerId=` → `data` is the account name.
+- Pay: `POST /v2/bill/betting` `{ bettingProvider, merchantTxRef (= order request ID), phoneNumber, payerName, amount, customerId }`. Paid from the parent (Nomba) wallet.
+- Outcome: 200 `SUCCESS` → delivered. 201 `PENDING_BILLING`, no answer or 5xx → pending (re-checked 20 s / 2 min / 10 min, then every 15 min). 400/401/403/404/429 → refused before money moved → refund (owner alerted on 401/403/low balance).
+- Re-check: `GET /v1/transactions/accounts/single?merchantTxRef=`. `REFUND` / `CANCELLED` → refund. `SUCCESS` → delivered. Not found after 30 min → refund. Anything else stays pending.
+- Needs Nomba **Bill Payments API** access approved for live.

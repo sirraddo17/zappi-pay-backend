@@ -34,6 +34,8 @@ router.get('/vtpass/services', requireCustomerAuth, async (req, res) => {
     // Bet funding companies: from ClubKonnect or VTpass (Settings → ClubKonnect).
     if (identifier === 'betting') {
       const ckBet = require('../lib/ckBetting');
+      const nbBet = require('../lib/nombaBetting');
+      if (await nbBet.useNb()) return res.json(await nbBet.servicesForApp());
       if (await ckBet.useCk()) return res.json(await ckBet.servicesForApp());
       const data = await cachedCatalog('/services', { identifier: 'other-services' });
       const list = Array.isArray(data?.content) ? data.content : [];
@@ -127,6 +129,14 @@ router.get('/vtpass/verify', requireCustomerAuth, async (req, res) => {
       return res.status(400).json({ error: 'serviceID and billersCode are required.' });
     }
     const ckBet = require('../lib/ckBetting');
+    const nbBet = require('../lib/nombaBetting');
+    if (nbBet.isNb(serviceID)) {
+      try {
+        return res.json(await nbBet.verify(serviceID, billersCode));
+      } catch (e) {
+        return res.status(e.code === 'NOT_FOUND' || e.code === 'BAD_ID' ? 400 : 502).json({ error: e.message });
+      }
+    }
     if (ckBet.isCk(serviceID)) {
       try {
         return res.json(await ckBet.verify(serviceID, billersCode));
