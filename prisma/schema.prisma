@@ -705,6 +705,9 @@ model Settings {
   // Send to Bank goes out through "monnify" (default) or "squad".
   // squadMerchantId is put in front of every Squad transfer reference.
   payoutProvider          String  @default("monnify")
+  // Use the other partner automatically when the main one clearly can't
+  // send (refused / account check failed / wallet too low). Never on timeouts.
+  payoutFallback          Boolean @default(true)
   squadMerchantId         String?
   monnifyMode         String  @default("sandbox")
   monnifyApiKey       String?

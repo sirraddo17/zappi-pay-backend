@@ -39,6 +39,13 @@ Env fallback (if no key saved in admin): `SQUAD_SECRET_KEY`, `SQUAD_MODE`.
 - No OTP with Squad. A transfer unclear for 6+ hours alerts the owner.
 - Funds guard counts Monnify + Squad wallets for customer money; the free balance is checked on the paying partner.
 
+## Automatic backup (Monnify ⇄ Squad)
+- Setting `payoutFallback` (default on; Admin → Squad → "Use the other partner as automatic backup").
+- Switches only when no money left: wallet too low on the main partner (checked before charging), main partner's
+  account check failed, or main partner clearly refused the transfer (4xx). Timeouts / 5xx never switch.
+- One switch per transfer (no bouncing back). Owner alerted (at most hourly per reason).
+- References carry the Squad merchant ID whenever it's saved, so a transfer keeps its reference when moved.
+
 ## Waiting on Squad
 Whether collections can stay in the Squad balance for payouts (vs automatic T+1 settlement to GTBank) and the
 Transfer API limits. Until then keep Monnify as the payout partner in live.
