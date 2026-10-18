@@ -32,4 +32,28 @@ router.post('/admin/go-live/remove-test-numbers', requireAdminAuth, async (req, 
   }
 });
 
+// Owner's partner accounts (fund / settlement) — lib/partnerAccounts.js.
+router.get('/admin/partner-accounts', requireAdminAuth, async (req, res) => {
+  try {
+    res.json(await require('../lib/partnerAccounts').list());
+  } catch (error) {
+    console.error('GET /admin/partner-accounts failed:', error);
+    res.status(500).json({ error: 'Could not load partner accounts.' });
+  }
+});
+
+router.put('/admin/partner-accounts', requireAdminAuth, async (req, res) => {
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant cannot change payment accounts.' });
+    const pa = require('../lib/partnerAccounts');
+    const out = await pa.save(req.body?.accounts);
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'PARTNER_ACCOUNTS_UPDATED', details: { accounts: (req.body?.accounts || []).length } } }).catch(() => {});
+    res.json(out);
+  } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
+    console.error('PUT /admin/partner-accounts failed:', error);
+    res.status(500).json({ error: 'Could not save partner accounts.' });
+  }
+});
+
 module.exports = router;

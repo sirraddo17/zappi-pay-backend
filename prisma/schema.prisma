@@ -738,6 +738,8 @@ model Settings {
   // monnifyWalletAccount is the Monnify wallet account number money is
   // sent from. Fee is a flat ₦ amount the customer pays per transfer.
   monnifyWalletAccount  String?
+  // Owner's own accounts per partner (fund / settlement) — lib/partnerAccounts.js
+  partnerAccounts       Json?
   bankTransferEnabled   Boolean @default(false)
   bankTransferFee       Decimal @default(0) @db.Decimal(14, 2)
   // Fee by amount, matching Monnify's own bands. Empty = same as
