@@ -72,6 +72,9 @@ app.use(cors({
 // scanners, note calls from other websites.
 const attackWatch = require('./lib/attackWatch');
 app.use(attackWatch.guard);
+// Notes when people are using the app, so background jobs can space out
+// (and the database can sleep) when nobody is — see lib/quietClock.js.
+app.use(require('./lib/quietClock').activity);
 app.use((req, res, next) => {
   const o = req.headers.origin;
   if (o && !originOk(o)) attackWatch.record('CORS_BLOCKED', req, { detail: `From ${String(o).slice(0, 100)}` });

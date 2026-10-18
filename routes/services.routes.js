@@ -125,8 +125,7 @@ function startJobs() {
     checkout.sweep().catch((e) => console.error('checkout sweep failed:', e.message));
     direct.sweep().catch((e) => console.error('direct pay sweep failed:', e.message));
   };
-  setTimeout(run, 3 * 60 * 1000).unref?.();
-  setInterval(run, 10 * 60 * 1000).unref?.();
+  require('../lib/quietClock').every('services sweeps', 10 * 60 * 1000, run, { firstAfter: 3 * 60 * 1000 });
 }
 
 module.exports = router;

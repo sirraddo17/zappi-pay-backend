@@ -150,8 +150,7 @@ function startJobs() {
     dues.tick().catch((e) => console.error('dues tick failed:', e.message));
     safe.tick().catch((e) => console.error('safebuy tick failed:', e.message));
   };
-  setTimeout(run, 2 * 60 * 1000).unref?.();
-  setInterval(run, 15 * 60 * 1000).unref?.();
+  require('../lib/quietClock').every('features jobs', 15 * 60 * 1000, run, { firstAfter: 2 * 60 * 1000 });
 }
 
 module.exports = router;
