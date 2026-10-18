@@ -142,9 +142,19 @@ router.get('/admin/analytics', requireAdminAuth, async (req, res) => {
   try {
     const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 90);
     const today = lagosDay(new Date());
-    const since = new Date(startOfLagosDay(today).getTime() - (days - 1) * 24 * LAGOS_MS);
+    const rangeStart = new Date(startOfLagosDay(today).getTime() - (days - 1) * 24 * LAGOS_MS);
+    // "Start fresh": count only from the owner's chosen moment (records
+    // before it are kept, just not counted here) unless ?all=1.
+    const settings = await require('../lib/vtpass').getSettings();
+    const countFrom = settings.profitCountFrom ? new Date(settings.profitCountFrom) : null;
+    const showAll = req.query.all === '1';
+    const since = countFrom && !showAll && countFrom > rangeStart ? countFrom : rangeStart;
+    const firstDay = lagosDay(since);
     const dayList = [];
-    for (let i = 0; i < days; i += 1) dayList.push(lagosDay(new Date(since.getTime() + i * 24 * LAGOS_MS)));
+    for (let i = 0; i < days; i += 1) {
+      const d = lagosDay(new Date(rangeStart.getTime() + i * 24 * LAGOS_MS));
+      if (d >= firstDay) dayList.push(d);
+    }
 
     const [report, failedOrders] = await Promise.all([
       require('../lib/earnings').earningsReport({ gte: since }, { dayOf: lagosDay, days: dayList }),
@@ -153,6 +163,8 @@ router.get('/admin/analytics', requireAdminAuth, async (req, res) => {
     const purchaseProfit = report.income.purchaseMarkup + report.income.vtpassCommission;
 
     res.json({
+      countFrom,
+      showingAll: showAll || !countFrom,
       days: report.days,
       byService: report.byService,
       breakdown: { income: report.income, costs: report.costs, rewardsByType: report.rewardsByType },
@@ -176,6 +188,30 @@ router.get('/admin/analytics', requireAdminAuth, async (req, res) => {
 });
 
 // "What do I make if a customer spends ₦X on this?" (Earnings calculator)
+// "Start fresh from today" on the profit panel. Nothing is deleted.
+// Body: { from: 'now' } or { from: null } to go back to full history.
+router.put('/admin/profit-count-from', requireAdminAuth, async (req, res) => {
+  try {
+    const raw = req.body?.from;
+    let from = null;
+    if (raw === 'now') from = new Date();
+    else if (raw) {
+      from = new Date(raw);
+      if (Number.isNaN(from.getTime()) || from > new Date()) return res.status(400).json({ error: 'Pick a date that is not in the future.' });
+    }
+    const { invalidateSettings } = require('../lib/vtpass');
+    const current = await prisma.settings.findFirst({ select: { id: true } });
+    if (current) await prisma.settings.update({ where: { id: current.id }, data: { profitCountFrom: from } });
+    else await prisma.settings.create({ data: { profitCountFrom: from } });
+    invalidateSettings?.();
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: from ? 'PROFIT_COUNT_FROM_SET' : 'PROFIT_COUNT_FROM_CLEARED', details: { from } } }).catch(() => {});
+    res.json({ countFrom: from });
+  } catch (error) {
+    console.error('PUT /admin/profit-count-from failed:', error);
+    res.status(500).json({ error: 'Could not save.' });
+  }
+});
+
 router.post('/admin/earnings/estimate', requireAdminAuth, async (req, res) => {
   try {
     const settings = await require('../lib/vtpass').getSettings();

@@ -746,6 +746,9 @@ model Settings {
   backupLastAt          DateTime?
   backupLastOkAt        DateTime?
   backupLastStatus      String?
+  // Admin profit panel counts from this moment ("Start fresh"); older
+  // records are kept, only hidden from the panel. null = full history.
+  profitCountFrom       DateTime?
   bankTransferEnabled   Boolean @default(false)
   bankTransferFee       Decimal @default(0) @db.Decimal(14, 2)
   // Fee by amount, matching Monnify's own bands. Empty = same as
