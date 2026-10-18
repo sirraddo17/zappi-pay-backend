@@ -216,9 +216,20 @@ router.post('/admin/earnings/estimate', requireAdminAuth, async (req, res) => {
   try {
     const settings = await require('../lib/vtpass').getSettings();
     const b = req.body || {};
-    const one = (x) => require('../lib/earnings').estimateSale({ service: String(x.service || ''), provider: x.provider, amount: x.amount, funding: x.funding === 'bank' ? 'bank' : 'wallet', agent: Boolean(x.agent) }, settings);
-    if (Array.isArray(b.items)) return res.json({ results: b.items.slice(0, 40).map(one) });
-    res.json(one(b));
+    const challenges = await prisma.challenge.findMany({ where: { active: true } }).catch(() => []);
+    const live = challenges.filter((c) => !c.endsAt || new Date(c.endsAt) > new Date());
+    const funding = (f) => (['bank', 'monnify', 'squad', 'nomba'].includes(f) ? f : 'wallet');
+    const one = (x) => {
+      try {
+        return require('../lib/earnings').estimateSale({ service: String(x.service || ''), provider: x.provider, amount: x.amount, funding: funding(x.funding), agent: Boolean(x.agent), coverFee: Boolean(x.coverFee), allRewards: Boolean(x.allRewards), challenges: live }, settings);
+      } catch (error) {
+        return { error: error.message };
+      }
+    };
+    if (Array.isArray(b.items)) return res.json({ results: b.items.slice(0, 120).map(one) });
+    const r = one(b);
+    if (r.error) return res.status(400).json(r);
+    res.json(r);
   } catch (error) {
     res.status(400).json({ error: error.message || 'Could not calculate.' });
   }
