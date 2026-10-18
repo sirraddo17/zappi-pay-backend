@@ -25,11 +25,10 @@ cd C:\Users\user\zappi-pay-backend
 # 1. Point at the database to restore INTO, and create the tables
 $env:DATABASE_URL="postgresql://...new database..."
 npx prisma db push
-# 2. Check the file opens (lists what's inside, changes nothing)
-$env:BACKUP_PASSWORD="your backup password"
-node ops/restore-backup.js C:\Users\user\Downloads\zappipay-backup-2026-10-18.zpbak --check
+# 2. Check the file opens (finds the newest .zpbak in Downloads, asks for the password, changes nothing)
+node ops/restore-backup.js --check
 # 3. Restore
-node ops/restore-backup.js C:\Users\user\Downloads\zappipay-backup-2026-10-18.zpbak
+node ops/restore-backup.js
 ```
 
 Then point Render's `DATABASE_URL` at the restored database.
