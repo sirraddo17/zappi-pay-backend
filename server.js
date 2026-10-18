@@ -172,6 +172,7 @@ app.listen(PORT, () => {
   require('./routes/services.routes').startJobs();
   require('./routes/partners.routes').startJobs();
   startDailySummary();
+  require('./lib/backup').start();
   require('./lib/savings').startSavingsTimer();
   require('./lib/contest').armContestTimer();
   require('./lib/reminders').startReminders();

@@ -740,6 +740,12 @@ model Settings {
   monnifyWalletAccount  String?
   // Owner's own accounts per partner (fund / settlement) — lib/partnerAccounts.js
   partnerAccounts       Json?
+  // Nightly database backups (lib/backup.js); the file password is the
+  // BACKUP_PASSWORD env var, never stored here.
+  backupEmails          String[] @default([])
+  backupLastAt          DateTime?
+  backupLastOkAt        DateTime?
+  backupLastStatus      String?
   bankTransferEnabled   Boolean @default(false)
   bankTransferFee       Decimal @default(0) @db.Decimal(14, 2)
   // Fee by amount, matching Monnify's own bands. Empty = same as
