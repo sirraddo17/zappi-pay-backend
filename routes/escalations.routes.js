@@ -383,6 +383,11 @@ router.post('/admin/orders/:id/vtpass-escalate', requireAdminAuth, async (req, r
     const staff = await me(req);
     let order = await prisma.order.findUnique({ where: { id: req.params.id }, include: { customer: { select: { id: true, name: true } } } });
     if (!order) return res.status(404).json({ error: 'Order not found.' });
+    // Bet funding isn't VTpass's: it goes through Nomba or ClubKonnect.
+    if (/^(nb|ck):/.test(String(order.provider || ''))) {
+      const who = String(order.provider).startsWith('nb:') ? 'Nomba' : 'ClubKonnect';
+      return res.status(400).json({ error: `This bet funding went through ${who}, not VTpass. Use “Ask the provider” on the order, then raise it with ${who} quoting reference ${order.vtpassRequestId || order.id}.` });
+    }
     // Ask VTpass's own status API first.
     if (order.status === 'PENDING') {
       await require('../lib/purchase').recheckOrder(order.id).catch(() => null);

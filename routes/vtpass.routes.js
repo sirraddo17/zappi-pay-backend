@@ -298,6 +298,46 @@ router.post('/admin/orders/:id/recheck', requireAdminAuth, async (req, res) => {
   }
 });
 
+// "Ask the provider": a read-only look at what VTpass / Nomba / ClubKonnect
+// says about any order right now (including SUCCESS ones a customer says
+// never arrived). Nothing is changed — use Check now / settle for that.
+router.post('/admin/orders/:id/lookup', requireAdminAuth, async (req, res) => {
+  try {
+    const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+    if (!order) return res.status(404).json({ error: 'Order not found.' });
+    if (!order.vtpassRequestId) return res.status(400).json({ error: 'This order was never sent to a provider.' });
+    const prov = String(order.provider || '');
+    let who = 'VTpass';
+    let resp;
+    try {
+      if (prov.startsWith('nb:')) { who = 'Nomba'; resp = await require('../lib/nombaBetting').query(order.vtpassRequestId); }
+      else if (prov.startsWith('ck:')) { who = 'ClubKonnect'; resp = await require('../lib/ckBetting').query(order.vtpassRequestId); }
+      else resp = await vtpassRequest('POST', '/requery', { body: { request_id: order.vtpassRequestId } });
+    } catch (error) {
+      if (!error.vtpassResponse) return res.status(502).json({ error: `${who} didn't answer: ${error.message}` });
+      resp = error.vtpassResponse;
+    }
+    const t = resp?.content?.transactions || {};
+    const providerStatus = String(t.status || resp?.status || resp?.orderstatus || resp?.response_description || '').trim() || 'unknown';
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'ORDER_PROVIDER_LOOKUP', details: { orderId: order.id, who, providerStatus } } }).catch(() => {});
+    res.json({
+      who,
+      ourStatus: order.status,
+      providerStatus,
+      transactionId: t.transactionId || resp?.id || null,
+      requestId: order.vtpassRequestId,
+      productName: t.product_name || null,
+      uniqueElement: t.unique_element || null,
+      amount: t.amount ?? resp?.amount ?? null,
+      token: resp?.purchased_code || resp?.mainToken || resp?.token || null,
+      raw: resp,
+    });
+  } catch (error) {
+    console.error('POST /admin/orders/:id/lookup failed:', error);
+    res.status(500).json({ error: 'Could not ask the provider.' });
+  }
+});
+
 router.post('/admin/orders/:id/settle', requireAdminAuth, async (req, res) => {
   try {
     const outcome = req.body?.outcome === 'SUCCESS' ? 'SUCCESS' : req.body?.outcome === 'FAILED' ? 'FAILED' : null;

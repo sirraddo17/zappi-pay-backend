@@ -212,6 +212,8 @@ model Customer {
   // Admin freeze: when and why (shown to support; the customer sees a short note).
   frozenAt            DateTime?
   frozenReason        String?
+  // Owner-set daily spending limit for this one customer (null = the app-wide limit).
+  dailyLimitOverride  Decimal?  @db.Decimal(14, 2)
   // Name and date of birth confirmed against BVN/NIN (then locked).
   kycVerifiedAt       DateTime?
   // App language chosen in Profile (en, pcm, yo, ha, ig) — broadcasts

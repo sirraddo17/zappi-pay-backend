@@ -108,6 +108,7 @@ app.use('/api', moneyRouter);
 app.use('/api', statusRouter);
 app.use('/api', require('./routes/unmatched.routes'));
 app.use('/api', require('./routes/moneyops.routes'));
+app.use('/api', require('./routes/supportops.routes'));
 app.use('/api', remindersRouter);
 app.use('/api', giftsRouter);
 app.use('/api', promiseRouter);
