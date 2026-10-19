@@ -21,6 +21,18 @@ const reasonOf = (b, min = 5) => {
   return r.length >= min ? r : null;
 };
 
+// --- The Support Guide (Admin → 📘 Support guide) ----------------------------
+
+router.get('/admin/support-guide', requireAdminAuth, (req, res) => {
+  try {
+    const g = require('../lib/supportGuide').load();
+    res.json({ title: g.title, markdown: g.markdown, sections: g.sections.map((x) => ({ id: x.id, title: x.title })) });
+  } catch (error) {
+    console.error('GET /admin/support-guide failed:', error);
+    res.status(500).json({ error: 'Could not load the support guide.' });
+  }
+});
+
 // --- Scheduled top-ups ------------------------------------------------------
 
 router.get('/admin/customers/:id/schedules', requireAdminAuth, async (req, res) => {
