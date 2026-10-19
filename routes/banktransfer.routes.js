@@ -254,6 +254,9 @@ router.get('/admin/monnify/overview', requireAdminAuth, async (req, res) => {
 router.post('/admin/monnify/reset-accounts', requireAdminAuth, async (req, res) => {
   try {
     if (String(req.body?.confirm || '') !== 'RESET') return res.status(400).json({ error: 'Type RESET to confirm.' });
+    const had = await prisma.customer.findMany({ where: { bankAccountRef: { not: null } }, select: { id: true, bankAccountRef: true, bankAccounts: true } });
+    const unmatched = require('../lib/unmatched');
+    for (const c of had) await unmatched.retireAllFor(c, 'Monnify reset', ['monnify']);
     const r = await prisma.customer.updateMany({
       where: { bankAccountRef: { not: null } },
       data: { bankAccountRef: null, bankAccounts: Prisma.DbNull, kycType: null, bankAccountAt: null },

@@ -448,7 +448,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     const customer = await prisma.customer.findUnique({
       where: { id },
       select: {
-        id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
+        id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, frozenAt: true, frozenReason: true, selfFrozenAt: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
         pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true, dateOfBirth: true, securityQuestion: true, securityAnswerHash: true,
         referredBy: { select: { id: true, name: true, username: true } },
         pinLockedUntil: true,
@@ -495,18 +495,27 @@ router.patch('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     const { id } = req.params;
     const { active } = req.body;
     if (active === undefined) return res.status(400).json({ error: 'active is required.' });
+    const reason = String(req.body.reason || '').trim().slice(0, 200);
+    if (!active && req.headers['x-admin-assistant']) return res.status(403).json({ error: 'Only a person can freeze an account.' });
 
+    // Freezing also signs them out on every device at once (a thief on a
+    // stolen phone loses the session they already had). Unfreezing clears
+    // the self-freeze too.
     const customer = await prisma.customer.update({
       where: { id },
-      data: { active: !!active },
+      data: active
+        ? { active: true, selfFrozenAt: null, frozenAt: null, frozenReason: null }
+        : { active: false, frozenAt: new Date(), frozenReason: reason || null },
       select: { id: true, name: true, phone: true, active: true },
     });
+    if (!active) await require('../lib/sessions').revokeAll(id).catch((e) => console.error('revokeAll failed:', e.message));
+    else require('../lib/sessions').forgetCustomer(id);
 
     await prisma.auditLog.create({
       data: {
         actorAdminId: req.admin.adminId,
         action: active ? 'CUSTOMER_REACTIVATED' : 'CUSTOMER_DEACTIVATED',
-        details: { customerId: id },
+        details: { customerId: id, ...(reason ? { reason } : {}) },
       },
     });
 
@@ -549,6 +558,8 @@ router.post('/admin/customers/:id/reset-password', requireAdminAuth, async (req,
         loginLockedUntil: null,
       },
     });
+    // Whoever was logged in with the old password is signed out.
+    await require('../lib/sessions').revokeAll(existing.id).catch(() => {});
 
     await prisma.auditLog.create({
       data: { actorAdminId: req.admin.adminId, action: 'CUSTOMER_PASSWORD_RESET', details: { customerId: existing.id } },

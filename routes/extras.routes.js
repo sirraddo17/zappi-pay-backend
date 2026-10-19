@@ -421,12 +421,15 @@ router.post('/admin/customers/:id/delete-account', requireAdminAuth, async (req,
     if (!c) return res.status(404).json({ error: 'Customer not found.' });
     if (c.deletedAt) return res.status(400).json({ error: 'This account is already deleted.' });
     if (Number(c.walletBalance) > 0) {
-      return res.status(400).json({ error: `This customer still has ₦${Number(c.walletBalance).toLocaleString()} in their wallet. Pay it out or ask them to spend it first.` });
+      return res.status(400).json({ error: `This customer still has ₦${Number(c.walletBalance).toLocaleString()} in their wallet. Send it to their bank and record it under Money tools → Record a manual payout (or ask them to spend it) first.` });
     }
     if (Number(c.savingsBalance) > 0) {
       return res.status(400).json({ error: `This customer still has ₦${Number(c.savingsBalance).toLocaleString()} in savings. Ask them to move it to their wallet and spend or withdraw it first.` });
     }
     const tag = `deleted-${c.id.slice(-8)}`;
+    // Remember every account number first: a payment that still arrives on
+    // one lands in Unmatched payments (to send back), not on this account.
+    await require('../lib/unmatched').retireAllFor(c, 'account deleted');
     await prisma.$transaction([
       prisma.trustedDevice.deleteMany({ where: { customerId: c.id } }),
       prisma.beneficiary.deleteMany({ where: { customerId: c.id } }),
@@ -443,6 +446,10 @@ router.post('/admin/customers/:id/delete-account', requireAdminAuth, async (req,
           active: false,
           emailAlerts: false,
           bankAccountRef: null,
+          squadAccountRef: null,
+          squadAccountAt: null,
+          nombaAccountRef: null,
+          nombaAccountAt: null,
           bankAccounts: Prisma.DbNull,
           kycType: null,
           kycHash: null,
@@ -450,6 +457,7 @@ router.post('/admin/customers/:id/delete-account', requireAdminAuth, async (req,
         },
       }),
     ]);
+    await require('../lib/sessions').revokeAll(c.id).catch(() => {});
     await audit(req, 'CUSTOMER_DELETED', { customerId: c.id, name: c.name, phone: c.phone });
     res.json({ ok: true });
   } catch (error) {

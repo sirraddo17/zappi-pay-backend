@@ -148,7 +148,13 @@ router.post('/auth/login', async (req, res) => {
       await prisma.customer.update({ where: { id: customer.id }, data: { loginFailedAttempts: 0, loginLockedUntil: null } });
     }
     if (!customer.active) {
-      return res.status(403).json({ error: 'This account has been deactivated.' });
+      // Tell them what happened and what to do (never the internal reason).
+      const msg = customer.deletedAt
+        ? 'This account has been closed.'
+        : customer.selfFrozenAt
+          ? 'You froze this account to keep it safe. Contact ZAPPI PAY support to unfreeze it — we will confirm it is really you first.'
+          : 'This account is paused for a safety check. Contact ZAPPI PAY support (Help page or WhatsApp) to restore it — your money is safe.';
+      return res.status(403).json({ error: msg, code: 'ACCOUNT_PAUSED' });
     }
     if (customer.mustChangePassword && customer.tempPasswordExpiresAt && customer.tempPasswordExpiresAt < new Date()) {
       return res.status(403).json({ error: 'Your temporary password has expired. Please contact support for a new one.' });

@@ -209,6 +209,9 @@ model Customer {
   // Customer froze their own account (e.g. lost phone). Support checks
   // who they are before switching it back on.
   selfFrozenAt        DateTime?
+  // Admin freeze: when and why (shown to support; the customer sees a short note).
+  frozenAt            DateTime?
+  frozenReason        String?
   // Name and date of birth confirmed against BVN/NIN (then locked).
   kycVerifiedAt       DateTime?
   // App language chosen in Profile (en, pcm, yo, ha, ig) — broadcasts
@@ -2393,4 +2396,46 @@ model PayoutRequest {
 
   @@unique([appId, externalRef])
   @@index([customerId, createdAt])
+}
+
+// A bank payment a partner confirmed but no customer owns the account
+// number any more (old, removed or deleted). Never credited silently —
+// support assigns it to the right customer, or records that it was sent
+// back to the payer (lib/unmatched.js).
+model UnmatchedPayment {
+  id                  String    @id @default(cuid())
+  provider            String
+  // Same reference a normal credit would use, so it can't be paid twice.
+  providerRef         String    @unique
+  accountRef          String?
+  accountNumber       String?
+  amount              Decimal   @db.Decimal(14, 2)
+  payerName           String?
+  payerAccount        String?
+  payerBank           String?
+  raw                 Json?
+  // OPEN · ASSIGNED (credited to a customer) · RETURNED (sent back to the payer) · IGNORED (test money)
+  status              String    @default("OPEN")
+  suggestedCustomerId String?
+  customerId          String?
+  note                String?
+  resolvedById        String?
+  resolvedAt          DateTime?
+  createdAt           DateTime  @default(now())
+
+  @@index([status, createdAt])
+}
+
+// Account numbers taken off a customer (test numbers removed, account
+// deleted, Monnify reset) — so a later payment to one can be traced.
+model RetiredAccountRef {
+  id         String   @id @default(cuid())
+  provider   String
+  ref        String
+  customerId String
+  accounts   Json?
+  reason     String
+  retiredAt  DateTime @default(now())
+
+  @@index([provider, ref])
 }
