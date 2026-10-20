@@ -54,7 +54,7 @@ router.get('/vtpass/variations', requireCustomerAuth, async (req, res) => {
     const { serviceID } = req.query;
     if (!serviceID) return res.status(400).json({ error: 'serviceID is required.' });
     const data = await cachedCatalog('/service-variations', { serviceID });
-    res.json(data);
+    res.json(await require('../lib/planFixes').applyToCatalog(String(serviceID), data));
   } catch (error) {
     console.error('GET /vtpass/variations failed:', error);
     res.status(502).json({ error: error.message });

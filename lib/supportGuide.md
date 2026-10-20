@@ -145,3 +145,12 @@ The admin AI assistant can open any of these screens for you: ask it "where is�
 - **Lost phone:** "We've frozen your account and signed it out on all devices, so no one can use it. When you're ready, we'll confirm it's you and restore access."
 
 Never ask a customer for their PIN, password, OTP or full card number, and never send them a link to "verify" outside the app.
+
+## Data plan lasted less than its name said
+
+**What happened.** VTpass names the plan; sometimes the name is wrong (e.g. "1GB 1 Day" but the network gives it for 2 hours). The network delivered what it sells, so it can't be reversed.
+
+**What to do.** 1) Find the order in **Orders**, open it and note the plan name. 2) The owner taps **✏️ Plan details wrong?** and sets the real validity (and a note) or hides the plan, so nobody else is misled. 3) Report the wrong name to VTpass support with the order reference. 4) If the customer was clearly misled by our label, the owner may give a goodwill credit (Customers → Support tools → reward), with a note.
+
+**Reply:** "Sorry about that — this plan was listed as 1 day but the network gives it for 2 hours. We've corrected the label so it won't happen again[, and added ₦X to your wallet as an apology]."
+

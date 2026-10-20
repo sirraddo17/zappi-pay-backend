@@ -2449,3 +2449,21 @@ model RetiredAccountRef {
 
   @@index([provider, ref])
 }
+
+// Owner corrections for a data/internet plan whose VTpass name is wrong
+// or unclear (e.g. named "1 Day" but the network gives 2 hours). Shown to
+// customers on the plan card and before paying; a hidden plan can't be bought.
+model PlanFix {
+  id            String   @id @default(cuid())
+  serviceID     String
+  variationCode String
+  name          String?
+  validityHours Int?
+  note          String?
+  hidden        Boolean  @default(false)
+  updatedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([serviceID, variationCode])
+}
