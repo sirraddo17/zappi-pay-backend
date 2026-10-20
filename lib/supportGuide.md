@@ -72,7 +72,7 @@ Almost every "I sent money but it didn't show" is solved by **Funding not showin
 - "My card was charged but the wallet didn't go up": tap **Check again**. It credits only if Flutterwave confirms the payment succeeded, including payments the app gave up on after 24 hours.
 - "Flutterwave says the card owner disputed it" (often a stolen card): tap **Chargeback** and enter Flutterwave's reference. The app takes back what is left of that money in the wallet, freezes the account and signs it out, and shows how much was already spent. Collect that before unfreezing.
 
-**Manual funding.** Customers who pay into your business account appear in **Pending Funding**. Approve only after you see the money in your bank.
+**Manual funding.** Customers who pay into your business account appear in **Pending Funding**. Approve only after you see the money in your bank. Each request shows how long it has waited (green, then amber at 15 min, red at 30). Approve credits the wallet straight away; to reject, type the reason the customer will see. A customer can only have one request waiting, and a reference can't be used twice — if they say they sent money twice, approve the first, then ask them to submit the second after. Overdue requests send you reminders and tell the customer support is on it; nothing is rejected automatically.
 
 ## Purchase problems
 

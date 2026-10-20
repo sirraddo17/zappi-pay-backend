@@ -88,7 +88,8 @@ RULES, LIMITS AND FEES
   - When the fee matches the partner's own charge, the app says it goes to the payment partner and "ZAPPI PAY does not keep it".
 - There is no minimum for automatic funding.
 - Manual funding minimum: set by ZAPPI PAY (currently configurable) [setting: minFundingAmount, default ₦100].
-- Manual funding requests stay "PENDING" until an admin approves them. The customer then gets "Wallet Funded" or "Funding Request Rejected".
+- Manual funding requests stay "PENDING" until an admin approves them. Approving credits the wallet at once and the customer gets "Wallet Funded"; rejecting sends "Funding Request Not Approved" with the reason the admin typed.
+- Manual funding safety rules [manualFundingVerifiedOnly, default on; manualFundingMaxAmount, default ₦50,000, 0 = no cap; manualFundingWaitMinutes, default 30]: BVN/NIN-verified customers only, a cap per request, one request waiting at a time per customer, and a bank reference can only be used once. The customer sees a "Checking your transfer" card with a countdown on the Wallet page. Admins get a reminder at half the waiting time and again when it runs out; then the customer is told it's taking longer and support was alerted. Requests are never rejected automatically. The AI assistant can't approve, reject or change these rules. Set them in Admin → Settings → Limits → Manual funding accounts (🛡️ Safety rules).
 - The "check now" button can be tapped once every 15 seconds.
 - The same bank payment can never be credited twice.
 - If a bank is having network problems, the admin can hide that account number [setting: hiddenFundingBanks]. The app then says "temporarily unavailable because of bank network issues" and points to the business account.

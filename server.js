@@ -168,6 +168,7 @@ app.listen(PORT, () => {
   startOrderSweeper();
   require('./lib/epins').startSweeper();
   require('./lib/adminRadar').startJobs();
+  require('./lib/manualFundingWatch').start();
   require('./lib/attackWatch').start();
   require('./lib/festivals').start();
   require('./lib/flutterwave').startSweeper();

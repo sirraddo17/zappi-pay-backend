@@ -53,7 +53,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       referralEnabled, referralBonusAmount, referralMinPurchase, referralSpendTarget, referralWelcomeBonus, referralMilestones, referralBoostAmount, referralBoostTarget, referralBoostUntil, referralTickerEnabled, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
-      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, cashbackSeparate, cashbackUseMaxPercent, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, recoveryNoticesEnabled, circlesEnabled, circleMaxAmount, circleMaxMembers, circleBanStrikes, circleServiceFeePercent, circleServiceFeeCap, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
+      emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, cashbackSeparate, cashbackUseMaxPercent, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, recoveryNoticesEnabled, circlesEnabled, circleMaxAmount, circleMaxMembers, circleBanStrikes, circleServiceFeePercent, circleServiceFeeCap, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualFundingVerifiedOnly, manualFundingMaxAmount, manualFundingWaitMinutes, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
@@ -217,6 +217,18 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       data.agentDiscountPercentByService = Object.fromEntries(Object.entries(agentDiscountPercentByService).map(([k, v]) => [k, Number(v)]).filter(([, v]) => v > 0));
     }
     if (manualFundingEnabled !== undefined) data.manualFundingEnabled = Boolean(manualFundingEnabled);
+    if ((manualFundingVerifiedOnly !== undefined || manualFundingMaxAmount !== undefined) && req.headers['x-admin-assistant']) return res.status(403).json({ error: 'The AI assistant can’t change manual funding safety rules.' });
+    if (manualFundingVerifiedOnly !== undefined) data.manualFundingVerifiedOnly = Boolean(manualFundingVerifiedOnly);
+    if (manualFundingMaxAmount !== undefined) {
+      const v = Math.round(Number(manualFundingMaxAmount));
+      if (!(v === 0 || (v >= 1000 && v <= 10000000))) return res.status(400).json({ error: 'Manual funding cap must be ₦1,000–₦10,000,000, or 0 for no cap.' });
+      data.manualFundingMaxAmount = v;
+    }
+    if (manualFundingWaitMinutes !== undefined) {
+      const v = parseInt(manualFundingWaitMinutes, 10);
+      if (!(v >= 5 && v <= 240)) return res.status(400).json({ error: 'Waiting time must be 5–240 minutes.' });
+      data.manualFundingWaitMinutes = v;
+    }
     if (fraudHoldEnabled !== undefined) data.fraudHoldEnabled = Boolean(fraudHoldEnabled);
     if (fraudHoldAmount !== undefined) data.fraudHoldAmount = Math.max(0, Number(fraudHoldAmount) || 0);
     if (fraudHoldHours !== undefined) data.fraudHoldHours = Math.min(720, Math.max(1, parseInt(fraudHoldHours, 10) || 24));

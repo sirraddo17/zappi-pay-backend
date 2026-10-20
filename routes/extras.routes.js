@@ -47,6 +47,7 @@ router.get('/app/info', async (req, res) => {
       testMode: settings.vtpassMode !== 'live' || (await require('../lib/monnify').getConfig().then((c) => c.mode !== 'live').catch(() => true)),
       manualFunding: manualList[0] ? { bankName: manualList[0].bankName, accountNumber: manualList[0].accountNumber, accountName: manualList[0].accountName } : null,
       manualAccounts: manualList.map((m) => ({ id: m.id, bankName: m.bankName, accountNumber: m.accountNumber, accountName: m.accountName })),
+      manualRules: { verifiedOnly: settings.manualFundingVerifiedOnly !== false, maxAmount: Number(settings.manualFundingMaxAmount ?? 50000), waitMinutes: Number(settings.manualFundingWaitMinutes || 30) },
       notices: notices.map((n) => ({ id: n.id, message: n.message, service: n.service, level: n.level })),
       // Rewards split on: cashback isn't a fixed %, so show a general note.
       cashback: settings.cashbackEnabled && !settings.rewardSplitEnabled ? settings.cashbackPercentByService || {} : {},
