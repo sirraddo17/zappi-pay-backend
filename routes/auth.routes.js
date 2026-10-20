@@ -315,7 +315,7 @@ router.post('/admin/login', async (req, res) => {
     }
 
     // Two-step login: email a 6-digit code unless this browser was
-    // remembered (signed 30-day token). ADMIN_2FA_DISABLED=1 on Render
+    // remembered (signed 30-day token). ADMIN_2FA_DISABLED=1 in the server settings (.env)
     // is the emergency switch if email ever stops working.
     const settings = await require('../lib/vtpass').getSettings();
     const { isEmailConfigured, sendEmail } = require('../lib/email');
@@ -337,7 +337,7 @@ router.post('/admin/login', async (req, res) => {
       const backups = await prisma.adminBackupCode.count({ where: { adminId: admin.id, usedAt: null } });
       if (!sent.sent) {
         // Email is down: a backup code still lets the owner in.
-        if (!backups) return res.status(502).json({ error: 'Could not send your login code by email, and you have no backup codes. Try again shortly — if email keeps failing, set ADMIN_2FA_DISABLED=1 on Render to log in, then fix email.' });
+        if (!backups) return res.status(502).json({ error: 'Could not send your login code by email, and you have no backup codes. Try again shortly — if email keeps failing, set ADMIN_2FA_DISABLED=1 in the server settings (.env) to log in, then fix email.' });
         return res.json({ twoFactor: true, challengeId: challenge.id, emailFailed: true, backupCodes: backups });
       }
       return res.json({ twoFactor: true, challengeId: challenge.id, emailHint: `${user.slice(0, 2)}***@${domain}`, backupCodes: backups });

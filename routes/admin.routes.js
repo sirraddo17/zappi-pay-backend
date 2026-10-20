@@ -239,7 +239,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (loyaltyMinRedeem !== undefined) data.loyaltyMinRedeem = Math.max(1, parseInt(loyaltyMinRedeem, 10) || 1);
     if (adminTwoFactorEnabled !== undefined) {
       if (adminTwoFactorEnabled && !require('../lib/email').isEmailConfigured()) {
-        return res.status(400).json({ error: 'Set up email (Resend) on Render before turning on two-step login.' });
+        return res.status(400).json({ error: 'Set up email (Resend) in the server settings (.env) before turning on two-step login.' });
       }
       data.adminTwoFactorEnabled = Boolean(adminTwoFactorEnabled);
     }
@@ -419,7 +419,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
 
 router.post('/admin/daily-summary/test', requireAdminAuth, async (req, res) => {
   try {
-    if (!require('../lib/email').isEmailConfigured()) return res.status(400).json({ error: 'Email (Resend) is not set up on Render yet.' });
+    if (!require('../lib/email').isEmailConfigured()) return res.status(400).json({ error: 'Email (Resend) is not set up in the server settings (.env) yet.' });
     const r = await require('../lib/dailySummary').sendDailySummary({ force: true });
     res.json(r);
   } catch (error) {

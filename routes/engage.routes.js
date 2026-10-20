@@ -74,7 +74,7 @@ router.post('/admin/email/test-customer-alert', requireAdminAuth, async (req, re
     const c = await prisma.customer.findUnique({ where: { id: String(req.body?.customerId || '') }, select: { name: true, email: true, emailAlerts: true, deletedAt: true } });
     if (!c) return res.status(404).json({ error: 'Customer not found.' });
     const problems = [];
-    if (!isEmailConfigured()) problems.push('Email sending is not set up on Render (RESEND_API_KEY / EMAIL_FROM).');
+    if (!isEmailConfigured()) problems.push('Email sending is not set up in the server settings (.env) (RESEND_API_KEY / EMAIL_FROM).');
     if (!s.emailAlertsEnabled) problems.push('"Email alerts for money in/out" is OFF in Admin → Settings → Alerts & Limits.');
     if (!c.email) problems.push('This customer has no email address on their account (they can add one in Profile).');
     if (!c.emailAlerts) problems.push('This customer turned email alerts off in their Profile.');
