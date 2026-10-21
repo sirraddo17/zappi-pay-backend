@@ -127,6 +127,7 @@ app.use('/api', require('./routes/attackwatch.routes'));
 app.use('/api', require('./routes/payrequests.routes'));
 app.use('/api', require('./routes/flutterwave.routes'));
 app.use('/api', require('./routes/golive.routes'));
+app.use('/api', require('./routes/database.routes'));
 app.use('/api', require('./routes/squad.routes'));
 app.use('/api', require('./routes/nomba.routes'));
 app.use('/api', require('./routes/circles.routes'));
@@ -170,6 +171,7 @@ app.listen(PORT, () => {
   require('./lib/epins').startSweeper();
   require('./lib/adminRadar').startJobs();
   require('./lib/manualFundingWatch').start();
+  require('./lib/dbHealth').start();
   require('./lib/attackWatch').start();
   require('./lib/festivals').start();
   require('./lib/flutterwave').startSweeper();
