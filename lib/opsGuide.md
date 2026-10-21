@@ -138,6 +138,20 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - Test a partner after going live with a small real amount to your own account first (e.g. ₦100).
 - StoreWatch connects to ZAPPI PAY with `ZAPPIPAY_API_URL=https://api.zappipay.com.ng/api` in StoreWatch's own hosting settings (a 503 "ZAPPI PAY isn't answering" there means it still points at the old Render address).
 
+## Code help and pull requests (GitHub)
+
+- The admin AI can **read** the code (backend on the server, frontend from GitHub) to explain things and find where errors come from. It never sees `.env`, keys or backups.
+- When something should change it writes a **📝 Change request for Claude** — copy it to Claude, who builds a tested zip as usual.
+- **Optional — AI pull requests** (off by default):
+  1. GitHub → your picture → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+  2. Name `zappipay-admin-ai`, expiry 90 days, **Repository access: Only select repositories** → zappi-pay-backend and zappi-pay-frontend.
+  3. **Permissions → Repository**: Contents **Read and write**, Pull requests **Read and write** (Metadata read is added automatically). Nothing else.
+  4. Generate and copy the token (shown once). On the **VPS**: `cd /opt/zappi-pay-backend && nano .env` → add `GITHUB_TOKEN=…` and `CODE_PR_ENABLED=on` → save → `pm2 restart zappi-pay-api --update-env`.
+  5. To switch it off: change to `CODE_PR_ENABLED=off` and restart; to block it completely, delete the token on GitHub.
+- **Reviewing a pull request**: the Apply card's link → GitHub → **Files changed** (red = removed, green = added). Frontend: the Vercel bot comment has a **Preview** link — test the change there. If happy → **Merge pull request** → **Confirm**. Frontend goes live by itself; backend: update the server (Pushing an update, step 5). Not happy → **Close pull request** (nothing changes).
+- After merging on GitHub, your computer's copy is behind: in **PowerShell** `cd $HOME\zappi-pay-backend; git pull` (and the same for zappi-pay-frontend) before copying a new zip from Claude.
+- Money, wallet, payout, webhook, login and security changes: ask Claude to check the pull request before merging.
+
 ## When something is wrong
 
 | Symptom | First check | Fix |

@@ -128,6 +128,7 @@ app.use('/api', require('./routes/payrequests.routes'));
 app.use('/api', require('./routes/flutterwave.routes'));
 app.use('/api', require('./routes/golive.routes'));
 app.use('/api', require('./routes/database.routes'));
+app.use('/api', require('./routes/code.routes'));
 app.use('/api', require('./routes/squad.routes'));
 app.use('/api', require('./routes/nomba.routes'));
 app.use('/api', require('./routes/circles.routes'));
