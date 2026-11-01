@@ -111,3 +111,22 @@ test('demo mode hides balances of a partner on sandbox keys (Overview card)', ()
   assert.notEqual(m.walletAccount, '4658351792');
   assert.equal(demo.mask({ mode: 'live', balance: 5934 }).balance, 5934, 'live balances stay');
 });
+
+test('demo mode never masks the admin login token (a masked token breaks every request)', () => {
+  const run = (url) => { let out; const req = { headers: { 'x-demo-mode': '1' }, path: url, originalUrl: url }; const res = { json: (b) => { out = b; return b; } }; demo.middleware(req, res, () => {}); res.json({ token: 'eyJhbGciOiJIUzI1NiJ9.abc.def', admin: { name: 'Ade Ridwan' } }); return out; };
+  assert.equal(run('/api/admin/login').token, 'eyJhbGciOiJIUzI1NiJ9.abc.def');
+  assert.equal(run('/api/admin/login/verify').token, 'eyJhbGciOiJIUzI1NiJ9.abc.def');
+  assert.equal(run('/api/admin/customers').token, '••••••', 'other admin answers still masked');
+});
+
+test('demo mode never masks the admin login answer (the session code must stay usable)', async () => {
+  const run = (url, body) => new Promise((resolve) => {
+    const req = { originalUrl: url, path: url, headers: { 'x-demo-mode': '1' } };
+    const res = { json: (b) => resolve(b), status() { return this; } };
+    demo.middleware(req, res, () => res.json(body));
+  });
+  assert.equal((await run('/api/admin/login', { token: 'abc.def.ghi' })).token, 'abc.def.ghi');
+  assert.equal((await run('/api/admin/login/verify', { token: 'abc.def.ghi', rememberToken: 'r1' })).token, 'abc.def.ghi');
+  assert.equal((await run('/api/admin/settings', { token: 'abc.def.ghi' })).token, '••••••', 'other admin answers still masked');
+  assert.equal((await run('/api/admin/security/backup-codes', {})).code, 'DEMO_MODE');
+});
