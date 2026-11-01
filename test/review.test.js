@@ -89,3 +89,14 @@ test('Nov: Airtime to Cash and Car insurance have their own switches, off by def
   const routes = fs.readFileSync(path.join(ROOT, 'routes', 'vtpass.routes.js'), 'utf8');
   assert.match(routes, /service === 'INSURANCE' && \(await insuranceOff\(req, res\)\)/, 'insurance purchase blocked while off');
 });
+
+test('Nov: a BVN/NIN typed into a ticket or the assistant is masked; phones and meters are not', () => {
+  const m = idn.maskIdsInText;
+  assert.equal(m('my bvn is 22212345678 please help'), 'my bvn is •••••••5678 please help');
+  assert.equal(m('NIN: 12345678912'), 'NIN: •••••••8912');
+  assert.equal(m('bvn issue, call me on 08112999073'), 'bvn issue, call me on 08112999073', 'phone kept');
+  assert.equal(m('meter 45067891234 token not working'), 'meter 45067891234 token not working', 'no BVN/NIN word → untouched');
+  const ai = fs.readFileSync(path.join(ROOT, 'lib', 'ai.js'), 'utf8');
+  assert.match(ai, /maskIdsInText\(m\.content/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'routes', 'support.routes.js'), 'utf8'), /maskIdsInText\(message\.trim\(\)\)/);
+});

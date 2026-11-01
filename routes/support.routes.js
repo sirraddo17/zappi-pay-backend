@@ -44,7 +44,8 @@ router.post('/support/tickets', requireCustomerAuth, async (req, res) => {
       data: {
         customerId: req.customer.customerId,
         orderId: orderId || undefined,
-        message: message.trim(),
+        // A BVN/NIN typed into a ticket is masked before it is saved.
+        message: require('../lib/idNumber').maskIdsInText(message.trim()),
         ...(images.length ? { attachments: { create: images.map((image) => ({ image })) } } : {}),
       },
     });
