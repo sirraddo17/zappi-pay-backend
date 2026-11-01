@@ -104,3 +104,10 @@ test('fix 6: demo mode hides the Server & Database screen and sandbox figures', 
   demo.middleware({ headers: {}, path: '/api/admin/customers', originalUrl: '/api/admin/customers' }, res3, () => { nexted = true; });
   assert.ok(nexted);
 });
+
+test('demo mode hides balances of a partner on sandbox keys (Overview card)', () => {
+  const m = demo.mask({ mode: 'sandbox', walletBalance: 4999992500, walletAccount: '4658351792', bankTransfer: false });
+  assert.equal(m.walletBalance, null);
+  assert.notEqual(m.walletAccount, '4658351792');
+  assert.equal(demo.mask({ mode: 'live', balance: 5934 }).balance, 5934, 'live balances stay');
+});
