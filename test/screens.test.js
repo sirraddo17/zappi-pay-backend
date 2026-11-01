@@ -42,7 +42,13 @@ test('fix 2: banner never says live services are not real', async () => {
   assert.doesNotMatch(t.text, /not real/i);
   assert.match(t.text, /Airtime, data and bills are live/);
   assert.match(t.text, /test money/);
-  assert.match(t.text, /Send to Bank/);
+  assert.doesNotMatch(t.text, /Wema|Moniepoint|GTBank|Nombank|Sterling/, 'no bank names');
+  if (settings.bankTransferEnabled) assert.match(t.text, /Send to Bank/);
+  // Send to Bank switched off → not mentioned; switched on → added.
+  settings = { ...settings, bankTransferEnabled: false };
+  assert.equal((await testMode.state(settings)).text, 'Airtime, data and bills are live. Wallet funding uses test money for now, so please don’t send real money yet.');
+  settings = { ...settings, bankTransferEnabled: true };
+  assert.equal((await testMode.state(settings)).text, 'Airtime, data and bills are live. Wallet funding and Send to Bank use test money for now, so please don’t send real money yet.');
   modes = { monnify: 'live', squad: 'live', nomba: 'live' };
   assert.equal((await testMode.state(settings)).testMode, false, 'all live → no banner');
   settings = { ...settings, vtpassMode: 'sandbox' };

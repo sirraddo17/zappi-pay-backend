@@ -1037,8 +1037,11 @@ AUTOMATIC PAUSE: one provider (e.g. IKEDC, DStv or one network's data) can also 
 ----------------------------------------------------------------------
 43. TEST MODE BANNER
 ----------------------------------------------------------------------
-- "🧪 Test mode. ZAPPI PAY is still being tested — payments, airtime, data and bills here are not real yet, and no real money is charged or sent."
-- It shows while either VTpass [vtpassMode] or Monnify [monnifyMode] is not "live" (both default to "sandbox"). It disappears automatically when both are live.
+- The text is built from the real state of each partner and only mentions features that are switched on. It never names banks.
+- VTpass live, wallet funding on test keys, Send to Bank off: "🧪 Test mode. Airtime, data and bills are live. Wallet funding uses test money for now, so please don't send real money yet."
+- If Send to Bank [bankTransferEnabled] is switched on while its partner is on test keys, it is added: "Wallet funding and Send to Bank use test money for now…"
+- If VTpass [vtpassMode] is on sandbox: "ZAPPI PAY is still being tested — purchases here are not real yet and no real money is charged or sent."
+- It disappears automatically when everything switched on is live.
 
 ----------------------------------------------------------------------
 44. OTHER CUSTOMER-VISIBLE EXTRAS
