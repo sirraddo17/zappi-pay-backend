@@ -74,7 +74,11 @@ async function buildStatus() {
 
 router.get('/status', async (req, res) => {
   try {
-    if (!cache.body || Date.now() - cache.at > 60 * 1000) {
+    // Uptime monitors poll this page. While nobody is using the app the
+    // answer is reused for 15 minutes so their checks don't keep the
+    // database awake (1 minute while people are using it).
+    const ttl = require('../lib/quietClock').isBusy() ? 60 * 1000 : 15 * 60 * 1000;
+    if (!cache.body || Date.now() - cache.at > ttl) {
       cache = { at: Date.now(), body: await buildStatus() };
     }
     res.set('Cache-Control', 'public, max-age=30');

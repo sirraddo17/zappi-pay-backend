@@ -180,3 +180,11 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 
 - Admin menu items for switched-off features are hidden, and their pages show "switched off": Airtime to Cash (🧩 New features), Bank Transfers (Send to Bank off), Wrong transfers (Send money and Send to Bank both off), Pending Funding (no manual funding account on), Unmatched payments (bank funding off).
 - Switch the feature back on and the menu item comes back. Nothing is deleted.
+
+## Keeping Neon asleep (free plan)
+
+- `npm test` never touches the real database: test/setup.js points it at a fake address and lib/prisma refuses to connect in tests.
+- When nobody is using the app, background jobs run together once an hour (once every 3 hours from midnight to 6am Lagos), so Neon can suspend in between. Change with QUIET_EVERY_MIN / QUIET_NIGHT_MIN in .env.
+- Admin pages stop auto-refreshing after 10 minutes with no tap or key press, so an admin window left open doesn't keep the database awake.
+- /api/health never touches the database: point uptime monitors (cron-job.org) at it. /api/status is cached 15 minutes when the app is quiet.
+- In Neon → Computes, set the maximum compute size to 0.25 CU.
