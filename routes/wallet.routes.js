@@ -11,20 +11,33 @@ const router = express.Router();
 
 // --- Customer-facing ---
 
-// Cashback balance + history (earned, used at checkout, returned).
+// Cashback balance + ledger (EARNED / USED / RETURNED / EXPIRED …) and
+// when the oldest cashback expires. Cashback is closed-loop: it can only
+// pay for purchases (up to maxPercent of a price) — no endpoint sends,
+// withdraws or pays it out.
 router.get('/wallet/cashback', requireCustomerAuth, async (req, res) => {
   try {
-    const [c, entries, settings] = await Promise.all([
-      prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { cashbackBalance: true } }),
-      prisma.cashbackEntry.findMany({ where: { customerId: req.customer.customerId }, orderBy: { createdAt: 'desc' }, take: 30 }),
-      require('../lib/vtpass').getSettings(),
-    ]);
-    res.json({ balance: Number(c?.cashbackBalance || 0), maxPercent: Number(settings.cashbackUseMaxPercent ?? 20), separate: settings.cashbackSeparate !== false, entries: entries.map((e) => ({ id: e.id, amount: Number(e.amount), note: e.note, createdAt: e.createdAt })) });
+    const settings = await require('../lib/vtpass').getSettings();
+    const cb = require('../lib/cashback');
+    const s = await cb.summary(req.customer.customerId, settings);
+    res.json({
+      balance: s.balanceKobo / 100,
+      maxPercent: cb.maxPercent(settings),
+      expiryDays: cb.expiryDays(settings),
+      oldestExpiry: s.oldestExpiry,
+      oldestExpiryAmount: s.oldestExpiryKobo / 100,
+      separate: cb.separate(settings),
+      rules: `Use cashback to pay up to ${cb.maxPercent(settings)}% of a purchase. Cashback cannot be sent or withdrawn. It expires after ${cb.expiryDays(settings)} days.`,
+      entries: s.entries.map((e) => ({ id: e.id, type: e.type, amount: e.amount, note: e.note, orderId: e.orderId, expiresAt: e.expiresAt, createdAt: e.createdAt })),
+    });
   } catch (error) {
     console.error('GET /wallet/cashback failed:', error);
     res.status(500).json({ error: 'Could not load your cashback.' });
   }
 });
+
+// Cashback is not money that can leave (lib/cashback.js refuseOut).
+router.post('/wallet/cashback/:action', requireCustomerAuth, (req, res) => res.status(400).json({ error: 'Cashback can only be used to pay for purchases. It can’t be sent, withdrawn or paid out.', code: 'CASHBACK_NOT_CASH' }));
 
 router.get('/wallet/balance', requireCustomerAuth, async (req, res) => {
   try {
@@ -245,7 +258,7 @@ router.get('/wallet/lookup', requireCustomerAuth, async (req, res) => {
 // Wallet-to-wallet transfer between two ZappiPay customers. Fully
 // internal — no external payment provider involved, so this works
 // regardless of the Monnify integration's status.
-router.post('/wallet/transfer', requireCustomerAuth, require('../lib/features').gate('sendMoney'), async (req, res) => {
+router.post('/wallet/transfer', requireCustomerAuth, require('../lib/cashback').refuseOut, require('../lib/features').gate('sendMoney'), async (req, res) => {
   try {
     const { identifier, amount, note } = req.body;
     const amountNum = Number(amount);

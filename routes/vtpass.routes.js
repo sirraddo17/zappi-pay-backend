@@ -387,7 +387,8 @@ router.get('/admin/vtpass/balance', requireAdminAuth, async (req, res) => {
     const settings = await getSettings();
     const data = await vtpassRequest('GET', '/balance');
     const balance = Number(data?.contents?.balance ?? data?.content?.balance ?? data?.balance);
-    res.json({ mode: settings.vtpassMode, balance: Number.isFinite(balance) ? balance : null });
+    const alertBelow = Number(settings.vtpassLowBalanceAlert ?? 20000);
+    res.json({ mode: settings.vtpassMode, balance: Number.isFinite(balance) ? balance : null, alertBelow, low: Number.isFinite(balance) && alertBelow > 0 && balance < alertBelow });
   } catch (error) {
     res.json({ mode: null, balance: null, error: error.message });
   }
@@ -419,18 +420,29 @@ router.get('/admin/vtpass-codes', requireAdminAuth, (req, res) => {
 router.get('/admin/orders', requireAdminAuth, async (req, res) => {
   try {
     const status = ORDER_STATUSES.includes(String(req.query.status || '').toUpperCase()) ? String(req.query.status).toUpperCase() : null;
-    const [orders, total, pending, success, failed, revenue] = await Promise.all([
+    // live (default) = real orders only; test = sandbox/test orders; all = both.
+    const mode = ['live', 'test', 'all'].includes(String(req.query.mode || '')) ? String(req.query.mode) : 'live';
+    const scope = mode === 'all' ? {} : { isTest: mode === 'test' };
+    const counts = async (sc) => {
+      const [total, pending, success, failed, revenue] = await Promise.all([
+        prisma.order.count({ where: sc }),
+        prisma.order.count({ where: { ...sc, status: 'PENDING' } }),
+        prisma.order.count({ where: { ...sc, status: 'SUCCESS' } }),
+        prisma.order.count({ where: { ...sc, status: 'FAILED' } }),
+        prisma.order.aggregate({ where: { ...sc, status: 'SUCCESS' }, _sum: { amount: true } }).catch(() => null),
+      ]);
+      return { total, PENDING: pending, SUCCESS: success, FAILED: failed, revenue: Number(revenue?._sum?.amount || 0) };
+    };
+    const [orders, c, live, test] = await Promise.all([
       prisma.order.findMany({
-        where: status ? { status } : {},
+        where: { ...scope, ...(status ? { status } : {}) },
         orderBy: { createdAt: 'desc' },
         take: 300,
         include: { customer: { select: { id: true, name: true, phone: true } } },
       }),
-      prisma.order.count(),
-      prisma.order.count({ where: { status: 'PENDING' } }),
-      prisma.order.count({ where: { status: 'SUCCESS' } }),
-      prisma.order.count({ where: { status: 'FAILED' } }),
-      prisma.order.aggregate({ where: { status: 'SUCCESS' }, _sum: { amount: true } }).catch(() => null),
+      counts(scope),
+      mode === 'live' ? null : counts({ isTest: false }),
+      mode === 'test' ? null : counts({ isTest: true }),
     ]);
     res.json({
       // pinsGiven: VTpass already handed out PINs/token — never refund without checking.
@@ -440,13 +452,47 @@ router.get('/admin/orders', requireAdminAuth, async (req, res) => {
         // Spell out VTpass codes: "027 — IP not whitelisted … Fix: …"
         const d = o.status === 'FAILED' && !String(o.provider || '').startsWith('ck:') ? require('../lib/vtpassCodes').describe(/^\d{1,3}$/.test(String(o.vtpassStatus || '')) ? o.vtpassStatus : p) : null;
         if (d && d.text) reason = `${d.code} ${d.text} — ${d.meaning}${d.fix ? ` Fix: ${d.fix}` : ''}`;
-        return { ...o, pinsGiven: hasDeliverable(o.responsePayload), held: o.vtpassStatus === HELD, vtpassReason: reason, vtpassWho: d?.who || null };
+        const row = { ...o, pinsGiven: hasDeliverable(o.responsePayload), held: o.vtpassStatus === HELD, vtpassReason: reason, vtpassWho: d?.who || null };
+        // Support staff don't see what the supplier charged us (pricing).
+        if (req.adminRole === 'SUPPORT') {
+          delete row.costAmount;
+          delete row.shopCommission;
+          if (row.responsePayload?.content?.transactions) row.responsePayload = { ...row.responsePayload, content: { ...row.responsePayload.content, transactions: { ...row.responsePayload.content.transactions, commission: undefined, unit_price: undefined, total_amount: undefined } } };
+        }
+        return row;
       }),
-      counts: { total, PENDING: pending, SUCCESS: success, FAILED: failed, revenue: Number(revenue?._sum?.amount || 0) },
+      mode,
+      counts: c,
+      liveCounts: live || c,
+      testCounts: test || c,
     });
   } catch (error) {
     console.error('GET /admin/orders failed:', error);
     res.status(500).json({ error: 'Could not load orders.' });
+  }
+});
+
+// Owner: mark every order before a date (e.g. the day VTpass went live)
+// as a test order, or one order by id. Test orders are left out of
+// earnings, stats and the rewards cap.
+router.post('/admin/orders/mark-test', requireAdminAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const isTest = b.isTest !== false;
+    if (b.orderId) {
+      const r = await prisma.order.updateMany({ where: { id: String(b.orderId) }, data: { isTest } });
+      return res.json({ updated: r.count });
+    }
+    const before = new Date(b.before);
+    if (Number.isNaN(before.getTime())) return res.status(400).json({ error: 'Pick a date.' });
+    if (before > new Date()) return res.status(400).json({ error: 'The date can’t be in the future.' });
+    const r = await prisma.order.updateMany({ where: { createdAt: { lt: before }, isTest: !isTest }, data: { isTest } });
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'ORDERS_MARKED_TEST', details: { before, isTest, count: r.count } } }).catch(() => {});
+    require('../lib/rewardCap').invalidate();
+    res.json({ updated: r.count });
+  } catch (error) {
+    console.error('POST /admin/orders/mark-test failed:', error);
+    res.status(500).json({ error: 'Could not update orders.' });
   }
 });
 

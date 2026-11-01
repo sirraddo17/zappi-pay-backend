@@ -101,7 +101,7 @@ router.get('/feedback/should-ask', requireCustomerAuth, async (req, res) => {
     if (!s.feedbackPromptEnabled) return res.json({ ask: false });
     const last = await prisma.feedback.findFirst({ where: { customerId: req.customer.customerId }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } });
     const ask = !last || Date.now() - new Date(last.createdAt).getTime() > 14 * 24 * 3600 * 1000;
-    res.json({ ask, referralEnabled: s.referralEnabled, referralBonus: Number(s.referralBonusAmount || 0) });
+    res.json({ ask, referralEnabled: s.referralEnabled, referralBonus: Number(require('../lib/referralPlus').effective(s).bonus || s.referralBonusAmount || 0), referralRule: require('../lib/referralPlus').ruleText(s) });
   } catch (error) {
     res.json({ ask: false });
   }

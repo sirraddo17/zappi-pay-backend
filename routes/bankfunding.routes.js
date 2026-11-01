@@ -8,10 +8,16 @@ const nomba = require('../lib/nomba');
 const { visibleReservedAccounts } = require('../lib/funding');
 
 // Hides banks the admin has paused (network problems) and says how many.
-async function shown(accounts) {
+// One name format on every provider in the app: "ZAPPI PAY / Customer
+// Name". Banks show their own version to the sender (e.g. "SIRRADDO/…"
+// or a shortened name) — that is kept as bankShowsName so customers
+// aren't surprised when they transfer.
+const titleName = (n) => String(n || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase());
+async function shown(accounts, customerName) {
   if (!Array.isArray(accounts)) return { accounts: accounts || null, pausedCount: 0 };
   const visible = visibleReservedAccounts(accounts, await getSettings());
-  return { accounts: visible, pausedCount: accounts.length - visible.length };
+  const displayName = customerName ? `ZAPPI PAY / ${titleName(customerName)}` : null;
+  return { accounts: visible.map((a) => ({ ...a, displayName: displayName || a.accountName, bankShowsName: a.accountName })), pausedCount: accounts.length - visible.length };
 }
 
 // Automatic wallet funding by bank transfer: each customer gets their
@@ -55,9 +61,9 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       // Already has (Monnify) account numbers: can add a GTBank one too.
       squadAddable: p.squad && !customer.squadAccountRef && Array.isArray(customer.bankAccounts) && customer.bankAccounts.length > 0,
       nombaAddable: p.nomba && !customer.nombaAccountRef && Array.isArray(customer.bankAccounts) && customer.bankAccounts.length > 0,
-      ...(await shown(customer.bankAccounts)),
+      ...(await shown(customer.bankAccounts, customer.name)),
       kycType: customer.kycType || null,
-      idMatch: Boolean((await getSettings()).idMatchEnabled),
+      idMatch: await require('../lib/idNumber').mustVerify(await getSettings()),
       hasDob: Boolean(customer.dateOfBirth),
       ...(await feeInfo()),
     });
@@ -79,13 +85,12 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       return await createNombaAccount(req, res);
     }
     if (!(await monnifyOn())) return res.status(503).json({ error: 'Bank transfer funding is not available right now. Please use another way to fund.' });
-    const idType = String(req.body.idType || '').toUpperCase();
-    const idNumber = String(req.body.idNumber || '').replace(/\D/g, '');
-    if (!['BVN', 'NIN'].includes(idType)) return res.status(400).json({ error: 'Choose BVN or NIN.' });
-    if (idNumber.length !== 11) return res.status(400).json({ error: `Your ${idType} must be 11 digits.` });
+    const idc = require('../lib/idNumber').check(req.body.idType, req.body.idNumber);
+    if (idc.error) return res.status(400).json({ error: idc.error });
+    const { type: idType, number: idNumber } = idc;
 
     const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
-    if (customer.bankAccounts) return res.json({ ...(await shown(customer.bankAccounts)), kycType: customer.kycType });
+    if (customer.bankAccounts) return res.json({ ...(await shown(customer.bankAccounts, customer.name)), kycType: customer.kycType });
 
     // One BVN/NIN = one ZAPPI PAY account. Only a keyed hash is kept,
     // never the number. Claim it first so two sign-ups can't race.
@@ -98,7 +103,7 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     // Name + date of birth must match the BVN/NIN (when switched on).
     const settings = await getSettings();
     let verifiedDob = null;
-    if (settings.idMatchEnabled && !(customer.kycVerifiedAt && customer.kycHash === kycHash)) {
+    if ((await require('../lib/idNumber').mustVerify(settings)) && !(customer.kycVerifiedAt && customer.kycHash === kycHash)) {
       if (!req.body.consent) return res.status(400).json({ error: `Tick the box to let us check your name and date of birth with your ${idType}.`, code: 'CONSENT_NEEDED' });
       let dob = customer.dateOfBirth;
       if (!dob) {
@@ -135,9 +140,9 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     }
     // Invited friend just verified: welcome cashback (lib/referralPlus.js).
     require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
-    res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: Boolean(verifiedDob) });
+    res.status(201).json({ ...(await shown(updated.bankAccounts, updated.name)), kycType: updated.kycType, verified: Boolean(verifiedDob) });
   } catch (error) {
-    console.error('POST /wallet/bank-account failed:', error.message, JSON.stringify(error.body || {}));
+    console.error('POST /wallet/bank-account failed:', require('../lib/idNumber').scrub(error.message), require('../lib/idNumber').scrub(error.body || {}));
     if (error instanceof monnify.MonnifyError && error.status && error.status < 500) {
       return res.status(400).json({ error: `Could not create your account: ${error.message}` });
     }
@@ -218,10 +223,11 @@ router.post('/webhooks/monnify', async (req, res) => {
 // and checks it strictly against name, date of birth and phone.
 async function createSquadAccount(req, res) {
   const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
-  if (customer.squadAccountRef) return res.json({ ...(await shown(customer.bankAccounts)), kycType: customer.kycType });
-  const bvn = String(req.body.idNumber || req.body.bvn || '').replace(/\D/g, '');
+  if (customer.squadAccountRef) return res.json({ ...(await shown(customer.bankAccounts, customer.name)), kycType: customer.kycType });
   if (String(req.body.idType || 'BVN').toUpperCase() !== 'BVN') return res.status(400).json({ error: 'This account needs your BVN.' });
-  if (bvn.length !== 11) return res.status(400).json({ error: 'Your BVN must be 11 digits.' });
+  const idc = require('../lib/idNumber').check('BVN', req.body.idNumber || req.body.bvn);
+  if (idc.error) return res.status(400).json({ error: idc.error });
+  const bvn = idc.number;
   const gender = String(req.body.gender || '').toLowerCase();
   if (!['male', 'female'].includes(gender)) return res.status(400).json({ error: 'Choose male or female (as on your BVN).', code: 'GENDER_NEEDED' });
   const address = String(req.body.address || '').trim();
@@ -255,24 +261,23 @@ async function createSquadAccount(req, res) {
     updated = await squad.createVirtualAccount(customer, { bvn, dateOfBirth: dob, gender, address, phone });
   } catch (error) {
     if (claimed) await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
-    console.error('Squad account failed:', error.message, JSON.stringify(error.body || {}));
+    console.error('Squad account failed:', require('../lib/idNumber').scrub(error.message), require('../lib/idNumber').scrub(error.body || {}));
     if (error instanceof squad.SquadError && error.status && error.status < 500) return res.status(400).json({ error: `Could not create your account: ${error.message}` });
     return res.status(502).json({ error: 'Could not create your account number right now. Please try again shortly.' });
   }
   // Squad accepted the BVN with this name, date of birth and phone → verified.
   await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: customer.kycVerifiedAt || new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: dob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
   require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
-  return res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: true });
+  return res.status(201).json({ ...(await shown(updated.bankAccounts, updated.name)), kycType: updated.kycType, verified: true });
 }
 
 // Nomba account number. Takes BVN or NIN (like Monnify).
 async function createNombaAccount(req, res) {
   const customer = await prisma.customer.findUnique({ where: { id: req.customer.customerId } });
-  if (customer.nombaAccountRef) return res.json({ ...(await shown(customer.bankAccounts)), kycType: customer.kycType });
-  const idType = String(req.body.idType || '').toUpperCase();
-  const idNumber = String(req.body.idNumber || '').replace(/\D/g, '');
-  if (!['BVN', 'NIN'].includes(idType)) return res.status(400).json({ error: 'Choose BVN or NIN.' });
-  if (idNumber.length !== 11) return res.status(400).json({ error: `Your ${idType} must be 11 digits.` });
+  if (customer.nombaAccountRef) return res.json({ ...(await shown(customer.bankAccounts, customer.name)), kycType: customer.kycType });
+  const idc = require('../lib/idNumber').check(req.body.idType, req.body.idNumber);
+  if (idc.error) return res.status(400).json({ error: idc.error });
+  const { type: idType, number: idNumber } = idc;
 
   const kycHash = identityHash(idType, idNumber);
   const other = await prisma.customer.findFirst({ where: { kycHash, NOT: { id: customer.id } }, select: { id: true } });
@@ -281,7 +286,7 @@ async function createNombaAccount(req, res) {
   const settings = await getSettings();
   let verifiedDob = null;
   // Already passed with this same BVN/NIN → no need to check (or pay) again.
-  if (settings.idMatchEnabled && !(customer.kycVerifiedAt && customer.kycHash === kycHash)) {
+  if ((await require('../lib/idNumber').mustVerify(settings)) && !(customer.kycVerifiedAt && customer.kycHash === kycHash)) {
     if (!req.body.consent) return res.status(400).json({ error: `Tick the box to let us check your name and date of birth with your ${idType}.`, code: 'CONSENT_NEEDED' });
     let dob = customer.dateOfBirth;
     if (!dob) {
@@ -313,7 +318,7 @@ async function createNombaAccount(req, res) {
     updated = await nomba.createVirtualAccount(customer, { idType, idNumber });
   } catch (error) {
     if (claimed) await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
-    console.error('Nomba account failed:', error.message, JSON.stringify(error.body || {}));
+    console.error('Nomba account failed:', require('../lib/idNumber').scrub(error.message), require('../lib/idNumber').scrub(error.body || {}));
     if (error instanceof nomba.NombaError && error.status && error.status < 500) return res.status(400).json({ error: `Could not create your account: ${error.message}` });
     return res.status(502).json({ error: 'Could not create your account number right now. Please try again shortly.' });
   }
@@ -321,7 +326,7 @@ async function createNombaAccount(req, res) {
     await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: customer.kycVerifiedAt || new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
   }
   require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
-  return res.status(201).json({ ...(await shown(updated.bankAccounts)), kycType: updated.kycType, verified: Boolean(verifiedDob) });
+  return res.status(201).json({ ...(await shown(updated.bankAccounts, updated.name)), kycType: updated.kycType, verified: Boolean(verifiedDob) });
 }
 
 // Nomba → us: money into an account number, or a transfer result.

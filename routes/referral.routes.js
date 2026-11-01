@@ -18,6 +18,7 @@ router.get('/referrals/info', async (req, res) => {
       minPurchase: Number(settings.referralMinPurchase),
       friendFunded: Boolean(settings.rewardSplitEnabled),
       spendTarget: eff.target,
+      ruleText: plus.ruleText(settings),
       welcomeBonus: settings.cashbackSeparate ? Number(settings.referralWelcomeBonus || 0) : 0,
       boostUntil: eff.boost?.until || null,
     };

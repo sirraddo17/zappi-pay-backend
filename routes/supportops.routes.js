@@ -140,7 +140,7 @@ router.post('/admin/customers/:id/grant-reward', requireAdminAuth, async (req, r
     const settings = await require('../lib/vtpass').getSettings();
     const note = `Added by ZAPPI PAY support: ${reason}`.slice(0, 200);
     await prisma.$transaction(async (tx) => {
-      if (kind === 'CASHBACK') await require('../lib/cashback').creditEarned(tx, settings, { customerId: c.id, amount, note });
+      if (kind === 'CASHBACK') await require('../lib/cashback').creditEarned(tx, settings, { customerId: c.id, amount, note, type: 'ADJUSTMENT' });
       if (kind === 'REFERRAL') {
         await tx.customer.update({ where: { id: c.id }, data: { walletBalance: { increment: amount } } });
         await tx.walletTransaction.create({ data: { customerId: c.id, type: 'REFERRAL_BONUS', amount, status: 'APPROVED', note, reviewedByAdminId: req.admin.adminId, reviewedAt: new Date() } });

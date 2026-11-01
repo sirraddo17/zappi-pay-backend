@@ -3,7 +3,6 @@ const prisma = require('../lib/prisma');
 const { requireAdminAuth } = require('../lib/auth');
 const { getSettings, invalidateSettings } = require('../lib/vtpass');
 const split = require('../lib/rewardSplit');
-const { earningsReport } = require('../lib/earnings');
 
 // Owner settings for the rewards split (owner-only: not in
 // lib/staffAccess.js's support list).
@@ -16,30 +15,41 @@ router.get('/admin/reward-split', requireAdminAuth, async (req, res) => {
     const s = await getSettings();
     const c = split.config(s);
     const on = await split.programmes(s, { shopAgentId: 'x', customerId: 'y' });
-    const now = new Date();
-    const ymd = new Date(now.getTime() + LAGOS).toISOString().slice(0, 10);
-    const monthStart = new Date(new Date(`${ymd.slice(0, 8)}01T00:00:00.000Z`).getTime() - LAGOS);
-    const [report, discounts, pools, waiting] = await Promise.all([
-      earningsReport({ gte: monthStart, lt: now }).catch(() => null),
-      prisma.order.aggregate({ where: { status: 'SUCCESS', createdAt: { gte: monthStart } }, _sum: { discountAmount: true, promoDiscount: true } }).catch(() => null),
+    const cap = require('../lib/rewardCap');
+    const { toKobo, nairaNum } = require('../lib/money');
+    const m = await cap.month();
+    const range = { gte: m.from };
+    const [pools, waiting, used, liability, testOrders] = await Promise.all([
       split.balances(),
       prisma.customer.count({ where: { referredById: { not: null }, referralBonusPaidAt: null, deletedAt: null } }).catch(() => 0),
+      prisma.cashbackEntry.findMany({ where: { createdAt: range, OR: [{ type: 'USED' }, { type: null, amount: { lt: 0 } }] }, select: { amount: true, amountKobo: true } }).catch(() => []),
+      prisma.customer.aggregate({ where: { deletedAt: null }, _sum: { cashbackBalance: true } }).catch(() => null),
+      prisma.order.aggregate({ where: { isTest: true, status: 'SUCCESS', createdAt: range }, _count: true, _sum: { amount: true } }).catch(() => null),
     ]);
-    const given = report ? Object.values(report.rewardsByType || {}).reduce((a, b) => a + b, 0) : 0;
-    const disc = Number(discounts?._sum?.discountAmount || 0) + Number(discounts?._sum?.promoDiscount || 0);
+    const usedK = used.reduce((a, e) => a + Math.abs(e.amountKobo ?? toKobo(e.amount)), 0);
     res.json({
       config: c,
       programmes: split.KEYS.map((k) => ({ key: k, label: split.LABELS[k], on: on[k], share: c.shares[k], pool: split.POOLS.includes(k) })),
       pools,
       waitingReferrals: waiting,
-      month: report ? {
-        // What you earn on purchases before rewards (markup after
-        // discounts + VTpass commission), plus the discounts themselves.
-        earned: r2(Number(report.income.purchaseMarkup || 0) + Number(report.income.vtpassCommission || 0) + disc),
-        discounts: r2(disc),
-        rewardsPaid: r2(given),
-        rewardsByType: report.rewardsByType,
-      } : null,
+      // Rewards counted when EARNED, against real (non-test) earnings.
+      month: {
+        from: m.from,
+        earned: nairaNum(m.earnedKobo),
+        rewardsEarned: nairaNum(m.rewardsKobo),
+        givenPct: m.givenPctOfEarnings,
+        cap: nairaNum(m.capKobo),
+        capPercent: m.capPercent,
+        capUsedPct: m.usedPct,
+        capReached: m.reached,
+        rewardsByType: m.byType,
+        cashbackUsed: nairaNum(usedK),
+        cashbackLiability: Number(liability?._sum?.cashbackBalance || 0),
+        testOrders: { count: testOrders?._count || 0, amount: Number(testOrders?._sum?.amount || 0) },
+        // Kept for older screens:
+        rewardsPaid: nairaNum(m.rewardsKobo),
+        discounts: 0,
+      },
     });
   } catch (error) {
     console.error('GET /admin/reward-split failed:', error);

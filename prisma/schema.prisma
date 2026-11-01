@@ -410,6 +410,9 @@ model Order {
   vtpassRequestId String?      @unique
   vtpassStatus    String?
   status          OrderStatus  @default(PENDING)
+  // Test order (supplier on sandbox keys, or marked as test by the owner):
+  // left out of earnings, stats and the rewards caps, and earns no rewards.
+  isTest          Boolean      @default(false)
   responsePayload Json?
   // Last time the order was reported to VTpass support by email.
   vtpassEscalatedAt  DateTime?
@@ -419,6 +422,7 @@ model Order {
 
   @@index([customerId, createdAt])
   @@index([shopAgentId, createdAt])
+  @@index([isTest, status, createdAt])
 }
 
 enum TicketStatus {
@@ -615,6 +619,8 @@ model Settings {
   airtimeToCashMinAmount  Decimal @default(500) @db.Decimal(14, 2)
   airtimeToCashMaxAmount  Decimal @default(50000) @db.Decimal(14, 2)
   electricityMinAmount    Decimal @default(1000) @db.Decimal(14, 2) // most DisCos reject less
+  // Owner is alerted when the VTpass wallet falls below this (₦, 0 = only the days-left warning).
+  vtpassLowBalanceAlert   Decimal @default(20000) @db.Decimal(14, 2)
   // "Service is back" notices to customers whose transaction failed on our/partner side.
   recoveryNoticesEnabled  Boolean @default(true)
   airtimeToCashNumbers    Json    @default("{}")
@@ -747,6 +753,9 @@ model Settings {
   monnifyWalletAccount  String?
   // Owner's own accounts per partner (fund / settlement) — lib/partnerAccounts.js
   partnerAccounts       Json?
+  // App subscriptions and plans (domain, server, database, AI…) with
+  // renewal dates — lib/subscriptions.js. Null = never saved (starter list).
+  subscriptions         Json?
   // Nightly database backups (lib/backup.js); the file password is the
   // BACKUP_PASSWORD env var, never stored here.
   backupEmails          String[] @default([])
@@ -779,6 +788,13 @@ model Settings {
   // On: cashback goes to its own balance (used at checkout). Off: old way, straight into the wallet.
   cashbackSeparate         Boolean @default(true)
   cashbackUseMaxPercent    Decimal @default(20) @db.Decimal(5, 2)
+  // Cashback expires this many days after it is earned (oldest used first).
+  cashbackExpiryDays       Int     @default(90)
+  // Monthly rewards cap: rewards EARNED in a month may be at most this %
+  // of that month's real (non-test) earnings. null = the rewards split %.
+  rewardMonthlyCapPercent  Int?
+  // Optional cap on rewards one customer can earn in a month (₦, 0 = none).
+  rewardUserMonthlyCap     Decimal @default(0) @db.Decimal(14, 2)
   supportWhatsapp          String?
   // Business bank account shown to customers for manual funding
   // (they transfer, then submit the reference for admin approval).
@@ -1685,15 +1701,30 @@ model Celebration {
 
 // Cashback balance history: + earned on a purchase, − used at checkout,
 // + returned when that purchase is refunded.
+// Ledger rules (lib/cashback.js): rows are never edited — a correction is
+// a new row. type: EARNED (after a successful order) | USED (at checkout)
+// | RETURNED (order failed: the exact cashback used comes back) |
+// EXPIRED | ADJUSTMENT (admin / partial refund) | REVERSED (earned
+// cashback taken back when a delivered order is later refunded).
+// amountKobo is the exact amount in kobo (+ in, − out); `amount` keeps the
+// same value in naira for older screens. One order can only EARN, USE,
+// RETURN… once (unique orderId + type). Rows before the ledger have no type.
 model CashbackEntry {
-  id         String   @id @default(cuid())
-  customerId String
-  amount     Decimal  @db.Decimal(14, 2)
-  orderId    String?
-  note       String?
-  createdAt  DateTime @default(now())
+  id               String    @id @default(cuid())
+  customerId       String
+  amount           Decimal   @db.Decimal(14, 2)
+  amountKobo       Int?
+  balanceAfterKobo Int?
+  type             String?
+  orderId          String?
+  reference        String?   @unique
+  expiresAt        DateTime?
+  note             String?
+  createdAt        DateTime  @default(now())
 
+  @@unique([orderId, type])
   @@index([customerId, createdAt])
+  @@index([type, createdAt])
 }
 
 // ---------------- Ajo Circle (rotating group contributions) ----------------

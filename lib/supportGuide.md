@@ -93,6 +93,10 @@ Orders are handled in **Admin → Orders**. A failed order is refunded to the wa
 
 **Scheduled top-ups and other requests.** On the customer's page, **🧰 Support tools** shows each scheduled top-up with its next run, failed runs and last error. Anyone can **Pause** one that keeps failing; the owner can **Resume** or **Delete**. A complaint that came by WhatsApp, email or phone goes in as a ticket with **Log a complaint as a ticket**, so it's tracked in Support. The owner can also set a **daily spending limit** for one customer (for example a verified agent) and **give a reward that didn't arrive** (cashback, referral bonus or loyalty points), each with a reason.
 
+**"My cashback is missing / I want to withdraw my cashback."** Open Wallet → 🎁 Cashback on the customer's page or ask them to: the history shows every EARNED, USED, RETURNED and EXPIRED line. Cashback is earned only after a purchase succeeds, can pay up to 20% of a purchase, expires after 90 days (oldest first) and can never be sent or withdrawn — explain that kindly. If a purchase failed, the exact cashback used comes back on its own (a RETURNED line). If a reward is really missing, the owner adds it with Support tools → give a missing reward.
+
+> Ready reply: "Hi {name}, cashback works like a discount: it can pay up to 20% of a purchase, and it can't be sent or withdrawn. It expires 90 days after you earn it, and the oldest is used first. You can see every line in Wallet → 🎁 Cashback. Thank you for using ZAPPI PAY."
+
 ## Withdrawals and transfers
 
 Send to Bank transfers live in **Admin → Bank Transfers**. The wallet is debited first; a transfer that clearly fails or is reversed is refunded automatically, and a timeout stays processing until the partner confirms, so nothing is paid twice.

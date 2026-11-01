@@ -152,6 +152,11 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - After merging on GitHub, your computer's copy is behind: in **PowerShell** `cd $HOME\zappi-pay-backend; git pull` (and the same for zappi-pay-frontend) before copying a new zip from Claude.
 - Money, wallet, payout, webhook, login and security changes: ask Claude to check the pull request before merging.
 
+## Showing the app or taking screenshots
+
+- Tick **🎭 Demo / screenshot mode** at the bottom of the admin menu. Names, phone numbers, account numbers, keys and test-money balances are hidden on every screen, and Server & Database disappears. Untick it when you're done (it's remembered per device).
+- Still check the Audit Log and Security tab before showing them to anyone.
+
 ## When something is wrong
 
 | Symptom | First check | Fix |
@@ -163,3 +168,10 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 | Frontend build failed | Vercel → Deployments → Build Logs | Send the error; usually a one-line code fix |
 | `git push` rejected | The message in PowerShell | `git pull` first, then push again (ask for help if it mentions conflicts) |
 | ssh "connection refused/timed out" | RackNerd control panel | Server running? Reboot from the panel |
+
+## Subscriptions and renewals
+
+- Admin → **🧾 Subscriptions** lists every plan the app runs on (domain, VPS + fixed IP, Neon, Vercel, AI credits, email, cron, GitHub token, Google Play) with cost, period and next renewal date.
+- Fill in the blanks from your receipts (Whogohost domain price and date, RackNerd renewal date, Anthropic credit top-ups) and press **Save**.
+- You get an alert 14, 7, 3, 1 and 0 days before each renewal date, and daily once overdue. Renew the **domain** and the **VPS** first: if either lapses the whole app is offline, and a new VPS means a new IP to whitelist with VTpass, Monnify and Nomba.
+- No passwords, keys or card numbers go on this page.

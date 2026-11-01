@@ -93,6 +93,8 @@ const VIEWS = {
 const LIST_SELECT = {
   id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true,
   createdAt: true, isAgent: true, deletionRequestedAt: true, deletedAt: true,
+  // KYC status only (the type of ID used and if name/DOB were checked) — never the number.
+  kycType: true, kycVerifiedAt: true,
 };
 
 const PAGE = 50;

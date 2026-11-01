@@ -64,7 +64,7 @@ router.get('/wallet/bank-transfer/lookup', requireCustomerAuth, async (req, res)
   }
 });
 
-router.post('/wallet/bank-transfer', requireCustomerAuth, async (req, res) => {
+router.post('/wallet/bank-transfer', requireCustomerAuth, require('../lib/cashback').refuseOut, async (req, res) => {
   try {
     const { bankCode, accountNumber, amount, narration } = req.body || {};
     const cleanNumber = String(accountNumber || '').replace(/\D/g, '');

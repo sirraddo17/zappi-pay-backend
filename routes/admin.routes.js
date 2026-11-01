@@ -49,7 +49,7 @@ router.get('/admin/settings', requireAdminAuth, async (req, res) => {
 router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
   try {
     const { vtpassMode, vtpassApiKey, vtpassSecretKey, vtpassPublicKey, markupPercentByService, markupCapByService, discountPercentByService, minFundingAmount, minPurchaseAmount,
-      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashMaxAmount, airtimeToCashNumbers, electricityMinAmount,
+      airtimeToCashEnabled, airtimeToCashFeePercent, airtimeToCashMinAmount, airtimeToCashMaxAmount, airtimeToCashNumbers, electricityMinAmount, vtpassLowBalanceAlert,
       referralEnabled, referralBonusAmount, referralMinPurchase, referralSpendTarget, referralWelcomeBonus, referralMilestones, referralBoostAmount, referralBoostTarget, referralBoostUntil, referralTickerEnabled, bankFundingFeePercent, bankFundingFeeCap,
       monnifyMode, monnifyApiKey, monnifySecretKey, monnifyContractCode,
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
@@ -145,6 +145,11 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
     if (minFundingAmount !== undefined) data.minFundingAmount = Number(minFundingAmount);
     if (minPurchaseAmount !== undefined) data.minPurchaseAmount = Number(minPurchaseAmount);
+    if (vtpassLowBalanceAlert !== undefined) {
+      const v = Number(vtpassLowBalanceAlert);
+      if (!Number.isFinite(v) || v < 0 || v > 100000000) return res.status(400).json({ error: 'Enter a VTpass low-balance amount between ₦0 and ₦100,000,000.' });
+      data.vtpassLowBalanceAlert = v;
+    }
     if (electricityMinAmount !== undefined) {
       const v = Number(electricityMinAmount);
       if (!Number.isFinite(v) || v < 0 || v > 100000) return res.status(400).json({ error: 'Electricity minimum must be between ₦0 and ₦100,000.' });

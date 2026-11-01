@@ -100,6 +100,8 @@ app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-ba
 // Support staff (role SUPPORT) may only reach customer-care admin routes;
 // everything sensitive needs an owner (lib/staffAccess.js).
 app.use('/api', require('./lib/staffAccess').staffGate);
+// Demo / screenshot mode: masks names, phones, keys… in admin answers.
+app.use(require('./lib/demoMask').middleware);
 app.use('/api', require('./routes/disputes.routes'));
 app.use('/api', escalationsRouter);
 app.use('/api', savingsRouter);
@@ -129,6 +131,8 @@ app.use('/api', require('./routes/flutterwave.routes'));
 app.use('/api', require('./routes/golive.routes'));
 app.use('/api', require('./routes/database.routes'));
 app.use('/api', require('./routes/code.routes'));
+app.use('/api', require('./routes/ledger.routes'));
+app.use('/api', require('./routes/subscriptions.routes'));
 app.use('/api', require('./routes/squad.routes'));
 app.use('/api', require('./routes/nomba.routes'));
 app.use('/api', require('./routes/circles.routes'));
@@ -173,6 +177,7 @@ app.listen(PORT, () => {
   require('./lib/adminRadar').startJobs();
   require('./lib/manualFundingWatch').start();
   require('./lib/dbHealth').start();
+  require('./lib/cashback').startExpiry();
   require('./lib/attackWatch').start();
   require('./lib/festivals').start();
   require('./lib/flutterwave').startSweeper();
