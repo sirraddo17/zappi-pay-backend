@@ -24,6 +24,17 @@ async function shown(accounts, customerName) {
 // own account number; money sent to it lands in their wallet.
 const router = express.Router();
 
+// What the customer sees when a partner refuses to create an account
+// number. Details stay in the server log (scrubbed). Only messages that
+// tell the customer what to fix (details don't match their BVN/NIN) are
+// passed on; everything else gets one friendly line.
+const ACCOUNT_FAILED = 'We couldn’t create your account number. Please try again or contact support.';
+function accountError(message) {
+  const m = String(message || '');
+  if (/don’t match your (BVN|NIN)|don't match your (BVN|NIN)|isn’t fully set up yet/i.test(m)) return m;
+  return ACCOUNT_FAILED;
+}
+
 function identityHash(idType, idNumber) {
   const secret = process.env.KYC_HASH_SECRET || process.env.JWT_SECRET || 'zappipay';
   return require('crypto').createHmac('sha256', secret).update(`${idType}:${idNumber}`).digest('hex');
@@ -144,9 +155,9 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
   } catch (error) {
     console.error('POST /wallet/bank-account failed:', require('../lib/idNumber').scrub(error.message), require('../lib/idNumber').scrub(error.body || {}));
     if (error instanceof monnify.MonnifyError && error.status && error.status < 500) {
-      return res.status(400).json({ error: `Could not create your account: ${error.message}` });
+      return res.status(400).json({ error: accountError(error.message), code: 'ACCOUNT_NOT_CREATED' });
     }
-    res.status(502).json({ error: 'Could not create your account number right now. Please try again shortly.' });
+    res.status(502).json({ error: ACCOUNT_FAILED });
   }
 });
 
@@ -262,8 +273,8 @@ async function createSquadAccount(req, res) {
   } catch (error) {
     if (claimed) await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
     console.error('Squad account failed:', require('../lib/idNumber').scrub(error.message), require('../lib/idNumber').scrub(error.body || {}));
-    if (error instanceof squad.SquadError && error.status && error.status < 500) return res.status(400).json({ error: `Could not create your account: ${error.message}` });
-    return res.status(502).json({ error: 'Could not create your account number right now. Please try again shortly.' });
+    if (error instanceof squad.SquadError && error.status && error.status < 500) return res.status(400).json({ error: accountError(error.message), code: 'ACCOUNT_NOT_CREATED' });
+    return res.status(502).json({ error: ACCOUNT_FAILED });
   }
   // Squad accepted the BVN with this name, date of birth and phone → verified.
   await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: customer.kycVerifiedAt || new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: dob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
@@ -319,8 +330,8 @@ async function createNombaAccount(req, res) {
   } catch (error) {
     if (claimed) await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
     console.error('Nomba account failed:', require('../lib/idNumber').scrub(error.message), require('../lib/idNumber').scrub(error.body || {}));
-    if (error instanceof nomba.NombaError && error.status && error.status < 500) return res.status(400).json({ error: `Could not create your account: ${error.message}` });
-    return res.status(502).json({ error: 'Could not create your account number right now. Please try again shortly.' });
+    if (error instanceof nomba.NombaError && error.status && error.status < 500) return res.status(400).json({ error: accountError(error.message), code: 'ACCOUNT_NOT_CREATED' });
+    return res.status(502).json({ error: ACCOUNT_FAILED });
   }
   if (verifiedDob) {
     await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: customer.kycVerifiedAt || new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));

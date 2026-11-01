@@ -100,3 +100,12 @@ test('Nov: a BVN/NIN typed into a ticket or the assistant is masked; phones and 
   assert.match(ai, /maskIdsInText\(m\.content/);
   assert.match(fs.readFileSync(path.join(ROOT, 'routes', 'support.routes.js'), 'utf8'), /maskIdsInText\(message\.trim\(\)\)/);
 });
+
+test('Nov: partner errors on account numbers show one friendly line (details only in the log)', () => {
+  const r = fs.readFileSync(path.join(ROOT, 'routes', 'bankfunding.routes.js'), 'utf8');
+  assert.doesNotMatch(r, /Could not create your account: \$\{error\.message\}/, 'raw partner message no longer shown');
+  assert.match(r, /We couldn’t create your account number\. Please try again or contact support\./);
+  assert.equal((r.match(/accountError\(error\.message\)/g) || []).length, 3, 'Monnify, Squad and Nomba');
+  // Squad gets a unique ID per customer (our user ID), never the phone or BVN.
+  assert.match(fs.readFileSync(path.join(ROOT, 'lib', 'squad.js'), 'utf8'), /return `ZP\$\{String\(customer\.id\)/);
+});
