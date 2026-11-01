@@ -367,6 +367,18 @@ router.post('/webhooks/nomba', async (req, res) => {
       }
       return res.json({ ok: true });
     }
+    // Anything else Nomba tells us (payment_failed, payment_reversal…) is
+    // written to the server log with the reason, so failed inflows can be
+    // explained (pm2 logs → "Nomba webhook event"). Numbers are masked.
+    if (ev && ev !== 'payment_success') {
+      const d = req.body?.data || {};
+      console.warn('Nomba webhook event:', ev, require('../lib/idNumber').scrub({
+        at: new Date().toISOString(), amount: t.transactionAmount, accountNumber: t.aliasAccountNumber, accountRef: t.aliasAccountReference,
+        transactionId: t.transactionId, type: t.type, status: t.status, responseCode: t.responseCode || d.responseCode,
+        reason: t.responseMessage || t.statusMessage || t.narration || d.reason || d.message || req.body?.message || null,
+        sender: d.customer?.bankName || t.senderBankName || null,
+      }));
+    }
     if (ev === 'payment_success' && (t.aliasAccountReference || t.aliasAccountNumber)) {
       let accountRef = t.aliasAccountReference;
       if (!accountRef && t.aliasAccountNumber) {

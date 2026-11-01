@@ -109,3 +109,11 @@ test('Nov: partner errors on account numbers show one friendly line (details onl
   // Squad gets a unique ID per customer (our user ID), never the phone or BVN.
   assert.match(fs.readFileSync(path.join(ROOT, 'lib', 'squad.js'), 'utf8'), /return `ZP\$\{String\(customer\.id\)/);
 });
+
+test('Nov: Nomba account numbers accept any amount (no expectedAmount), failed events are logged', () => {
+  const n = fs.readFileSync(path.join(ROOT, 'lib', 'nomba.js'), 'utf8');
+  const body = n.slice(n.indexOf("api('POST', '/v1/accounts/virtual'"), n.indexOf('}));', n.indexOf("api('POST', '/v1/accounts/virtual'")));
+  assert.doesNotMatch(body, /expectedAmount|restrictInflowToAccountName/);
+  assert.match(body, /accountRef,\s*accountName: name/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'routes', 'bankfunding.routes.js'), 'utf8'), /Nomba webhook event:/);
+});
