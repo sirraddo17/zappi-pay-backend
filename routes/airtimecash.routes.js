@@ -34,7 +34,7 @@ router.get('/airtime-cash/config', requireCustomerAuth, async (req, res) => {
     const s = await getSettings();
     const numbers = s.airtimeToCashNumbers || {};
     res.json({
-      enabled: s.airtimeToCashEnabled,
+      enabled: require('../lib/features').isOnFor(s, 'airtimeToCash', req.customer.customerId),
       feePercent: Number(s.airtimeToCashFeePercent),
       minAmount: Number(s.airtimeToCashMinAmount),
       maxAmount: maxOf(s),
@@ -73,7 +73,7 @@ router.post('/airtime-cash/requests', requireCustomerAuth, async (req, res) => {
 
     const s = await getSettings();
     const numbers = s.airtimeToCashNumbers || {};
-    if (!s.airtimeToCashEnabled) {
+    if (!require('../lib/features').isOnFor(s, 'airtimeToCash', req.customer.customerId)) {
       return res.status(400).json({ error: 'Airtime to Cash is not available right now.' });
     }
     if (!NETWORKS[network] || !numbers[network]) {

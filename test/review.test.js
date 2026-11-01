@@ -74,3 +74,18 @@ test('fix 11: one account-name format in the app', () => {
   assert.equal((routes.match(/shown\((customer|updated)\.bankAccounts\)/g) || []).length, 0, 'every list passes the customer name');
   assert.match(fs.readFileSync(path.join(ROOT, 'lib', 'nomba.js'), 'utf8'), /`ZAPPI PAY\/\$\{clean\(customer\.name\)\}`/);
 });
+
+test('Nov: Airtime to Cash and Car insurance have their own switches, off by default', () => {
+  const F = require('../lib/features');
+  for (const key of ['airtimeToCash', 'carInsurance']) {
+    const f = F.byKey(key);
+    assert.ok(f, key);
+    assert.equal(F.isOnFor({}, key, 'c1'), false, `${key} off by default`);
+    assert.equal(F.isOnFor({ [f.setting]: true }, key, 'c1'), true, `${key} on for everyone`);
+    assert.equal(F.isOnFor({ featureTestMode: { [key]: true }, featureTesters: [{ id: 'c1' }] }, key, 'c1'), true, 'testers only');
+    assert.equal(F.isOnFor({ featureTestMode: { [key]: true }, featureTesters: [{ id: 'c1' }] }, key, 'c2'), false, 'not for others');
+  }
+  assert.equal(F.byKey('airtimeToCash').setting, 'airtimeToCashEnabled', 'reuses the existing Settings switch');
+  const routes = fs.readFileSync(path.join(ROOT, 'routes', 'vtpass.routes.js'), 'utf8');
+  assert.match(routes, /service === 'INSURANCE' && \(await insuranceOff\(req, res\)\)/, 'insurance purchase blocked while off');
+});

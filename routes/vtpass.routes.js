@@ -103,7 +103,14 @@ router.get('/vtpass/intl/quote', requireCustomerAuth, async (req, res) => {
     res.json({ price: await priceFor(req.customer.customerId, 'INTERNATIONAL', q.baseAmount) });
   } catch (e) { xfail(res, e, 'intl quote'); }
 });
+// Car insurance is behind its own switch (Admin → New features).
+async function insuranceOff(req, res) {
+  const on = require('../lib/features').isOnFor(await getSettings(), 'carInsurance', req.customer.customerId);
+  if (!on) res.status(403).json({ error: 'Car insurance isn’t available right now.', code: 'FEATURE_OFF' });
+  return !on;
+}
 router.get('/vtpass/insurance/plans', requireCustomerAuth, async (req, res) => {
+  if (await insuranceOff(req, res)) return;
   try {
     const plans = await require('../lib/extraServices').insurancePlans();
     const out = [];
@@ -112,6 +119,7 @@ router.get('/vtpass/insurance/plans', requireCustomerAuth, async (req, res) => {
   } catch (e) { xfail(res, e, 'insurance plans'); }
 });
 router.get('/vtpass/insurance/options/:kind', requireCustomerAuth, async (req, res) => {
+  if (await insuranceOff(req, res)) return;
   try {
     const options = await require('../lib/extraServices').insuranceOptions(req.params.kind, req.query.parent);
     res.json({ options, ...(options.raw ? { raw: options.raw } : {}) });
@@ -200,6 +208,7 @@ router.post('/vtpass/purchase', requireCustomerAuth, async (req, res) => {
     return res.status(400).json({ error: 'Choose how often to repeat: daily, weekly or monthly.' });
   }
 
+  if (service === 'INSURANCE' && (await insuranceOff(req, res))) return;
   if ((service === 'INTERNATIONAL' || service === 'INSURANCE' || Number(req.body.quantity) > 1) && repeat) {
     return res.status(400).json({ error: 'Repeat is not available for this service yet.' });
   }

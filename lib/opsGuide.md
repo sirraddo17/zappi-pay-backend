@@ -175,3 +175,8 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - Fill in the blanks from your receipts (Whogohost domain price and date, RackNerd renewal date, Anthropic credit top-ups) and press **Save**.
 - You get an alert 14, 7, 3, 1 and 0 days before each renewal date, and daily once overdue. Renew the **domain** and the **VPS** first: if either lapses the whole app is offline, and a new VPS means a new IP to whitelist with VTpass, Monnify and Nomba.
 - No passwords, keys or card numbers go on this page.
+
+## Hidden menu items
+
+- Admin menu items for switched-off features are hidden, and their pages show "switched off": Airtime to Cash (🧩 New features), Bank Transfers (Send to Bank off), Wrong transfers (Send money and Send to Bank both off), Pending Funding (no manual funding account on), Unmatched payments (bank funding off).
+- Switch the feature back on and the menu item comes back. Nothing is deleted.

@@ -401,7 +401,7 @@ RULES
 - At most 3 requests can be waiting at a time.
 - The admin can approve a smaller "received" amount if less airtime arrived. The payout is then recalculated.
 
-ADMIN SWITCH: [airtimeToCashEnabled, default OFF]. When it is off, the screen says "Airtime to Cash isn't available right now."
+ADMIN SWITCH: [airtimeToCashEnabled, default OFF] — Admin → 🧩 New features → Airtime to Cash (Off / Testers only / On), the same switch as Settings → Airtime to Cash. When it is off it disappears from More, the home slider and the receipt ("Convert to cash"), the page says "Airtime to Cash isn't available on ZAPPI PAY right now", and the admin menu item is hidden.
 
 COMMON QUESTIONS
 - "When do I get paid?" After ZAPPI PAY confirms the airtime arrived. You'll get a notification.
@@ -1180,6 +1180,7 @@ RULES
 ----------------------------------------------------------------------
 52. CAR INSURANCE (THIRD-PARTY MOTOR INSURANCE)
 ----------------------------------------------------------------------
+- ADMIN SWITCH: [insuranceEnabled, default OFF] — Admin → 🧩 New features → Car insurance (Off / Testers only / On). While off it is hidden from More, the page says it isn't available, and the server refuses insurance plans and purchases.
 - Home → More → "Car insurance". Third-party cover from Universal Insurance (through VTpass), required by law in Nigeria. Step 1 is a tile per vehicle type (Private, Commercial, Tricycle, Motorcycle) with the yearly price; step 2 the vehicle papers; step 3 where it's registered; a summary shows cover, plate and "You pay" before the PIN.
 - Choose the vehicle type (private car, commercial, tricycle/keke, motorcycle), then enter the owner's name, plate number, chassis number (VIN), year, make, model, colour, engine capacity, state, local government and email.
 - After payment the certificate is ready: History → the purchase → "📄 Download certificate" (also emailed). Keep a copy in the vehicle.

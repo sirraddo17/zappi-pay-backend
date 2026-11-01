@@ -615,6 +615,8 @@ model Settings {
   // (keys are VTpass airtime serviceIDs). Fee is the percent kept
   // from the airtime value; the rest is credited to the wallet.
   airtimeToCashEnabled    Boolean @default(false)
+  // Car insurance (VTpass motor insurance) — Admin → New features. OFF by default.
+  insuranceEnabled        Boolean @default(false)
   airtimeToCashFeePercent Decimal @default(20) @db.Decimal(5, 2)
   airtimeToCashMinAmount  Decimal @default(500) @db.Decimal(14, 2)
   airtimeToCashMaxAmount  Decimal @default(50000) @db.Decimal(14, 2)
