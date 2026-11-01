@@ -38,8 +38,10 @@ test('fix 9: delivery promise badge only shows while the bonus can really be pai
   assert.equal(await dp.publicInfo(S), null);
   pool = 100;
   assert.equal(await dp.publicInfo({ ...S, deliveryPromiseEnabled: false }), null);
-  const buy = fs.readFileSync(path.join(ROOT, '..', 'zappi-pay-frontend', 'src', 'pages', 'Buy.jsx'), 'utf8');
-  assert.doesNotMatch(buy, /Delivered in \{/, 'no unconditional "Delivered in Xs or ₦Y back" claim');
+  // The wording check needs the frontend next to the backend (a dev
+  // machine); the server only has the backend, so it is skipped there.
+  const buyFile = path.join(ROOT, '..', 'zappi-pay-frontend', 'src', 'pages', 'Buy.jsx');
+  if (fs.existsSync(buyFile)) assert.doesNotMatch(fs.readFileSync(buyFile, 'utf8'), /Delivered in \{/, 'no unconditional "Delivered in Xs or ₦Y back" claim');
 });
 
 test('fix 10: BVN/NIN must be 11 real-looking digits', () => {
