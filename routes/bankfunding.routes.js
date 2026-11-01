@@ -17,7 +17,10 @@ async function shown(accounts, customerName) {
   if (!Array.isArray(accounts)) return { accounts: accounts || null, pausedCount: 0 };
   const visible = visibleReservedAccounts(accounts, await getSettings());
   const displayName = customerName ? `ZAPPI PAY / ${titleName(customerName)}` : null;
-  return { accounts: visible.map((a) => ({ ...a, displayName: displayName || a.accountName, bankShowsName: a.accountName })), pausedCount: accounts.length - visible.length };
+  // Nomba accounts show our company name in bank apps until Nomba turns
+  // on custom names for us (requested after VA access is granted).
+  const bankName = (a) => (a.provider === 'nomba' ? 'SIRRADDO GLOBAL LIMITED' : a.accountName);
+  return { accounts: visible.map((a) => ({ ...a, displayName: displayName || a.accountName, bankShowsName: bankName(a) })), pausedCount: accounts.length - visible.length };
 }
 
 // Automatic wallet funding by bank transfer: each customer gets their

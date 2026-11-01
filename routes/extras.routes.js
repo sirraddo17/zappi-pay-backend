@@ -138,7 +138,7 @@ router.get('/agent/info', requireCustomerAuth, async (req, res) => {
       getSettings(),
       prisma.customer.findUnique({ where: { id: req.customer.customerId }, select: { isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true } }),
     ]);
-    res.json({ enabled: Boolean(settings.agentPricingEnabled), rates: settings.agentPricingEnabled ? settings.agentDiscountPercentByService || {} : {}, ...customer });
+    res.json({ enabled: Boolean(settings.agentPricingEnabled), rates: settings.agentPricingEnabled ? settings.agentDiscountPercentByService || {} : {}, base: settings.discountPercentByService || {}, ...customer });
   } catch (error) {
     console.error('GET /agent/info failed:', error);
     res.status(500).json({ error: 'Could not load agent info.' });

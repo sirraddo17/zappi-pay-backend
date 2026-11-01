@@ -18,6 +18,30 @@ async function names(ids) {
   return Object.fromEntries(rows.map((c) => [c.id, c]));
 }
 
+// Ledger types that belong to features that are switched off are left
+// out of the totals and the type list (nothing is deleted).
+async function hiddenTypes(s) {
+  const F = require('../lib/features');
+  const on = (k) => F.isOnFor(s, k) || Boolean((s.featureTestMode || {})[k]);
+  const hide = [];
+  if (!on('circles')) hide.push('CIRCLE_');
+  const sendOn = on('sendMoney') || Boolean(s.bankTransferEnabled);
+  if (!sendOn) hide.push('TRANSFER_', 'DISPUTE_');
+  if (!on('airtimeToCash')) hide.push('AIRTIME_CASH');
+  return hide;
+}
+const isHidden = (type, hide) => hide.some((h) => String(type).startsWith(h));
+
+// Real or test: a wallet line is "test" when it belongs to a test order
+// (same reference) or is bank funding through a partner on sandbox keys.
+async function testFlags(rows) {
+  const modes = await require('../lib/goLive').partnerModes().catch(() => ({ monnify: 'sandbox', squad: 'sandbox', nomba: 'sandbox' }));
+  const refs = [...new Set(rows.map((r) => r.reference).filter(Boolean))];
+  const testRefs = new Set(refs.length ? (await prisma.order.findMany({ where: { vtpassRequestId: { in: refs }, isTest: true }, select: { vtpassRequestId: true } })).map((o) => o.vtpassRequestId) : []);
+  const fundProvider = (r) => { const p = String(r.providerRef || ''); return /^NB-/.test(p) ? 'nomba' : /^SQ-/.test(p) ? 'squad' : p ? 'monnify' : null; };
+  return (r) => (r.reference && testRefs.has(r.reference)) || (r.type === 'FUND' && fundProvider(r) && modes[fundProvider(r)] !== 'live');
+}
+
 router.get('/admin/ledger', requireAdminAuth, async (req, res) => {
   try {
     const type = TYPES.includes(String(req.query.type || '').toUpperCase()) ? String(req.query.type).toUpperCase() : null;
@@ -26,15 +50,21 @@ router.get('/admin/ledger', requireAdminAuth, async (req, res) => {
     const since = new Date(Date.now() - days * 86400000);
     const where = { createdAt: { gte: since }, ...(type ? { type } : {}), ...(status ? { status } : {}) };
     const [rows, byType] = await Promise.all([
-      prisma.walletTransaction.findMany({ where, orderBy: { createdAt: 'desc' }, take: 300, select: { id: true, customerId: true, type: true, amount: true, status: true, reference: true, note: true, reviewedByAdminId: true, createdAt: true } }),
+      prisma.walletTransaction.findMany({ where, orderBy: { createdAt: 'desc' }, take: 300, select: { id: true, customerId: true, type: true, amount: true, status: true, reference: true, providerRef: true, note: true, reviewedByAdminId: true, createdAt: true } }),
       prisma.walletTransaction.groupBy ? prisma.walletTransaction.groupBy({ by: ['type'], where: { createdAt: { gte: since }, status: 'APPROVED' }, _sum: { amount: true }, _count: true }).catch(() => []) : [],
     ]);
     const who = await names(rows.map((r) => r.customerId));
+    const hide = await hiddenTypes(await require('../lib/vtpass').getSettings());
+    const isTest = await testFlags(rows);
+    const mode = ['real', 'test'].includes(String(req.query.mode)) ? String(req.query.mode) : 'all';
+    const shownRows = rows.map((r) => ({ ...r, isTest: Boolean(isTest(r)) })).filter((r) => (mode === 'all' ? true : mode === 'test' ? r.isTest : !r.isTest));
     res.json({
       days,
+      mode,
+      hiddenTypes: hide,
       note: 'Wallet records are never edited or deleted — a correction is always a new row.',
-      totals: byType.map((t) => ({ type: t.type, count: typeof t._count === 'number' ? t._count : t._count?._all || 0, amount: nairaNum(toKobo(t._sum?.amount || 0)) })).sort((a, b) => b.amount - a.amount),
-      rows: rows.map((r) => ({ ...r, amount: nairaNum(toKobo(r.amount)), manual: Boolean(r.reviewedByAdminId), customer: who[r.customerId] || null })),
+      totals: byType.filter((t) => !isHidden(t.type, hide)).map((t) => ({ type: t.type, count: typeof t._count === 'number' ? t._count : t._count?._all || 0, amount: nairaNum(toKobo(t._sum?.amount || 0)) })).sort((a, b) => b.amount - a.amount),
+      rows: shownRows.map(({ providerRef, ...r }) => ({ ...r, amount: nairaNum(toKobo(r.amount)), manual: Boolean(r.reviewedByAdminId), customer: who[r.customerId] || null })),
     });
   } catch (error) {
     console.error('GET /admin/ledger failed:', error);
@@ -124,6 +154,31 @@ router.get('/admin/overview-totals', requireAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('GET /admin/overview-totals failed:', error);
     res.status(500).json({ error: 'Could not load totals.' });
+  }
+});
+
+// Each partner and its mode, for the admin test-mode banner.
+router.get('/admin/partner-modes', requireAdminAuth, async (req, res) => {
+  try {
+    const s = await require('../lib/vtpass').getSettings();
+    const modes = await require('../lib/goLive').partnerModes();
+    const on = {
+      monnify: s.monnifyFundingEnabled !== false,
+      squad: await require('../lib/squad').fundingOn().catch(() => false),
+      nomba: await require('../lib/nomba').fundingOn().catch(() => false),
+    };
+    res.json({
+      partners: [
+        { key: 'vtpass', name: 'VTpass', mode: s.vtpassMode === 'live' ? 'live' : 'sandbox', on: true, what: 'purchases' },
+        { key: 'monnify', name: 'Monnify', mode: modes.monnify, on: on.monnify, what: 'account numbers' },
+        { key: 'squad', name: 'Squad (GTBank)', mode: modes.squad, on: on.squad, what: 'account numbers' },
+        { key: 'nomba', name: 'Nomba', mode: modes.nomba, on: on.nomba, what: 'account numbers' },
+      ],
+      sendToBank: Boolean(s.bankTransferEnabled),
+    });
+  } catch (error) {
+    console.error('GET /admin/partner-modes failed:', error);
+    res.status(500).json({ error: 'Could not load partner modes.' });
   }
 });
 

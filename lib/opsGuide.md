@@ -188,3 +188,6 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - Admin pages stop auto-refreshing after 10 minutes with no tap or key press, so an admin window left open doesn't keep the database awake.
 - /api/health never touches the database: point uptime monitors (cron-job.org) at it. /api/status is cached 15 minutes when the app is quiet.
 - In Neon → Computes, set the maximum compute size to 0.25 CU.
+
+- Admin → Ledger defaults to **Real** lines; switch to **Test** or **All**. GET /api/admin/partner-modes feeds the admin partner banner.
+- Demo mode hides: Profit panel, sandbox partner balances, Money check "Short by" / Difference, and the "AI assistant is off" card.

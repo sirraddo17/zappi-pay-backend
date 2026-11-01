@@ -1362,6 +1362,24 @@ ADMIN: Admin → 🤝 Partners. Auto-pause (on by default; rule: 5+ failures fro
 SERVICE CHARGE: electricity and TV subscriptions may carry a small service charge (for example 1%, never more than a set maximum such as ₦350 for light or ₦150 for TV). It is shown in the total before you pay — you are never charged more than the total you confirm. It covers the payment partner's cost of receiving your wallet funding, because providers pay us very little on these bills. Airtime, data and exam PINs have no service charge unless shown.
 ADMIN: Admin → Settings → Markup → "✅ Safe pricing check". It shows what you keep on typical sales (MTN/Glo airtime, MTN data, Smile, GOtv, DStv, light, WAEC) after VTpass commission, discounts and Monnify's ~1.61% funding fee, for normal customers and agents, with losses in red. "Apply safe pricing" (tick to confirm) only makes prices safer: customer discounts lowered to 0% (customers get cashback and points instead); agent commission capped at airtime/data 0.75%, internet 1.5%, TV/light 0.25%, others 0% (a lower one you set is kept); service charge on light 1% (max ₦350) and TV 1% (max ₦150), never lowering a higher one; rewards split on at 30% of real profit; reward safety limit on. The giveaway safety limit and rewards split now count earnings after Monnify's funding fee (less any bank-funding fee the customer paid), so a sale that makes nothing gives nothing away. Light above about ₦55,000 in one purchase can still lose a little. The admin AI can't apply it.
 
+----------------------------------------------------------------------
+70. WORDING AND SCREENS FOR THE PARTNER DEMO (NOV 2026)
+----------------------------------------------------------------------
+- BVN/NIN: the app says "BVN entered (not yet verified)". Entering a BVN or NIN does not mean it was verified. ZAPPI PAY never stores the number, only which type was entered and a one-way code so one BVN/NIN can't open two accounts.
+- Home "earned this month" counts only cashback earned from purchases; cashback given back after a failed order is not counted. Wallet money is shown the same way everywhere: ₦1,234.50.
+- Daily limit card: "Purchases count towards it" (Send money and Send to Bank are off).
+- Failed order receipt shows "Refunded to wallet ₦X" (and "Cashback returned" if cashback was used). A funding receipt shows Sent, Bank fee, Credited and Via (which account number and partner, e.g. Nombank account (Nomba)).
+- Bulk: one chip per network (the regular plan list), no International chip. Plan names no longer end with the price ("- 1,005 Naira").
+- Agent card shows normal discount + agent extra = total, e.g. "Airtime 0.5% + 1% = 1.5% off".
+- Help bubble is smaller and can be dragged; the phone remembers where it was left.
+- Admin customer page shows Wallet Balance, Points and Cashback to spend.
+- Admin Ledger: Real / Test / All filter. Test = belongs to a test order, or funding through a partner on sandbox keys. Ledger types for switched-off features are hidden from the list and totals (nothing deleted).
+- Admin Orders: Bet Funding, Car insurance and International airtime chips show only while those are on.
+- Admin dashboard: "Total revenue" is now "Sales" (what customers paid for purchases, not profit). The Profit panel is hidden in demo mode.
+- Admin banner lists every partner and its mode (VTpass, Monnify, Squad (GTBank), Nomba: LIVE or SANDBOX, and whether account numbers are on for customers), plus Send to Bank ON/OFF.
+- Monnify funding fee: Monnify charges 1.5% + 7.5% VAT = 1.61% (max ₦2,000 + VAT). Customers see exactly the % set in Settings → Limits → Fees; set 1.61 to match.
+- Nomba account numbers show the account name the bank app shows: SIRRADDO GLOBAL LIMITED.
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================

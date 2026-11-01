@@ -278,6 +278,17 @@ router.get('/orders', requireCustomerAuth, async (req, res) => {
 // A single order's full detail, for the receipt view — scoped to
 // the requesting customer so one person can never pull up another's
 // order by guessing an id.
+// Read-only: what went back to the customer for a failed order (for the receipt).
+async function refundOf(order) {
+  if (!['FAILED', 'REFUNDED'].includes(order.status)) return null;
+  const [w, cb] = await Promise.all([
+    order.vtpassRequestId ? prisma.walletTransaction.findFirst({ where: { customerId: order.customerId, type: 'REFUND', reference: order.vtpassRequestId } }).catch(() => null) : null,
+    prisma.cashbackEntry.findFirst({ where: { orderId: order.id, type: 'RETURNED' } }).catch(() => null),
+  ]);
+  if (!w && !cb) return null;
+  return { wallet: w ? Number(w.amount) : 0, cashback: cb ? Number(cb.amount) : 0, at: (w || cb).createdAt };
+}
+
 router.get('/orders/:id', requireCustomerAuth, async (req, res) => {
   try {
     const order = await prisma.order.findFirst({
@@ -287,9 +298,9 @@ router.get('/orders/:id', requireCustomerAuth, async (req, res) => {
     if (order.status === 'PENDING' && Date.now() - new Date(order.createdAt).getTime() > 30 * 1000) {
       await throttledRecheck(order);
       const fresh = await prisma.order.findUnique({ where: { id: order.id } });
-      return res.json({ order: customerView(fresh || order) });
+      return res.json({ order: customerView(fresh || order), refund: await refundOf(fresh || order) });
     }
-    res.json({ order: customerView(order) });
+    res.json({ order: customerView(order), refund: await refundOf(order) });
   } catch (error) {
     console.error('GET /orders/:id failed:', error);
     res.status(500).json({ error: 'Could not load order.' });

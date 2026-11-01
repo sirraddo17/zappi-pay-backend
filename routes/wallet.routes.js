@@ -74,7 +74,19 @@ router.get('/wallet/transactions/:id', requireCustomerAuth, async (req, res) => 
       const b = await prisma.bankTransfer.findFirst({ where: { reference: t.reference, customerId: t.customerId } }).catch(() => null);
       if (b) bank = { accountName: b.accountName, accountNumber: b.accountNumber, bankName: b.bankName, amount: Number(b.amount), fee: Number(b.fee || 0), status: b.status, narration: b.narration, reference: b.reference, completedAt: b.completedAt };
     }
-    res.json({ transaction: { id: t.id, type: t.type, amount: Number(t.amount), status: t.status, note: t.note, reference: t.providerRef || t.reference || t.id, createdAt: t.createdAt }, bank });
+    // Bank-transfer funding: what was sent, the fee and which account it came in on.
+    let funding = null;
+    if (t.type === 'FUND') {
+      const m = /Bank transfer of ₦([\d,.]+)(?: \(₦([\d,.]+) bank processing fee\))?/.exec(String(t.note || ''));
+      const ref = String(t.providerRef || '');
+      // providerRef is "NB-…" for Nomba, "SQ-…" for Squad, Monnify's own reference otherwise.
+      const provider = /^NB-/.test(ref) ? 'nomba' : /^SQ-/.test(ref) ? 'squad' : /^MNFY/i.test(ref) ? 'monnify' : null;
+      const VIA = { nomba: 'Nombank account (Nomba)', monnify: 'Wema/Moniepoint account (Monnify)', squad: 'GTBank account (Squad)' };
+      const num = (v) => Number(String(v || '0').replace(/,/g, ''));
+      if (m) funding = { sent: num(m[1]), fee: num(m[2]), credited: Number(t.amount), via: VIA[provider] || 'your account number' };
+      else if (/^Bank transfer$/.test(String(t.note || ''))) funding = { sent: Number(t.amount), fee: 0, credited: Number(t.amount), via: VIA[provider] || 'your account number' };
+    }
+    res.json({ transaction: { id: t.id, type: t.type, amount: Number(t.amount), status: t.status, note: t.note, reference: t.providerRef || t.reference || t.id, createdAt: t.createdAt }, bank, funding });
   } catch (error) {
     console.error('GET /wallet/transactions/:id failed:', error);
     res.status(500).json({ error: 'Could not load the transaction.' });
