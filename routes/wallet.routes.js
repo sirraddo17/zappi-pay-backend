@@ -83,8 +83,11 @@ router.get('/wallet/transactions/:id', requireCustomerAuth, async (req, res) => 
       const provider = /^NB-/.test(ref) ? 'nomba' : /^SQ-/.test(ref) ? 'squad' : /^MNFY/i.test(ref) ? 'monnify' : null;
       const VIA = { nomba: 'Nombank account (Nomba)', monnify: 'Wema/Moniepoint account (Monnify)', squad: 'GTBank account (Squad)' };
       const num = (v) => Number(String(v || '0').replace(/,/g, ''));
-      if (m) funding = { sent: num(m[1]), fee: num(m[2]), credited: Number(t.amount), via: VIA[provider] || 'your account number' };
-      else if (/^Bank transfer$/.test(String(t.note || ''))) funding = { sent: Number(t.amount), fee: 0, credited: Number(t.amount), via: VIA[provider] || 'your account number' };
+      const NAME = { nomba: 'Nomba', monnify: 'Monnify', squad: 'Squad' };
+      // "Details" line on the receipt: where the money came from.
+      const source = NAME[provider] ? `Bank transfer via ${NAME[provider]}` : 'Bank transfer to your account number';
+      if (m) funding = { sent: num(m[1]), fee: num(m[2]), credited: Number(t.amount), via: VIA[provider] || 'your account number', source };
+      else if (/^Bank transfer$/.test(String(t.note || ''))) funding = { sent: Number(t.amount), fee: 0, credited: Number(t.amount), via: VIA[provider] || 'your account number', source };
     }
     res.json({ transaction: { id: t.id, type: t.type, amount: Number(t.amount), status: t.status, note: t.note, reference: t.providerRef || t.reference || t.id, createdAt: t.createdAt }, bank, funding });
   } catch (error) {

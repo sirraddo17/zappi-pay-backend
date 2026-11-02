@@ -16,13 +16,13 @@ test('quiet jobs: hourly in the day, every 3 hours at night (Lagos), always when
   let runs = 0;
   clock.every('t', 10 * 60 * 1000, () => { runs += 1; }, { firstAfter: 0 });
   const MIN = 60 * 1000;
-  const day = Date.UTC(2026, 10, 2, 11, 0); // 12:00 Lagos
+  const day = Date.UTC(2099, 0, 5, 11, 0); // 12:00 Lagos (a future date: jobs start "now")
   assert.equal(clock.tick(day), 1);
   await settle();
   assert.equal(clock.tick(day + 30 * MIN), 0, 'quiet: not again after 30 min');
   await settle();
   assert.equal(clock.tick(day + 61 * MIN), 1, 'quiet: again after an hour');
-  const night = Date.UTC(2026, 10, 2, 0, 0); // 01:00 Lagos
+  const night = Date.UTC(2099, 0, 6, 0, 0); // 01:00 Lagos
   clock._reset(); clock.every('n', 10 * MIN, () => {}, { firstAfter: 0 });
   assert.equal(clock.tick(night), 1);
   await settle();
