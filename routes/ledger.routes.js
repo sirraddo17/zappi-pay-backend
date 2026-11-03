@@ -49,21 +49,31 @@ router.get('/admin/ledger', requireAdminAuth, async (req, res) => {
     const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 30));
     const since = new Date(Date.now() - days * 86400000);
     const where = { createdAt: { gte: since }, ...(type ? { type } : {}), ...(status ? { status } : {}) };
-    const [rows, byType] = await Promise.all([
+    const [rows, approved] = await Promise.all([
       prisma.walletTransaction.findMany({ where, orderBy: { createdAt: 'desc' }, take: 300, select: { id: true, customerId: true, type: true, amount: true, status: true, reference: true, providerRef: true, note: true, reviewedByAdminId: true, createdAt: true } }),
-      prisma.walletTransaction.groupBy ? prisma.walletTransaction.groupBy({ by: ['type'], where: { createdAt: { gte: since }, status: 'APPROVED' }, _sum: { amount: true }, _count: true }).catch(() => []) : [],
+      // Every approved row in the period (not just the 300 shown), for the totals.
+      prisma.walletTransaction.findMany({ where: { createdAt: { gte: since }, status: 'APPROVED' }, select: { type: true, amount: true, reference: true, providerRef: true } }),
     ]);
     const who = await names(rows.map((r) => r.customerId));
     const hide = await hiddenTypes(await require('../lib/vtpass').getSettings());
-    const isTest = await testFlags(rows);
+    const isTest = await testFlags([...rows, ...approved]);
     const mode = ['real', 'test', 'all'].includes(String(req.query.mode)) ? String(req.query.mode) : 'real';
-    const shownRows = rows.map((r) => ({ ...r, isTest: Boolean(isTest(r)) })).filter((r) => (mode === 'all' ? true : mode === 'test' ? r.isTest : !r.isTest));
+    const keep = (t) => (mode === 'all' ? true : mode === 'test' ? t : !t);
+    const shownRows = rows.map((r) => ({ ...r, isTest: Boolean(isTest(r)) })).filter((r) => keep(r.isTest));
+    // Totals follow the Real / Test / All switch, the same way as the rows.
+    const byType = {};
+    for (const r of approved) {
+      if (!keep(Boolean(isTest(r)))) continue;
+      const t = (byType[r.type] = byType[r.type] || { type: r.type, count: 0, kobo: 0 });
+      t.count += 1;
+      t.kobo += toKobo(r.amount);
+    }
     res.json({
       days,
       mode,
       hiddenTypes: hide,
       note: 'Wallet records are never edited or deleted — a correction is always a new row.',
-      totals: byType.filter((t) => !isHidden(t.type, hide)).map((t) => ({ type: t.type, count: typeof t._count === 'number' ? t._count : t._count?._all || 0, amount: nairaNum(toKobo(t._sum?.amount || 0)) })).sort((a, b) => b.amount - a.amount),
+      totals: Object.values(byType).filter((t) => !isHidden(t.type, hide)).map((t) => ({ type: t.type, count: t.count, amount: nairaNum(t.kobo) })).sort((a, b) => b.amount - a.amount),
       rows: shownRows.map(({ providerRef, ...r }) => ({ ...r, amount: nairaNum(toKobo(r.amount)), manual: Boolean(r.reviewedByAdminId), customer: who[r.customerId] || null })),
     });
   } catch (error) {
