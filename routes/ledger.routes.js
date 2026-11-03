@@ -33,13 +33,41 @@ async function hiddenTypes(s) {
 const isHidden = (type, hide) => hide.some((h) => String(type).startsWith(h));
 
 // Real or test: a wallet line is "test" when it belongs to a test order
-// (same reference) or is bank funding through a partner on sandbox keys.
+// or is bank funding through a partner on sandbox keys.
+// Refunds carry the order's request ID as their reference. A purchase
+// DEBIT is written just before its order (in the same database step), so
+// it has no reference: it is linked to the order by customer, time (a few
+// seconds apart) and the cash taken (order amount − cashback used).
+const PURCHASE_LINK_MS = 10 * 1000;
 async function testFlags(rows) {
   const modes = await require('../lib/goLive').partnerModes().catch(() => ({ monnify: 'sandbox', squad: 'sandbox', nomba: 'sandbox' }));
   const refs = [...new Set(rows.map((r) => r.reference).filter(Boolean))];
   const testRefs = new Set(refs.length ? (await prisma.order.findMany({ where: { vtpassRequestId: { in: refs }, isTest: true }, select: { vtpassRequestId: true } })).map((o) => o.vtpassRequestId) : []);
   const fundProvider = (r) => { const p = String(r.providerRef || ''); return /^NB-/.test(p) ? 'nomba' : /^SQ-/.test(p) ? 'squad' : p ? 'monnify' : null; };
-  return (r) => (r.reference && testRefs.has(r.reference)) || (r.type === 'FUND' && fundProvider(r) && modes[fundProvider(r)] !== 'live');
+
+  const loose = [...new Map(rows.filter((r) => r.type === 'DEBIT' && !r.reference && r.customerId && r.createdAt && r.id != null).map((r) => [r.id, r])).values()];
+  const testDebits = new Set();
+  if (loose.length) {
+    const times = loose.map((r) => new Date(r.createdAt).getTime());
+    const orders = await prisma.order.findMany({
+      where: { customerId: { in: [...new Set(loose.map((r) => r.customerId))] }, createdAt: { gte: new Date(Math.min(...times) - PURCHASE_LINK_MS), lte: new Date(Math.max(...times) + PURCHASE_LINK_MS) } },
+      select: { id: true, customerId: true, createdAt: true, amount: true, cashbackUsed: true, isTest: true },
+    }).catch(() => []);
+    const used = new Set();
+    for (const r of loose) {
+      const at = new Date(r.createdAt).getTime();
+      const cashK = toKobo(r.amount);
+      let best = null;
+      for (const o of orders) {
+        if (used.has(o.id) || o.customerId !== r.customerId) continue;
+        const gap = Math.abs(new Date(o.createdAt).getTime() - at);
+        if (gap > PURCHASE_LINK_MS || toKobo(o.amount) - toKobo(o.cashbackUsed || 0) !== cashK) continue;
+        if (!best || gap < best.gap) best = { o, gap };
+      }
+      if (best) { used.add(best.o.id); if (best.o.isTest) testDebits.add(r.id); }
+    }
+  }
+  return (r) => (r.type === 'DEBIT' && !r.reference && testDebits.has(r.id)) || (r.reference && testRefs.has(r.reference)) || (r.type === 'FUND' && fundProvider(r) && modes[fundProvider(r)] !== 'live');
 }
 
 router.get('/admin/ledger', requireAdminAuth, async (req, res) => {
@@ -52,7 +80,7 @@ router.get('/admin/ledger', requireAdminAuth, async (req, res) => {
     const [rows, approved] = await Promise.all([
       prisma.walletTransaction.findMany({ where, orderBy: { createdAt: 'desc' }, take: 300, select: { id: true, customerId: true, type: true, amount: true, status: true, reference: true, providerRef: true, note: true, reviewedByAdminId: true, createdAt: true } }),
       // Every approved row in the period (not just the 300 shown), for the totals.
-      prisma.walletTransaction.findMany({ where: { createdAt: { gte: since }, status: 'APPROVED' }, select: { type: true, amount: true, reference: true, providerRef: true } }),
+      prisma.walletTransaction.findMany({ where: { createdAt: { gte: since }, status: 'APPROVED' }, select: { id: true, customerId: true, type: true, amount: true, reference: true, providerRef: true, createdAt: true } }),
     ]);
     const who = await names(rows.map((r) => r.customerId));
     const hide = await hiddenTypes(await require('../lib/vtpass').getSettings());
