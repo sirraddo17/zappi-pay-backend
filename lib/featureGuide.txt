@@ -454,21 +454,9 @@ ADMIN SWITCH: None.
 ----------------------------------------------------------------------
 14. DELIVERY PROMISE
 ----------------------------------------------------------------------
-WHAT IT IS: "⚡ Takes over 60s? ₦20 back (once a day)" on the Buy page. The badge only shows while today's bonus budget (and, with the rewards split on, the delivery-promise pool) can still pay. If a covered purchase takes longer than the promised time to confirm, you get a small bonus.
-
-RULES
-- Time: [setting: deliveryPromiseSeconds, default 60 seconds].
-- Bonus: [setting: deliveryPromiseBonus, default ₦20].
-- Minimum purchase: [setting: deliveryPromiseMinAmount, default ₦100].
-- Covered services: [setting: deliveryPromiseServices, default Airtime and Data].
-- One bonus per customer per day (Lagos time).
-- Overall daily budget for all customers: [setting: deliveryPromiseDailyBudget, default ₦2,000].
-- A purchase that fails after the promised time also qualifies, and is refunded as well.
-- Confirmed within the time means no bonus.
-- If the rewards split is on and its promise pool is empty, no bonus is paid.
-- The badge on the Buy screen explains the rules when you hover over or tap it.
-
-ADMIN SWITCH: [deliveryPromiseEnabled, default OFF].
+SWITCHED OFF. ZAPPI PAY does not currently offer a delivery-time guarantee or a "money back if it takes too long" bonus. Do not promise customers a bonus for a slow purchase. If a purchase is slow, it is either delivered or refunded in full automatically.
+- Older wallet lines named "Delivery promise bonus" are real past credits.
+- ADMIN: Settings → Delivery promise [setting: deliveryPromiseEnabled, default OFF]. Keep it off.
 
 ----------------------------------------------------------------------
 15. FAMILY WALLET
