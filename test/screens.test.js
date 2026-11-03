@@ -18,10 +18,18 @@ const fakes = {
   disbursement: () => ({ transferSettings: async () => ({ walletAccount: '123' }) }),
   disputes: () => ({ heldTotal: async () => 0 }),
   prisma: () => ({
-    customer: { aggregate: async ({ _sum }) => ({ _count: 7, _sum: Object.fromEntries(Object.keys(_sum).map((f) => [f, { walletBalance: '44195.91', cashbackBalance: '2.52', savingsBalance: '0' }[f]])) }), count: async () => 0 },
-    order: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }) },
+    customer: { aggregate: async ({ _sum }) => ({ _count: 7, _sum: Object.fromEntries(Object.keys(_sum).map((f) => [f, { walletBalance: '44195.91', cashbackBalance: '2.52', savingsBalance: '0' }[f]])) }), count: async () => 0,
+      // t1: sandbox Monnify funding only (test account); t2: a test order only;
+      // r1: live Squad funding (real); r2: sandbox + live funding (real).
+      findMany: async () => [
+        { id: 't1', walletBalance: '40000.00', cashbackBalance: '2.52', savingsBalance: '0' },
+        { id: 't2', walletBalance: '1000.00', cashbackBalance: '0', savingsBalance: '0' },
+        { id: 'r1', walletBalance: '3000.00', cashbackBalance: '0', savingsBalance: '0' },
+        { id: 'r2', walletBalance: '195.91', cashbackBalance: '0', savingsBalance: '0' },
+      ] },
+    order: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }), findMany: async () => [{ customerId: 't2' }] },
     bankTransfer: { aggregate: async () => ({ _count: 0, _sum: { amount: null, fee: null } }) },
-    walletTransaction: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }) },
+    walletTransaction: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }), findMany: async () => [{ customerId: 't1', providerRef: 'MNFY|1' }, { customerId: 'r1', providerRef: 'SQ-1' }, { customerId: 'r2', providerRef: 'MNFY|2' }, { customerId: 'r2', providerRef: 'SQ-2' }] },
   }),
 };
 const orig = Module._load;
@@ -65,6 +73,21 @@ test('fix 7: Money check rows add up to Total owed; sandbox money is not counted
   assert.equal(m.have.total, 5959, 'only live VTpass counts, not N4,999,992,500 sandbox Monnify');
   assert.ok(m.have.sandbox.monnify > 0);
   assert.match(m.have.sandboxNote, /SANDBOX/);
+});
+
+test('Money check: test accounts are shown apart; owed.total (funds guard) is unchanged', async () => {
+  modes = { monnify: 'sandbox', squad: 'live', nomba: 'sandbox' };
+  const m = await moneyCheck();
+  modes = { monnify: 'sandbox', squad: 'sandbox', nomba: 'sandbox' };
+  assert.equal(m.owed.total, 44198.43, 'guard total still counts everyone');
+  assert.equal(m.real.testAccounts.count, 2);
+  assert.equal(m.real.testAccounts.total, 41002.52);
+  assert.equal(m.real.owed, 3195.91);
+  assert.equal(m.real.customers, 5);
+  const w = m.real.parts.find((p) => p.key === 'wallets');
+  assert.equal(w.amount, 3195.91);
+  assert.match(w.label, /real customers only/);
+  assert.equal(m.real.parts.reduce((a, p) => a + p.amount, 0).toFixed(2), m.real.owed.toFixed(2));
 });
 
 test('fix 6: demo mode masks names, phones, keys and sandbox balances', () => {

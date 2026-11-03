@@ -56,7 +56,7 @@ router.get('/admin/ledger', requireAdminAuth, async (req, res) => {
     const who = await names(rows.map((r) => r.customerId));
     const hide = await hiddenTypes(await require('../lib/vtpass').getSettings());
     const isTest = await testFlags(rows);
-    const mode = ['real', 'test'].includes(String(req.query.mode)) ? String(req.query.mode) : 'all';
+    const mode = ['real', 'test', 'all'].includes(String(req.query.mode)) ? String(req.query.mode) : 'real';
     const shownRows = rows.map((r) => ({ ...r, isTest: Boolean(isTest(r)) })).filter((r) => (mode === 'all' ? true : mode === 'test' ? r.isTest : !r.isTest));
     res.json({
       days,
@@ -88,9 +88,13 @@ router.get('/admin/refunds', requireAdminAuth, async (req, res) => {
     for (const e of returned) cbBy[e.orderId] = (cbBy[e.orderId] || 0) + (e.amountKobo ?? toKobo(e.amount));
     const escBy = Object.fromEntries(escalations.filter((e) => e.orderId).map((e) => [e.orderId, e]));
     const who = await names(refunds.map((r) => r.customerId));
+    // Real or test (default real): a refund is "test" when its order is a test order.
+    const mode = ['real', 'test', 'all'].includes(String(req.query.mode)) ? String(req.query.mode) : 'real';
+    const shown = refunds.filter((r) => { const t = Boolean(orderBy[r.reference]?.isTest); return mode === 'all' ? true : mode === 'test' ? t : !t; });
     res.json({
       days,
-      rows: refunds.map((r) => {
+      mode,
+      rows: shown.map((r) => {
         const o = orderBy[r.reference] || null;
         const cashK = toKobo(r.amount);
         const cbK = o ? cbBy[o.id] || 0 : 0;
