@@ -462,16 +462,13 @@ router.get('/admin/customers', requireAdminAuth, async (req, res) => {
 router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const customer = await prisma.customer.findUnique({
-      where: { id },
-      select: {
+    const customer = await require('../lib/testAccountFlag').withFlag((select) => prisma.customer.findUnique({ where: { id }, select }), {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, frozenAt: true, frozenReason: true, selfFrozenAt: true, dailyLimitOverride: true, loyaltyPoints: true, cashbackBalance: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
         pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true, dateOfBirth: true, securityQuestion: true, securityAnswerHash: true,
         referredBy: { select: { id: true, name: true, username: true } },
         pinLockedUntil: true,
         loginLockedUntil: true,
         _count: { select: { referrals: true, trustedDevices: true, webauthnCredentials: true } },
-      },
     });
     if (!customer) return res.status(404).json({ error: 'Customer not found.' });
     // Never send the PIN hash itself — just whether one exists.

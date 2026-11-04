@@ -143,7 +143,7 @@ router.get('/admin/customers/list', requireAdminAuth, async (req, res) => {
       });
       const byId = new Map(grouped.map((g) => [g.customerId, g._count.customerId]));
       const rows = grouped.length
-        ? await prisma.customer.findMany({ where: { ...where, id: { in: [...byId.keys()] } }, select: LIST_SELECT })
+        ? await require('../lib/testAccountFlag').withFlag((select) => prisma.customer.findMany({ where: { ...where, id: { in: [...byId.keys()] } }, select }), LIST_SELECT)
         : [];
       customers = rows
         .map((c) => ({ ...c, orders30d: byId.get(c.id) || 0 }))
@@ -153,13 +153,13 @@ router.get('/admin/customers/list', requireAdminAuth, async (req, res) => {
     } else {
       mode = q ? 'search' : 'all';
       [customers, total] = await Promise.all([
-        prisma.customer.findMany({
+        require('../lib/testAccountFlag').withFlag((select) => prisma.customer.findMany({
           where,
           orderBy: view === 'deleted' ? { deletedAt: 'desc' } : view === 'deletion' ? { deletionRequestedAt: 'desc' } : { createdAt: 'desc' },
           skip: page * PAGE,
           take: PAGE,
-          select: LIST_SELECT,
-        }),
+          select,
+        }), LIST_SELECT),
         prisma.customer.count({ where }),
       ]);
     }

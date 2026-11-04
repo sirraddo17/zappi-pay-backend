@@ -19,17 +19,14 @@ const fakes = {
   disputes: () => ({ heldTotal: async () => 0 }),
   prisma: () => ({
     customer: { aggregate: async ({ _sum }) => ({ _count: 7, _sum: Object.fromEntries(Object.keys(_sum).map((f) => [f, { walletBalance: '44195.91', cashbackBalance: '2.52', savingsBalance: '0' }[f]])) }), count: async () => 0,
-      // t1: sandbox Monnify funding only (test account); t2: a test order only;
-      // r1: live Squad funding (real); r2: sandbox + live funding (real).
-      findMany: async () => [
+      // Owner-marked test accounts (isTestAccount: true) only.
+      findMany: async ({ where }) => (where.isTestAccount ? [
         { id: 't1', walletBalance: '40000.00', cashbackBalance: '2.52', savingsBalance: '0' },
         { id: 't2', walletBalance: '1000.00', cashbackBalance: '0', savingsBalance: '0' },
-        { id: 'r1', walletBalance: '3000.00', cashbackBalance: '0', savingsBalance: '0' },
-        { id: 'r2', walletBalance: '195.91', cashbackBalance: '0', savingsBalance: '0' },
-      ] },
-    order: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }), findMany: async () => [{ customerId: 't2' }] },
+      ] : []) },
+    order: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }) },
     bankTransfer: { aggregate: async () => ({ _count: 0, _sum: { amount: null, fee: null } }) },
-    walletTransaction: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }), findMany: async () => [{ customerId: 't1', providerRef: 'MNFY|1' }, { customerId: 'r1', providerRef: 'SQ-1' }, { customerId: 'r2', providerRef: 'MNFY|2' }, { customerId: 'r2', providerRef: 'SQ-2' }] },
+    walletTransaction: { aggregate: async () => ({ _count: 0, _sum: { amount: null } }) },
   }),
 };
 const orig = Module._load;
@@ -75,10 +72,8 @@ test('fix 7: Money check rows add up to Total owed; sandbox money is not counted
   assert.match(m.have.sandboxNote, /SANDBOX/);
 });
 
-test('Money check: test accounts are shown apart; owed.total (funds guard) is unchanged', async () => {
-  modes = { monnify: 'sandbox', squad: 'live', nomba: 'sandbox' };
+test('Money check: owner-marked test accounts are shown apart; owed.total (funds guard) is unchanged', async () => {
   const m = await moneyCheck();
-  modes = { monnify: 'sandbox', squad: 'sandbox', nomba: 'sandbox' };
   assert.equal(m.owed.total, 44198.43, 'guard total still counts everyone');
   assert.equal(m.real.testAccounts.count, 2);
   assert.equal(m.real.testAccounts.total, 41002.52);

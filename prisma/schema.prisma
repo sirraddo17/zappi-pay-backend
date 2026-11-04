@@ -119,6 +119,10 @@ model Customer {
   // base64 image comfortably exceeds a normal varchar limit.
   avatarUrl     String?  @db.Text
   active        Boolean  @default(true)
+  // Owner-marked test account (Admin → customer → "Test account"). Its
+  // balances are test money: the Money check shows them apart from real
+  // customers. Changes nothing about the account or its money.
+  isTestAccount Boolean  @default(false)
   // Set when an admin issues a temporary password (forgotten-password
   // support). The customer is forced to choose a new password on their
   // next login, and the temporary one stops working after

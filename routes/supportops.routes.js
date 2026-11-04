@@ -96,6 +96,29 @@ router.patch('/admin/customers/:id/name', requireAdminAuth, async (req, res) => 
   }
 });
 
+// --- Test account (owner) ---------------------------------------------------------
+// Marks an account as a TEST account so the Money check counts its
+// balances apart from real customers. Only the flag changes: no balance,
+// order or setting is touched. Owner only (not in the support allow-list).
+router.post('/admin/customers/:id/test-account', requireAdminAuth, async (req, res) => {
+  if (noAi(req, res)) return;
+  try {
+    const on = req.body?.isTestAccount;
+    if (typeof on !== 'boolean') return res.status(400).json({ error: 'isTestAccount must be true or false.' });
+    const c = await prisma.customer.findUnique({ where: { id: req.params.id }, select: { id: true, isTestAccount: true } });
+    if (!c) return res.status(404).json({ error: 'Customer not found.' });
+    if (c.isTestAccount !== on) {
+      await prisma.customer.update({ where: { id: c.id }, data: { isTestAccount: on }, select: { id: true } });
+      await audit(req, on ? 'CUSTOMER_MARKED_TEST' : 'CUSTOMER_UNMARKED_TEST', { customerId: c.id });
+    }
+    res.json({ ok: true, isTestAccount: on });
+  } catch (error) {
+    if (require('../lib/testAccountFlag').missingColumn(error)) return res.status(503).json({ error: 'The database needs updating first: run “npm run prisma:push” on the server, then try again.' });
+    console.error('POST /admin/customers/:id/test-account failed:', error);
+    res.status(500).json({ error: 'Could not change the test-account setting.' });
+  }
+});
+
 // --- Daily limit for one customer -----------------------------------------------
 
 router.put('/admin/customers/:id/daily-limit', requireAdminAuth, async (req, res) => {
