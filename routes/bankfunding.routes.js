@@ -17,9 +17,9 @@ async function shown(accounts, customerName) {
   if (!Array.isArray(accounts)) return { accounts: accounts || null, pausedCount: 0 };
   const visible = visibleReservedAccounts(accounts, await getSettings());
   const displayName = customerName ? `ZAPPI PAY / ${titleName(customerName)}` : null;
-  // Nomba accounts show our company name in bank apps until Nomba turns
-  // on custom names for us (requested after VA access is granted).
-  const bankName = (a) => (a.provider === 'nomba' ? 'SIRRADDO GLOBAL LIMITED' : a.accountName);
+  // What the sender's bank app shows (Monnify: "SIRRADDO GLOBAL-RID",
+  // Nomba: SIRRADDO GLOBAL LIMITED) — lib/accountNames.js.
+  const bankName = (a) => require('../lib/accountNames').bankShowsName(a);
   return { accounts: visible.map((a) => ({ ...a, displayName: displayName || a.accountName, bankShowsName: bankName(a) })), pausedCount: accounts.length - visible.length };
 }
 

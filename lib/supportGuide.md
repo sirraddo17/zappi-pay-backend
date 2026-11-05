@@ -166,8 +166,8 @@ It means a BVN/NIN was entered but the real Monnify check hasn't passed yet ("�
 ### "My failed order receipt"
 The receipt shows **Refunded to wallet** with the amount (and **Cashback returned** if cashback was used). If it says "Being refunded", check the order in Admin → Orders and the Ledger (Refunds tab).
 
-### "My bank app shows SIRRADDO GLOBAL LIMITED"
-For Nomba account numbers the bank app shows the company name SIRRADDO GLOBAL LIMITED (the company that runs ZAPPI PAY). That's expected — the money still goes to the customer's wallet.
+### "My bank app shows SIRRADDO GLOBAL" (e.g. SIRRADDO GLOBAL-RID or SIRRADDO GLOBAL LIMITED)
+SIRRADDO GLOBAL LIMITED is the company that runs ZAPPI PAY. Monnify (Moniepoint / Wema) numbers show "SIRRADDO GLOBAL-" plus the first letters of the customer's name (e.g. SIRRADDO GLOBAL-RID); Nomba numbers show SIRRADDO GLOBAL LIMITED. The Wallet page shows the same name under each number. That's expected — the money still goes to the customer's wallet.
 
 ### "Plan not found" / a scheduled data top-up keeps failing
 VTpass sometimes removes a plan code. The owner is alerted when a removed code is still used by a scheduled top-up, bill reminder, Pay-for-me link or plan correction, with the closest plan VTpass still sells. Support: tell the owner (Request admin approval on the customer's page, or the owner asks the AI "what plan codes changed?"); nothing is switched automatically. **Reply:** "Our provider stopped selling that exact plan. We've let the team know and suggested the closest plan; you can pick it on the Buy page or update your scheduled top-up. Nothing was charged for the failed attempt."
