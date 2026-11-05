@@ -179,3 +179,6 @@ The owner can attach the partner's statement in the AI Assistant (owner only) to
 
 ### "Why was my second account refused?" (same BVN/NIN)
 One BVN or NIN can only be linked to one ZAPPI PAY account. The refusal is recorded (it doesn't use up the customer's ID-check tries). **Reply:** "Each person can have one ZAPPI PAY account, and this BVN/NIN is already linked to another one. Please log in to that account, or tell us if you think this is a mistake and we'll check." Never say which account or whose it is.
+
+### Never send money to the Monnify payout wallet number
+The "Monnify wallet account number" in Settings is Monnify's internal number for the API, not a bank account (at Moniepoint the same digits can belong to a stranger). Never give it to anyone or send money to it. Only the owner tops up Monnify, from Monnify → Balances → Fund Balance.

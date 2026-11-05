@@ -129,7 +129,7 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 | Partner | Webhook URL | Notes |
 | --- | --- | --- |
 | VTpass | …/webhooks/vtpass | IP whitelisted (approved). Error 027 = IP not whitelisted. Keys in Admin → Settings → VTpass |
-| Monnify | …/webhooks/monnify | Events: transaction completion + disbursement. Sandbox now; set the live webhook when live keys arrive |
+| Monnify | …/webhooks/monnify | Events: transaction completion + disbursement. Sandbox now; set the live webhook when live keys arrive. **Topping up Monnify:** use the Fund account from Monnify → Balances → Fund Balance. The "wallet account number" in Settings → Monnify → Send to Bank is Monnify's internal number for the API, not a bank account: never send money to it (at Moniepoint the same digits belong to someone else). |
 | Squad | …/webhooks/squad | IP whitelisting via Squad support |
 | Nomba | …/webhooks/nomba | Events: payment_success, payout_success, payout_failed, payout_refund. IP whitelisted 21 Oct 2026. Live webhook needs its own signature key — the same key goes in Admin → Settings → Nomba. Technical details by email (docs@nomba.com), not WhatsApp |
 | Flutterwave | …/webhooks/flutterwave | Set the webhook and whitelist the IP |
