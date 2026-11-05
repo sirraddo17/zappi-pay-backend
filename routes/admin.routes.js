@@ -666,6 +666,10 @@ router.post('/admin/customers/:id/adjust-wallet', requireAdminAuth, async (req, 
     if (!amountNum || amountNum <= 0) {
       return res.status(400).json({ error: 'A positive amount is required.' });
     }
+    // Kobo are fine (e.g. ₦0.53); more than 2 decimal places is not a real amount.
+    if (Math.abs(amountNum * 100 - Math.round(amountNum * 100)) > 1e-6) {
+      return res.status(400).json({ error: 'Use at most 2 decimal places (kobo), e.g. 0.53.' });
+    }
 
     const customer = await prisma.customer.findUnique({ where: { id } });
     if (!customer) return res.status(404).json({ error: 'Customer not found.' });
