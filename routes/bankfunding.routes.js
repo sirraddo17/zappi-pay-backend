@@ -34,7 +34,7 @@ const router = express.Router();
 const ACCOUNT_FAILED = 'We couldn’t create your account number. Please try again or contact support.';
 function accountError(message) {
   const m = String(message || '');
-  if (/don’t match your (BVN|NIN)|don't match your (BVN|NIN)|isn’t fully set up yet/i.test(m)) return m;
+  if (/don’t match your (BVN|NIN)|don't match your (BVN|NIN)|isn’t fully set up yet|already has an account number for you/i.test(m)) return m;
   return ACCOUNT_FAILED;
 }
 
