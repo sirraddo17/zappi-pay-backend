@@ -111,6 +111,8 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     const kycHash = identityHash(idType, idNumber);
     const other = await prisma.customer.findFirst({ where: { kycHash, NOT: { id: customer.id } }, select: { id: true } });
     if (other) {
+      // Kept for the monthly compliance summary (not counted as an ID-check try).
+      await prisma.idCheck.create({ data: { customerId: customer.id, idType: String(idType).slice(0, 10), result: 'DUPLICATE_ID', detail: 'already linked to another account' } }).catch(() => {});
       return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account. Each person can have only one account — contact support if this is a mistake.`, code: 'IDENTITY_IN_USE' });
     }
 

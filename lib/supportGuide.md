@@ -176,3 +176,6 @@ Server logs and the deploy check are owner-only tools in the admin AI. Support s
 
 ### Partner statement shows a payment we don't have
 The owner can attach the partner's statement in the AI Assistant (owner only) to find payments in the statement but not in our records. Support: follow **Funding problems** above ("Funding not showing?" on the customer's page, then Unmatched payments). Never credit from a statement line alone: the reference must not already be credited.
+
+### "Why was my second account refused?" (same BVN/NIN)
+One BVN or NIN can only be linked to one ZAPPI PAY account. The refusal is recorded (it doesn't use up the customer's ID-check tries). **Reply:** "Each person can have one ZAPPI PAY account, and this BVN/NIN is already linked to another one. Please log in to that account, or tell us if you think this is a mistake and we'll check." Never say which account or whose it is.

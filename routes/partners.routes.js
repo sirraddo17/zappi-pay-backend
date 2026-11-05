@@ -1,6 +1,7 @@
 // Admin → Partners: partner desk, auto-pause, away mode and follow-ups.
 // Owner-only (not in the support-staff allow list). The admin AI may read
-// but never change or send anything here.
+// but never change or send anything here — except partner tasks, which it
+// may PROPOSE (an Apply card the owner taps).
 
 const express = require('express');
 const prisma = require('../lib/prisma');
@@ -40,9 +41,11 @@ router.delete('/admin/partners/contacts/:key', requireAdminAuth, guard(async (re
   await audit(req, 'PARTNER_DELETED', { key: req.params.key });
   return desk.deletePartner(req.params.key);
 }));
-router.post('/admin/partners/tasks', requireAdminAuth, guard(async (req) => ({ task: await desk.addTask(req.body || {}) })));
-router.patch('/admin/partners/tasks/:id', requireAdminAuth, guard(async (req) => ({ task: await desk.updateTask(req.params.id, req.body || {}) })));
-router.delete('/admin/partners/tasks/:id', requireAdminAuth, guard(async (req) => desk.deleteTask(req.params.id)));
+// Tasks may also be added/updated from an AI Apply card (the owner taps
+// Apply or Undo; the call carries X-Admin-Assistant). Nothing else here.
+router.post('/admin/partners/tasks', requireAdminAuth, H(async (req) => { const task = await desk.addTask(req.body || {}); await audit(req, 'PARTNER_TASK_ADDED', { taskId: task.id, partner: task.partnerKey, viaAssistant: Boolean(req.headers['x-admin-assistant']) }); return { task }; }));
+router.patch('/admin/partners/tasks/:id', requireAdminAuth, H(async (req) => { const task = await desk.updateTask(req.params.id, req.body || {}); await audit(req, 'PARTNER_TASK_UPDATED', { taskId: task.id, viaAssistant: Boolean(req.headers['x-admin-assistant']) }); return { task }; }));
+router.delete('/admin/partners/tasks/:id', requireAdminAuth, H(async (req) => desk.deleteTask(req.params.id)));
 
 router.get('/admin/partners/issues', requireAdminAuth, H(async () => desk.issues()));
 router.post('/admin/partners/vtpass-draft', requireAdminAuth, H(async (req) => desk.vtpassDraft(Array.isArray(req.body?.orderIds) ? req.body.orderIds.map(String) : [])));

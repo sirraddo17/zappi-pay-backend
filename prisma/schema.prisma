@@ -808,6 +808,10 @@ model Settings {
   // within fraudHoldHours of signup or a PIN/password/new-device change.
   fraudHoldEnabled         Boolean @default(true)
   fraudHoldAmount          Decimal @default(20000) @db.Decimal(14, 2)
+  // Compliance summary (lib/compliance.js): customers whose single
+  // funding, or funding in one Lagos day, is at or above these (₦).
+  complianceSingleFunding  Decimal @default(1000000) @db.Decimal(16, 2)
+  complianceDailyFunding   Decimal @default(5000000) @db.Decimal(16, 2)
   fraudHoldHours           Int     @default(24)
   // Email code on every admin login (needs Resend email set up).
   adminTwoFactorEnabled    Boolean @default(false)

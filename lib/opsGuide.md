@@ -205,3 +205,9 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - **Check a statement:** export the transactions as CSV or Excel from the Nomba, Squad, Monnify or VTpass dashboard. In Admin → AI Assistant tap **📄 Add a partner statement**, choose the partner and the file, then ask "check this statement". The file is read on your device; only date, reference, amount, credit/debit and narration are sent (max 5,000 rows). It never credits anything: missing credits go through "Funding not showing?" or Unmatched payments.
 - **What changed in an update:** after the server restarts on new code, ask the AI "what changed in the update?". It reads the commits since the previous version from the server's git history (saved at start) and writes a short note; if customers would notice, it offers a customer message as an Apply card. Nothing is sent without your tap.
 - After pulling this update run `npx prisma db push` once (new columns on the deploy record).
+
+## Compliance summary and partner follow-ups (owner only)
+
+- **Compliance (SCUML / NFIU, partner due diligence):** Admin → 💰 Money check → 🧾 Compliance summary → pick the month → **Download CSV**. Thresholds (single funding ₦1,000,000, one day ₦5,000,000 by default) can be changed on the same card. Or ask the AI "compliance summary for October". It's a draft for you: nothing is filed or sent. Test orders and "Test account" customers are kept apart.
+- **Partner follow-ups:** ask the AI "what's pending with partners?". Paste a partner's email or screenshot and it drafts the reply and offers a task update as an Apply card. Tasks also live on Admin → 🤝 Partners.
+- After pulling this update run `npx prisma db push` once (two new settings for the thresholds).
