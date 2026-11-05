@@ -442,6 +442,12 @@ const ADMIN_TOOLS = [
       },
     },
   },
+  {
+    name: 'check_partner_statement',
+    description: "Match the partner statement (CSV/Excel from Nomba, Squad, Monnify or VTpass) the owner attached in this chat against our records, in kobo: matched, in the statement but not in our records, in our records but not in the statement, same reference with a different amount, duplicates (plus, for VTpass, charged for a failed order and reversals; for funding, payments waiting in Unmatched payments). Read-only: never credits, refunds or changes anything. Only works when a statement is attached.",
+    input_schema: { type: 'object', properties: {} },
+  },
+  { name: 'get_release_notes', description: "The code changes (git commits) in the update the server is running now, since the previous version, or for an earlier start. Use to write a short plain 'what changed' note for the owner and, only if customers would notice, a customer broadcast draft through propose_broadcast (never sent automatically).", input_schema: { type: 'object', properties: { back: { type: 'integer', description: '0 = the update running now (default), 1 = the one before, up to 10' } } } },
   { name: 'get_deploy_status', description: 'Which code (git commit) the server is running, when it started, the Node version, the self-check run 60s after start (database, VTpass, payment partner settings, /api/health) and the previous commit to roll back to.', input_schema: { type: 'object', properties: {} } },
 ];
 
@@ -450,6 +456,9 @@ function adminHandlers(settings) {
     get_plan_changes: () => require('../lib/planWatch').lastReport(),
     get_server_logs: (input = {}) => require('../lib/serverLogs').read(input),
     get_deploy_status: () => require('../lib/deployCheck').status(),
+    // Replaced in /admin/ai/chat when the owner attached a statement.
+    check_partner_statement: () => ({ error: 'No statement is attached. In the AI Assistant, tap “📄 Add a partner statement”, choose the partner and the CSV or Excel file, then ask again.' }),
+    get_release_notes: ({ back } = {}) => require('../lib/releaseNotes').notes({ back }),
     async get_business_summary({ period, from, to }) {
       const r = lagosRange(period, from, to);
       const range = { gte: r.gte, lt: r.lt };
@@ -686,6 +695,8 @@ Rules:
 - Prices: get_price_watch — flag VTpass price or commission changes and suggest markup tweaks (propose_settings_change) if a service now earns too little.
 - Plan codes: get_plan_changes — say which VTpass plan codes were removed or added and what changed price. For removed codes still in use, list what uses them and the suggested closest plan (and say whether it is the same size and validity). You cannot change schedules, reminders, Pay-for-me links or plan fixes: tell the owner where to do it and what to tell affected customers.
 - Server problems ("why did it fail?", errors, crashes): get_server_logs (start with errorsOnly and a search word or sinceMinutes), then explain in plain words what went wrong and the next step. Never repeat anything that looks like a key, even masked.
+- Partner statements (the owner attached a Nomba, Squad, Monnify or VTpass statement): check_partner_statement, then explain in plain words: how many matched, then each problem group with references and amounts in naira (the tool gives kobo: divide by 100). For credits missing from our records, say to use "Funding not showing?" on the customer's page or Unmatched payments, and to check the reference first so nothing is credited twice. You cannot credit, refund or change anything.
+- Release notes ("what changed in the update?", after a restart): get_release_notes. Write 1) a short plain "what changed" note for the owner (group the commits; skip tests, guides and internal tidy-ups), 2) ONLY if customers would notice something (new or changed screens, wording, prices, fees, features), a short friendly customer message proposed with propose_broadcast so the owner taps Apply; never for admin-only changes. Never mention commit numbers, code, partners' names or anything not yet switched on to customers.
 - Updates and restarts ("is the new code live?", "did the update work?"): get_deploy_status — say which commit is running, when it started and whether the self-check passed; if it failed, give the rollback command from the result exactly. You cannot run commands on the server.
 - Ads: get_ad_performance — say which ads work (tap rate) and suggest new ones with design_ad.
 - You can design adverts with design_ad (the app draws them in the ZAPPI PAY style at any size the owner asks for). Only promise things that are really on offer; never invent prices, prizes or dates.
@@ -969,6 +980,16 @@ router.post('/admin/ai/chat', requireAdminAuth, async (req, res) => {
     const staff = (await require('../lib/staffAccess').roleOf(req.admin.adminId)) === 'SUPPORT';
     const allTools = [...ADMIN_TOOLS, ...ACTION_TOOLS];
     const allHandlers = { ...adminHandlers(settings), ...actionHandlers(req.admin.adminId, collector) };
+    // Partner statement the owner attached (rows parsed in the browser).
+    const statement = !staff && req.body?.statement && typeof req.body.statement === 'object' ? req.body.statement : null;
+    if (statement) {
+      allHandlers.check_partner_statement = () => require('../lib/statementMatch').check(statement);
+      const rowsN = Array.isArray(statement.rows) ? Math.min(statement.rows.length, require('../lib/statementMatch').MAX_ROWS) : 0;
+      const last = history[history.length - 1];
+      const note = `[Attached: ${String(statement.partner || 'partner').slice(0, 20)} statement${statement.fileName ? ` "${String(statement.fileName).slice(0, 60)}"` : ''}, ${rowsN} rows. Use check_partner_statement.]`;
+      if (Array.isArray(last.content)) last.content.push({ type: 'text', text: note });
+      else last.content = `${last.content}\n${note}`;
+    }
     const tools = staff ? allTools.filter((t) => STAFF_TOOL_NAMES.includes(t.name)) : allTools;
     const handlers = staff ? Object.fromEntries(Object.entries(allHandlers).filter(([k]) => STAFF_TOOL_NAMES.includes(k))) : allHandlers;
     const result = await ai.runAssistant({

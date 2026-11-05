@@ -173,3 +173,6 @@ For Nomba account numbers the bank app shows the company name SIRRADDO GLOBAL LI
 VTpass sometimes removes a plan code. The owner is alerted when a removed code is still used by a scheduled top-up, bill reminder, Pay-for-me link or plan correction, with the closest plan VTpass still sells. Support: tell the owner (Request admin approval on the customer's page, or the owner asks the AI "what plan codes changed?"); nothing is switched automatically. **Reply:** "Our provider stopped selling that exact plan. We've let the team know and suggested the closest plan; you can pick it on the Buy page or update your scheduled top-up. Nothing was charged for the failed attempt."
 
 Server logs and the deploy check are owner-only tools in the admin AI. Support staff can't use them; describe the problem to the owner instead.
+
+### Partner statement shows a payment we don't have
+The owner can attach the partner's statement in the AI Assistant (owner only) to find payments in the statement but not in our records. Support: follow **Funding problems** above ("Funding not showing?" on the customer's page, then Unmatched payments). Never credit from a statement line alone: the reference must not already be credited.

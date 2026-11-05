@@ -199,3 +199,9 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - **Errors:** ask the AI "show server errors from the last 30 minutes" instead of copying `pm2 logs`. It reads the PM2 log files (`~/.pm2/logs/zappi-pay-api-out.log` and `-error.log`, or the paths pm2 gives), last 200 lines by default (max 1000), with keys, passwords, BVN/NIN, emails, phone and account numbers masked. It never changes or deletes logs. The "since" filter works only when the log lines have times.
 - **VTpass plan codes:** checked once a day after 6am. You're alerted (link: Orders) when VTpass removes a plan that a scheduled top-up, bill reminder, Pay-for-me link or plan correction still uses, with the closest replacement. Nothing changes by itself. Ask the AI "what plan codes changed?".
 - These features added database tables: after pulling this update run `npx prisma db push` once on the VPS (see Pushing an update).
+
+## Partner statements and release notes (owner only, read-only)
+
+- **Check a statement:** export the transactions as CSV or Excel from the Nomba, Squad, Monnify or VTpass dashboard. In Admin → AI Assistant tap **📄 Add a partner statement**, choose the partner and the file, then ask "check this statement". The file is read on your device; only date, reference, amount, credit/debit and narration are sent (max 5,000 rows). It never credits anything: missing credits go through "Funding not showing?" or Unmatched payments.
+- **What changed in an update:** after the server restarts on new code, ask the AI "what changed in the update?". It reads the commits since the previous version from the server's git history (saved at start) and writes a short note; if customers would notice, it offers a customer message as an Apply card. Nothing is sent without your tap.
+- After pulling this update run `npx prisma db push` once (new columns on the deploy record).

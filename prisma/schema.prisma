@@ -1503,6 +1503,10 @@ model DeployRecord {
   ok          Boolean?
   checkedAt   DateTime?
   check       Json?
+  // Release notes (lib/releaseNotes.js): commits since the previous
+  // version that ran, from the local git history.
+  sinceCommit String?
+  commits     Json?
 
   @@index([startedAt])
 }
