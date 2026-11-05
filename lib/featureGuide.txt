@@ -1369,6 +1369,14 @@ ADMIN: Admin → Settings → Markup → "✅ Safe pricing check". It shows what
 - Monnify funding fee: Monnify charges 1.5% + 7.5% VAT = 1.61% (max ₦2,000 + VAT). Customers see exactly the % set in Settings → Limits → Fees; set 1.61 to match.
 - Nomba account numbers show the account name the bank app shows: SIRRADDO GLOBAL LIMITED.
 
+----------------------------------------------------------------------
+71. ADMIN AI: PLAN-CODE WATCH, SERVER LOGS AND DEPLOY CHECK (OWNER ONLY)
+----------------------------------------------------------------------
+WHO: owner only. Support staff and customers never see these. All three only read; they never change money, wallets, refunds, settings, payment partners, schedules or plans.
+PLAN-CODE WATCH: once a day (after 6am Lagos) ZAPPI PAY reads VTpass's plan list for every data, TV, exam and internet service it sells and compares it with yesterday's. It lists plan codes VTpass REMOVED or ADDED and price changes. For a removed code it finds what still uses it: active scheduled top-ups, bill reminders, open Pay-for-me links and plan corrections, and suggests the closest plan VTpass still sells (same size and validity, nearest price). The owner gets one alert (link to Admin → Orders) when a removed code is still in use, plus the usual alert when prices change. Nothing is switched automatically: a scheduled top-up on a removed code keeps it until the owner or customer changes it. Ask the admin AI "what plan codes changed?" (tool get_plan_changes). If VTpass doesn't answer for a service that day, it is skipped, never treated as "all plans removed".
+SERVER LOGS: ask the admin AI "why did it fail?" or "show server errors from the last 30 minutes" (tool get_server_logs). It reads the last lines (default 200, max 1000) of the backend's PM2 log files on the VPS, with optional text search, errors only and "since minutes". Keys, tokens, passwords, BVN/NIN, database addresses, emails (partly), phone numbers (0816•••••37) and account numbers are masked. Read-only: log files are never changed or deleted.
+DEPLOY CHECK: every time the backend starts it notes which code (git commit) is running, the start time and Node version. 60 seconds later it checks the database, VTpass /balance, each switched-on payment partner's settings and /api/health. If anything fails, the owner gets one alert with what failed and the previous commit to roll back to (on the VPS: cd /opt/zappi-pay-backend && git checkout <previous commit> && pm2 restart zappi-pay-api; later return with git checkout main && git pull). Ask the admin AI "is the new code live?" or "did the update work?" (tool get_deploy_status).
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================

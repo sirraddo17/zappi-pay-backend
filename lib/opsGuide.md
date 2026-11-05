@@ -191,3 +191,11 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 
 - Admin → Ledger defaults to **Real** lines; switch to **Test** or **All**. GET /api/admin/partner-modes feeds the admin partner banner.
 - Demo mode hides: Profit panel, sandbox partner balances, Money check "Short by" / Difference, and the "AI assistant is off" card.
+
+## Admin AI: plan codes, server logs and deploy check (owner only, read-only)
+
+- **Did the update work?** Ask the admin AI "is the new code live?". It shows the running commit, start time, Node version and the self-check run 60 seconds after every start (database, VTpass /balance, switched-on payment partners' settings, /api/health). If the self-check fails you also get one alert.
+- **Roll back** (only if the self-check failed and the app is broken), on the **VPS**: `cd /opt/zappi-pay-backend && git checkout PREVIOUS && pm2 restart zappi-pay-api` (PREVIOUS = the commit in the alert or from the AI). The server is then on an older commit, so the next update needs `git checkout main && git pull` first.
+- **Errors:** ask the AI "show server errors from the last 30 minutes" instead of copying `pm2 logs`. It reads the PM2 log files (`~/.pm2/logs/zappi-pay-api-out.log` and `-error.log`, or the paths pm2 gives), last 200 lines by default (max 1000), with keys, passwords, BVN/NIN, emails, phone and account numbers masked. It never changes or deletes logs. The "since" filter works only when the log lines have times.
+- **VTpass plan codes:** checked once a day after 6am. You're alerted (link: Orders) when VTpass removes a plan that a scheduled top-up, bill reminder, Pay-for-me link or plan correction still uses, with the closest replacement. Nothing changes by itself. Ask the AI "what plan codes changed?".
+- These features added database tables: after pulling this update run `npx prisma db push` once on the VPS (see Pushing an update).

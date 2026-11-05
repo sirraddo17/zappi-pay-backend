@@ -195,4 +195,8 @@ app.listen(PORT, () => {
   require('./lib/family').startFamilyTimer();
   require('./lib/rewardSplit').startRewardSplitTimer();
   require('./lib/adminInsights').startInsights();
+  // Daily VTpass plan-code check (removed/added codes, price changes).
+  require('./lib/planWatch').start();
+  // Notes the running commit and runs a self-check 60s after start.
+  require('./lib/deployCheck').start();
 });

@@ -427,10 +427,29 @@ const ADMIN_TOOLS = [
     },
   },
   { name: 'get_vtpass_rates', description: "VTpass's published commission rate for each provider (used when an order's exact commission is missing) and Monnify's fee rates.", input_schema: { type: 'object', properties: {} } },
+  // Owner-only, read-only (not in STAFF_TOOL_NAMES).
+  { name: 'get_plan_changes', description: "The last daily plan-code check of VTpass data/TV/exam/internet plans: plan codes REMOVED or ADDED and price changes (amounts in kobo), and for each removed code what still uses it (active scheduled top-ups, bill reminders, open Pay-for-me links, plan fixes) with the closest plan VTpass still sells. Read-only: nothing was changed; only explain and suggest.", input_schema: { type: 'object', properties: {} } },
+  {
+    name: 'get_server_logs',
+    description: "The last lines of the backend's PM2 logs on the VPS (read-only), with secrets and personal data masked. Use to find out why something failed. Lines from the error log start with ERR.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        lines: { type: 'integer', description: 'how many lines, default 200, max 1000' },
+        search: { type: 'string', description: 'only lines containing this text' },
+        errorsOnly: { type: 'boolean', description: 'only error lines' },
+        sinceMinutes: { type: 'integer', description: 'only the last N minutes (when the log has times)' },
+      },
+    },
+  },
+  { name: 'get_deploy_status', description: 'Which code (git commit) the server is running, when it started, the Node version, the self-check run 60s after start (database, VTpass, payment partner settings, /api/health) and the previous commit to roll back to.', input_schema: { type: 'object', properties: {} } },
 ];
 
 function adminHandlers(settings) {
   return {
+    get_plan_changes: () => require('../lib/planWatch').lastReport(),
+    get_server_logs: (input = {}) => require('../lib/serverLogs').read(input),
+    get_deploy_status: () => require('../lib/deployCheck').status(),
     async get_business_summary({ period, from, to }) {
       const r = lagosRange(period, from, to);
       const range = { gte: r.gte, lt: r.lt };
@@ -665,6 +684,9 @@ Rules:
 - Campaigns ("win back inactive customers"): propose_campaign with a sensible audience, a promo code with a usage limit and end date, and a short message; add design_ad for the picture.
 - Money check: get_money_check — explain simply what is owed vs held, why a gap can happen (pending transfers, funding not yet settled, VTpass top-up needed) and what to do.
 - Prices: get_price_watch — flag VTpass price or commission changes and suggest markup tweaks (propose_settings_change) if a service now earns too little.
+- Plan codes: get_plan_changes — say which VTpass plan codes were removed or added and what changed price. For removed codes still in use, list what uses them and the suggested closest plan (and say whether it is the same size and validity). You cannot change schedules, reminders, Pay-for-me links or plan fixes: tell the owner where to do it and what to tell affected customers.
+- Server problems ("why did it fail?", errors, crashes): get_server_logs (start with errorsOnly and a search word or sinceMinutes), then explain in plain words what went wrong and the next step. Never repeat anything that looks like a key, even masked.
+- Updates and restarts ("is the new code live?", "did the update work?"): get_deploy_status — say which commit is running, when it started and whether the self-check passed; if it failed, give the rollback command from the result exactly. You cannot run commands on the server.
 - Ads: get_ad_performance — say which ads work (tap rate) and suggest new ones with design_ad.
 - You can design adverts with design_ad (the app draws them in the ZAPPI PAY style at any size the owner asks for). Only promise things that are really on offer; never invent prices, prizes or dates.
 - Win-back: get_winback_list, then propose_campaign with audience SLIPPING (a promo with a usage limit and end date + a warm "we miss you" message).

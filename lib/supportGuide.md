@@ -168,3 +168,8 @@ The receipt shows **Refunded to wallet** with the amount (and **Cashback returne
 
 ### "My bank app shows SIRRADDO GLOBAL LIMITED"
 For Nomba account numbers the bank app shows the company name SIRRADDO GLOBAL LIMITED (the company that runs ZAPPI PAY). That's expected — the money still goes to the customer's wallet.
+
+### "Plan not found" / a scheduled data top-up keeps failing
+VTpass sometimes removes a plan code. The owner is alerted when a removed code is still used by a scheduled top-up, bill reminder, Pay-for-me link or plan correction, with the closest plan VTpass still sells. Support: tell the owner (Request admin approval on the customer's page, or the owner asks the AI "what plan codes changed?"); nothing is switched automatically. **Reply:** "Our provider stopped selling that exact plan. We've let the team know and suggested the closest plan; you can pick it on the Buy page or update your scheduled top-up. Nothing was charged for the failed attempt."
+
+Server logs and the deploy check are owner-only tools in the admin AI. Support staff can't use them; describe the problem to the owner instead.

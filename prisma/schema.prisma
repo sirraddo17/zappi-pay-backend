@@ -1474,9 +1474,37 @@ model PriceSnapshot {
   previous      Decimal? @db.Decimal(14, 2)
   changedAt     DateTime?
   seenAt        DateTime @default(now())
+  // Set when VTpass stopped listing this code (plan-code watch); cleared
+  // if it comes back.
+  removedAt     DateTime?
 
   @@unique([serviceID, variationCode])
   @@index([changedAt])
+}
+
+// Plan-code watch (lib/planWatch.js): one report per daily check of VTpass
+// plan codes — codes removed/added, price changes, and what still uses a
+// removed code with a suggested replacement. Read-only for the admin AI.
+model PlanChangeReport {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  report    Json
+
+  @@index([createdAt])
+}
+
+// Deploy check (lib/deployCheck.js): one row per server start — the git
+// commit that is running, Node version and the self-check 60s later.
+model DeployRecord {
+  id          String    @id @default(cuid())
+  commit      String
+  startedAt   DateTime  @default(now())
+  nodeVersion String
+  ok          Boolean?
+  checkedAt   DateTime?
+  check       Json?
+
+  @@index([startedAt])
 }
 
 // A fraud / abuse pattern already raised, so the owner is alerted once.
