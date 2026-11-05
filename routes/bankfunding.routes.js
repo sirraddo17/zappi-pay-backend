@@ -16,11 +16,13 @@ const titleName = (n) => String(n || '').trim().toLowerCase().replace(/\s+/g, ' 
 async function shown(accounts, customerName) {
   if (!Array.isArray(accounts)) return { accounts: accounts || null, pausedCount: 0 };
   const visible = visibleReservedAccounts(accounts, await getSettings());
-  const displayName = customerName ? `ZAPPI PAY / ${titleName(customerName)}` : null;
-  // What the sender's bank app shows (Monnify: "SIRRADDO GLOBAL-RID",
-  // Nomba: SIRRADDO GLOBAL LIMITED) — lib/accountNames.js.
+  // The account name shown is the one the sender's bank app really shows
+  // (Monnify: "SIRRADDO GLOBAL-RID", Nomba: SIRRADDO GLOBAL LIMITED) —
+  // lib/accountNames.js. Falls back to "ZAPPI PAY / Name" only when the
+  // partner gave no name.
+  const fallback = customerName ? `ZAPPI PAY / ${titleName(customerName)}` : null;
   const bankName = (a) => require('../lib/accountNames').bankShowsName(a);
-  return { accounts: visible.map((a) => ({ ...a, displayName: displayName || a.accountName, bankShowsName: bankName(a) })), pausedCount: accounts.length - visible.length };
+  return { accounts: visible.map((a) => { const shownName = bankName(a) || a.accountName || fallback; return { ...a, displayName: shownName, bankShowsName: shownName }; }), pausedCount: accounts.length - visible.length };
 }
 
 // Automatic wallet funding by bank transfer: each customer gets their
