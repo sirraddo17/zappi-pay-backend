@@ -32,6 +32,28 @@ router.post('/admin/go-live/remove-test-numbers', requireAdminAuth, async (req, 
   }
 });
 
+// Monnify is live: reset BVN/NIN checks and account numbers made before a
+// cutoff date (Lagos), so the real check runs. A person types RESET-KYC;
+// the AI assistant can't. Balances, orders and history are untouched.
+router.post('/admin/go-live/reset-kyc', requireAdminAuth, async (req, res) => {
+  try {
+    if (req.headers['x-admin-assistant']) return res.status(403).json({ error: 'Only a person can reset BVN checks.' });
+    if (String(req.body?.confirm || '').trim().toUpperCase() !== 'RESET-KYC') return res.status(400).json({ error: 'Type RESET-KYC to confirm.' });
+    const day = String(req.body?.cutoff || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return res.status(400).json({ error: 'Choose the cutoff date.' });
+    // Everything made on or before the cutoff day (Lagos), and never in the future.
+    const endOfDay = new Date(`${day}T00:00:00+01:00`).getTime() + 24 * 60 * 60 * 1000;
+    if (!Number.isFinite(endOfDay)) return res.status(400).json({ error: 'Choose the cutoff date.' });
+    const cutoff = new Date(Math.min(endOfDay, Date.now()));
+    const r = await goLive.resetKycBefore(cutoff);
+    await prisma.auditLog.create({ data: { actorAdminId: req.admin.adminId, action: 'KYC_RESET_BEFORE_LIVE', details: { cutoffDay: day, cutoff: cutoff.toISOString(), ...r } } }).catch(() => {});
+    res.json({ ok: true, ...r, message: r.customers ? `Reset ${r.customers} customer${r.customers === 1 ? '' : 's'} (${r.wereVerified} had a BVN/NIN check, ${r.numbers} account number${r.numbers === 1 ? '' : 's'} removed). They re-enter their BVN/NIN on the Wallet page; wallet balances are unchanged.` : 'Nobody to reset: no checks or account numbers from before that date.' });
+  } catch (error) {
+    console.error('POST /admin/go-live/reset-kyc failed:', error);
+    res.status(500).json({ error: 'Could not reset BVN checks.' });
+  }
+});
+
 // Owner's partner accounts (fund / settlement) — lib/partnerAccounts.js.
 router.get('/admin/partner-accounts', requireAdminAuth, async (req, res) => {
   try {

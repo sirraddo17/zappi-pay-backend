@@ -464,7 +464,7 @@ router.get('/admin/customers/:id', requireAdminAuth, async (req, res) => {
     const { id } = req.params;
     const customer = await require('../lib/testAccountFlag').withFlag((select) => prisma.customer.findUnique({ where: { id }, select }), {
         id: true, name: true, phone: true, username: true, email: true, walletBalance: true, active: true, frozenAt: true, frozenReason: true, selfFrozenAt: true, dailyLimitOverride: true, loyaltyPoints: true, cashbackBalance: true, mustChangePassword: true, tempPasswordExpiresAt: true, createdAt: true,
-        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true, dateOfBirth: true, securityQuestion: true, securityAnswerHash: true,
+        pinHash: true, referralBonusPaidAt: true, referralBonusAmount: true, bankAccounts: true, kycType: true, kycVerifiedAt: true, deletionRequestedAt: true, deletionReason: true, deletedAt: true, isAgent: true, agentRequestedAt: true, agentBusinessName: true, agentShopAddress: true, agentRejectedAt: true, agentRejectReason: true, dateOfBirth: true, securityQuestion: true, securityAnswerHash: true,
         referredBy: { select: { id: true, name: true, username: true } },
         pinLockedUntil: true,
         loginLockedUntil: true,

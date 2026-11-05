@@ -161,7 +161,7 @@ Never ask a customer for their PIN, password, OTP or full card number, and never
 
 
 ### "It says BVN entered (not yet verified)"
-That is correct: the app records that a BVN/NIN was entered; it is not a verification result. **Reply:** "That's normal — it means your BVN was entered for your account number. It isn't a sign of any problem."
+It means a BVN/NIN was entered but the real Monnify check hasn't passed yet ("✅ BVN verified" shows once it has). If their account number was removed after the owner's reset, they re-enter their BVN/NIN on the Wallet page to get it back. **Reply:** "Your BVN was entered, but it still needs to be checked. Please open Wallet and enter your BVN again — it takes a minute, and your wallet balance is not affected."
 
 ### "My failed order receipt"
 The receipt shows **Refunded to wallet** with the amount (and **Cashback returned** if cashback was used). If it says "Being refunded", check the order in Admin → Orders and the Ledger (Refunds tab).

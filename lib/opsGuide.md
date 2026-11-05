@@ -211,3 +211,9 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - **Compliance (SCUML / NFIU, partner due diligence):** Admin → 💰 Money check → 🧾 Compliance summary → pick the month → **Download CSV**. Thresholds (single funding ₦1,000,000, one day ₦5,000,000 by default) can be changed on the same card. Or ask the AI "compliance summary for October". It's a draft for you: nothing is filed or sent. Test orders and "Test account" customers are kept apart.
 - **Partner follow-ups:** ask the AI "what's pending with partners?". Paste a partner's email or screenshot and it drafts the reply and offers a task update as an Apply card. Tasks also live on Admin → 🤝 Partners.
 - After pulling this update run `npx prisma db push` once (two new settings for the thresholds).
+
+## After Monnify went live: reset sandbox BVN checks (owner only)
+
+- Admin → 🚦 Go-live check → **Reset BVN checks made before Monnify went live** → pick the cutoff date (default today) → type `RESET-KYC`. It clears the BVN/NIN check and removes the account numbers of everyone checked or given numbers on or before that date. Wallet balances, orders and history stay exactly as they are. Old numbers are remembered: a payment that still arrives on one lands in Unmatched payments.
+- Customers then re-enter their BVN/NIN on the Wallet page and the real Monnify check runs. Tell them with a broadcast first (the AI can draft one).
+- Download a backup first (Settings → 💾 Backups).
