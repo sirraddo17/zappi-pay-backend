@@ -226,7 +226,7 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 
 ## Let the AI propose code fixes (pull requests with automatic tests)
 
-1. GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate. Repository access: only **zappi-pay-backend** and **zappi-pay-frontend**. Permissions: **Contents: Read and write**, **Pull requests: Read and write**, **Checks: Read**. Copy the token (never paste it in the chat).
+1. GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate. Repository access: only **zappi-pay-backend** and **zappi-pay-frontend**. Permissions: **Contents: Read and write**, **Pull requests: Read and write** (Metadata is added automatically). Fine-grained tokens have no "Checks" permission; test results are read because the repos are public. Copy the token (never paste it in the chat).
 2. On the **VPS**, add two lines to `/opt/zappi-pay-backend/.env`: `GITHUB_TOKEN=` followed by the token, and `CODE_PR_ENABLED=on`. Optional: `AI_CODE_MODEL=` a stronger Claude model for code and error questions only.
 3. `pm2 restart zappi-pay-api --update-env`
 4. Ask the AI "is code access on?". From then on it can propose fixes as pull requests. Each one runs **Backend tests** / **Frontend build** on GitHub. Merge only when they pass, then run the commands the AI gives you (also written at the bottom of the pull request).
