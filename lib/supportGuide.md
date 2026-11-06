@@ -185,3 +185,6 @@ The "Monnify wallet account number" in Settings is Monnify's internal number for
 
 ### Customer sent a receipt in the help chat
 The help chat reads the receipt and runs the same partner check as "I've sent money — check now" (only confirmed payments are credited, never twice). If it found nothing, the customer may open a ticket with the receipt attached: follow **Funding problems** above. Support staff can't credit from a receipt; the owner's AI proposes "Check funding" or "Credit unmatched payment" cards that only the owner can apply.
+
+### App errors or something "not working"
+Tell the owner. The owner's AI can read the server logs, find the cause and propose a fix (the owner approves and updates the server). Don't promise customers a time; say "our team is fixing it — your money is safe".

@@ -454,6 +454,9 @@ const ADMIN_TOOLS = [
   { name: 'get_payout_runway', description: 'Send to Bank payout wallet: free balance, average sent per day (last 14 days) and about how many days it lasts. Amounts in kobo. Read-only.', input_schema: { type: 'object', properties: {} } },
   { name: 'get_monnify_reconciliation', description: "Monnify's own list of paid transactions for one day (from Monnify's API, no file needed) matched against our wallet credits: matched, paid at Monnify but not credited, credited but not at Monnify, different amount, duplicates. Amounts in kobo. Read-only. Runs automatically every morning for yesterday.", input_schema: { type: 'object', properties: { day: { type: 'string', description: 'YYYY-MM-DD (default yesterday)' } } } },
   { name: 'get_weekly_report', description: "The plain weekly report emailed to the owner every Monday (last 7 days, real customers only): sales, purchases, funding, refunds, Send to Bank, new customers, tickets, risk flags, partner follow-ups. Read-only preview.", input_schema: { type: 'object', properties: {} } },
+  { name: 'get_pr_status', description: "The AI's GitHub pull requests (code changes it proposed): open/merged, whether the automatic tests and build PASSED or FAILED, files changed, and the exact VPS commands to run after merging (prisma db push only when the database changed). Read-only. Optional repo (backend/frontend) and number.", input_schema: { type: 'object', properties: { repo: { type: 'string', enum: ['backend', 'frontend'] }, number: { type: 'integer' } } } },
+  { name: 'get_failure_patterns', description: 'Purchases failing right now, per provider (last 2 hours by default): failed vs total, fail rate, how many customers, top error reasons, and which providers are auto-paused. Read-only.', input_schema: { type: 'object', properties: { hours: { type: 'integer', description: '1-48, default 2' } } } },
+  { name: 'get_support_quality', description: 'Support quality for the last days: tickets, median first-reply time, tickets over 24h without a reply, automatic replies, common words, and the last 10 replies (phones masked) to score. Read-only.', input_schema: { type: 'object', properties: { days: { type: 'integer', description: '1-90, default 7' } } } },
   { name: 'get_deploy_status', description: 'Which code (git commit) the server is running, when it started, the Node version, the self-check run 60s after start (database, VTpass, payment partner settings, /api/health) and the previous commit to roll back to.', input_schema: { type: 'object', properties: {} } },
 ];
 
@@ -462,6 +465,9 @@ function adminHandlers(settings) {
     get_plan_changes: () => require('../lib/planWatch').lastReport(),
     get_server_logs: (input = {}) => require('../lib/serverLogs').read(input),
     get_deploy_status: () => require('../lib/deployCheck').status(),
+    get_pr_status: ({ repo, number } = {}) => require('../lib/devOps').prStatus({ repo, number }),
+    get_failure_patterns: ({ hours } = {}) => require('../lib/devOps').failurePatterns({ hours }),
+    get_support_quality: ({ days } = {}) => require('../lib/devOps').supportQuality({ days }),
     get_compliance_summary: ({ month } = {}) => require('../lib/compliance').summary({ month }),
     get_unmatched_suggestions: () => require('../lib/aiOps').unmatchedSuggestions(),
     get_payout_runway: () => require('../lib/aiOps').payoutRunway(),
@@ -710,6 +716,12 @@ Rules:
 - Partner statements (the owner attached a Nomba, Squad, Monnify or VTpass statement): check_partner_statement, then explain in plain words: how many matched, then each problem group with references and amounts in naira (the tool gives kobo: divide by 100). For credits missing from our records, say to use "Funding not showing?" on the customer's page or Unmatched payments, and to check the reference first so nothing is credited twice. You cannot credit, refund or change anything.
 - Release notes ("what changed in the update?", after a restart): get_release_notes. Write 1) a short plain "what changed" note for the owner (group the commits; skip tests, guides and internal tidy-ups), 2) ONLY if customers would notice something (new or changed screens, wording, prices, fees, features), a short friendly customer message proposed with propose_broadcast so the owner taps Apply; never for admin-only changes. Never mention commit numbers, code, partners' names or anything not yet switched on to customers.
 - Compliance ("SCUML", "NFIU", "due diligence", "monthly compliance"): get_compliance_summary for the month asked (default last month). Write a short summary in naira (the tool gives kobo: divide by 100): real totals, test figures kept apart, large fundings by customer, freezes, risk flags, scam reports, duplicate BVN/NIN refusals, unmatched payments, and anything worth a closer look. Point to the CSV on Admin → Money check. Say clearly it is a draft for the owner to review: you never file or send a report, and you don't decide whether something must be reported.
+- Fixing errors in the app: get_server_logs (errorsOnly) → read_app_code to find the cause → explain it simply → propose_code_change with the smallest safe fix (never money logic without saying so loudly). After the owner taps Apply, the pull request runs the automatic tests: check with get_pr_status. If tests FAILED, read why and propose a corrected change. If they PASSED, tell the owner to merge on GitHub, then give the afterMerge commands from get_pr_status exactly (one code block each), and afterwards confirm with get_deploy_status. You never merge or run anything yourself.
+- Purchases failing ("why is data failing?"): get_failure_patterns; explain the likely cause from the top reasons (e.g. VTpass LOW WALLET BALANCE = top up VTpass) and offer propose_service_notice when customers are affected.
+- New risk flags: for each, explain in plain words why it looks risky and what is normal; suggest propose_freeze_customer only for strong patterns.
+- VTpass price changes: get_price_watch + simulate_pricing; if a service now earns too little, propose_settings_change for its markup.
+- Support quality: get_support_quality; score the replies (fast, clear, kind, solved) with one tip each; offer propose_faq for repeated questions.
+- Customers who stopped buying: get_winback_list, then propose_campaign (audience SLIPPING).
 - Receipts and debit alerts (the owner pastes or screenshots a customer's bank receipt): read the amount, date, receiver account number and session ID/reference; find the customer (find_customers); check the account number is one of theirs (get_customer_profile); then propose_funding_check with the reference. Never suggest crediting from the receipt alone.
 - Unmatched payments: get_unmatched_suggestions, then propose_assign_unmatched only for strong matches (their old account number) or when the owner confirms who paid; explain the evidence.
 - Held bank transfers: get_bank_transfers (HELD) and get_customer_profile; recommend RELEASE or CANCEL with reasons (new account, first transfer, amount vs history, risk flags) via propose_held_transfer. Stuck orders: propose_order_action RECHECK first; MARK_FAILED only when the provider confirmed failure.
@@ -1026,18 +1038,22 @@ router.post('/admin/ai/chat', requireAdminAuth, async (req, res) => {
       else last.content = `${last.content}\n${note}`;
     }
     const tools = staff ? allTools.filter((t) => STAFF_TOOL_NAMES.includes(t.name)) : allTools;
+    const lastText = (() => { const c = history[history.length - 1]?.content; return Array.isArray(c) ? c.filter((b) => b.type === 'text').map((b) => b.text).join(' ') : String(c || ''); })();
+    const codeTask = !staff && /\b(code|bug|error|errors|fix|crash|crashed|pull request|deploy|logs?|self-check|broken|not working)\b/i.test(lastText);
     const handlers = staff ? Object.fromEntries(Object.entries(allHandlers).filter(([k]) => STAFF_TOOL_NAMES.includes(k))) : allHandlers;
     const result = await ai.runAssistant({
       settings,
       kind: 'ADMIN',
       actorId: req.admin.adminId,
-      model: settings.aiAdminModel,
+      // Code and error work (owner only) may use a stronger model with more
+      // steps: AI_CODE_MODEL in the server settings (.env); normal chats stay cheap.
+      model: codeTask ? process.env.AI_CODE_MODEL || settings.aiAdminModel : settings.aiAdminModel,
       system: staff ? staffSystemPrompt(admin?.name) : adminSystemPrompt(admin?.name),
       history,
       tools,
       handlers,
-      maxSteps: 10,
-      maxTokens: 3000,
+      maxSteps: codeTask ? 16 : 10,
+      maxTokens: codeTask ? 6000 : 3000,
     });
     res.json({ reply: require('../lib/adminNav').cleanLinks(result.text), actions: staff ? [] : collector.actions, designs: staff ? [] : collector.designs });
   } catch (error) {

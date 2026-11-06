@@ -200,6 +200,8 @@ app.listen(PORT, () => {
   require('./lib/planWatch').start();
   // Daily Monnify reconciliation and the Monday weekly report (lib/aiOps.js).
   require('./lib/aiOps').start();
+  // Hourly error watch with an "Ask the AI to fix this" link (lib/devOps.js).
+  require('./lib/devOps').start();
   // Notes the running commit and runs a self-check 60s after start.
   require('./lib/deployCheck').start();
 });

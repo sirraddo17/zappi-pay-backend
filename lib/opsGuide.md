@@ -223,3 +223,12 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - Ask the AI: "who do the unmatched payments belong to?", "Monnify check for yesterday", "how long will the payout wallet last?", "show me last week's report", or paste a customer's bank receipt.
 - Anything that moves money comes as an Apply card with a second "are you sure?". Nothing is sent or credited without your tap.
 - Every morning the app checks Monnify's paid transfers for yesterday and alerts you if any weren't credited. Every Monday a weekly report email arrives (needs email alerts on; set `WEEKLY_REPORT=off` in `.env` to stop it).
+
+## Let the AI propose code fixes (pull requests with automatic tests)
+
+1. GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate. Repository access: only **zappi-pay-backend** and **zappi-pay-frontend**. Permissions: **Contents: Read and write**, **Pull requests: Read and write**, **Checks: Read**. Copy the token (never paste it in the chat).
+2. On the **VPS**, add two lines to `/opt/zappi-pay-backend/.env`: `GITHUB_TOKEN=` followed by the token, and `CODE_PR_ENABLED=on`. Optional: `AI_CODE_MODEL=` a stronger Claude model for code and error questions only.
+3. `pm2 restart zappi-pay-api --update-env`
+4. Ask the AI "is code access on?". From then on it can propose fixes as pull requests. Each one runs **Backend tests** / **Frontend build** on GitHub. Merge only when they pass, then run the commands the AI gives you (also written at the bottom of the pull request).
+- The AI can never merge, deploy, or change `.env`, `package-lock.json` or the GitHub checks themselves.
+- To switch it off: remove `CODE_PR_ENABLED=on` and restart with `--update-env`.

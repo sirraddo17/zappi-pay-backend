@@ -1407,6 +1407,13 @@ OWNER AI ASSISTANT:
 - Monnify check: every morning the app asks Monnify for yesterday's paid transfers and matches them to wallet credits; the owner is alerted if any weren't credited (link: Unmatched payments). Ask "Monnify check for <date>" any time. VTpass has no list API, so VTpass is checked by attaching its statement.
 - Weekly report: every Monday morning a plain email (sales, purchases, funding, refunds, Send to Bank, new customers, tickets, risk flags, partner follow-ups; real customers only). Off when email alerts are off. Ask "show me last week's report" for a preview.
 
+----------------------------------------------------------------------
+75. AI FIXES AND WATCHES THE APP (OWNER APPROVES; NOTHING GOES LIVE BY ITSELF)
+----------------------------------------------------------------------
+CODE FIXES: when something breaks, ask the admin AI (or tap the alert). It reads the server log and the code, explains the cause, and proposes the fix as a GitHub pull request (Apply card). It never merges or deploys. Every pull request runs automatic checks on GitHub ("Backend tests" / "Frontend build"); ask "is my fix ready?" — the AI says if they passed. If they passed, merge it on GitHub; for backend changes the AI gives the exact VPS commands (prisma db push only when the database changed), then confirms with "is the new code live?". If they failed, it proposes a corrected change. Needs GITHUB_TOKEN and CODE_PR_ENABLED=on in the server settings (.env); AI_CODE_MODEL there chooses a stronger model for code and error questions only.
+ERROR WATCH: every hour the server log is checked. A new error that repeats (3+ times), or 25+ errors in an hour, sends one alert with "ask the AI assistant to find the cause and propose a fix". The deploy self-check, risk-flag and VTpass price alerts also open the AI with the right question.
+MORE THE AI CAN EXPLAIN: purchases failing on one provider right now (with the reason, e.g. VTpass LOW WALLET BALANCE) and a draft service notice; new risk flags in plain words; markup suggestions after VTpass price changes; support quality (reply times, unanswered tickets, a score and tip per reply, FAQ suggestions); customers who stopped buying (also in the Monday report) with a win-back offer. Every change is an Apply card.
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================
