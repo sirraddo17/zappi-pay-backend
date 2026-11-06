@@ -138,6 +138,13 @@ test('plan watch: removed / added / price changes, uses of removed codes, one al
   assert.match(last.rule, /Nothing is changed automatically/);
 });
 
+test('plan watch: a service VTpass refuses is skipped with VTpass’s reason', async () => {
+  db = makeDb();
+  const fetchVia = async (sid) => { if (sid === 'jamb') throw new Error('VTpass: Service is Not Valid (code 011) — not enabled on our VTpass account'); return []; };
+  const r = await planWatch.run({ fetch: fetchVia, alert: false });
+  assert.match(r.skipped.find((s) => s.serviceID === 'jamb').why, /Not Valid \(code 011\)/);
+});
+
 test('plan watch: runs once a day, after 6am Lagos', async () => {
   db = makeDb();
   planWatch._reset();
