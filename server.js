@@ -198,6 +198,8 @@ app.listen(PORT, () => {
   require('./lib/adminInsights').startInsights();
   // Daily VTpass plan-code check (removed/added codes, price changes).
   require('./lib/planWatch').start();
+  // Daily Monnify reconciliation and the Monday weekly report (lib/aiOps.js).
+  require('./lib/aiOps').start();
   // Notes the running commit and runs a self-check 60s after start.
   require('./lib/deployCheck').start();
 });

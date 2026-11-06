@@ -182,3 +182,6 @@ One BVN or NIN can only be linked to one ZAPPI PAY account. The refusal is recor
 
 ### Never send money to the Monnify payout wallet number
 The "Monnify wallet account number" in Settings is Monnify's internal number for the API, not a bank account (at Moniepoint the same digits can belong to a stranger). Never give it to anyone or send money to it. Only the owner tops up Monnify, from Monnify → Balances → Fund Balance.
+
+### Customer sent a receipt in the help chat
+The help chat reads the receipt and runs the same partner check as "I've sent money — check now" (only confirmed payments are credited, never twice). If it found nothing, the customer may open a ticket with the receipt attached: follow **Funding problems** above. Support staff can't credit from a receipt; the owner's AI proposes "Check funding" or "Credit unmatched payment" cards that only the owner can apply.

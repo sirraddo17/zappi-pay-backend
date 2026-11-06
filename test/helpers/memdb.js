@@ -41,6 +41,11 @@ function cmp(field, a, cond) {
     if (op === 'notIn' && C.includes(A)) return false;
     if (op === 'not') { if (c === null ? A === null || A === undefined : A === C) return false; }
     if (op === 'startsWith' && !String(a || '').startsWith(c)) return false;
+    if (op === 'contains') {
+      const ci = cond.mode === 'insensitive';
+      const hay = ci ? String(a || '').toLowerCase() : String(a || '');
+      if (!hay.includes(ci ? String(c).toLowerCase() : String(c))) return false;
+    }
   }
   return true;
 }
@@ -50,7 +55,7 @@ function matches(row, where = {}) {
     if (f === 'OR') { if (!cond.some((w) => matches(row, w))) return false; continue; }
     if (f === 'AND') { if (!cond.every((w) => matches(row, w))) return false; continue; }
     if (f === 'NOT') { if (matches(row, cond)) return false; continue; }
-    if (cond && typeof cond === 'object' && !(cond instanceof Date) && Object.keys(cond).length && Object.keys(cond).every((x) => /^[a-z]+_[a-z]+$/i.test(x) === false && !['equals', 'gte', 'gt', 'lte', 'lt', 'in', 'notIn', 'not', 'startsWith'].includes(x))) {
+    if (cond && typeof cond === 'object' && !(cond instanceof Date) && Object.keys(cond).length && Object.keys(cond).every((x) => /^[a-z]+_[a-z]+$/i.test(x) === false && !['equals', 'gte', 'gt', 'lte', 'lt', 'in', 'notIn', 'not', 'startsWith', 'contains', 'mode'].includes(x))) {
       // compound unique like customerId_day: { customerId, day }
       if (!matches(row, cond)) return false;
       continue;

@@ -61,6 +61,27 @@ router.patch('/admin/schedules/:id', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Owner: move a scheduled top-up to another plan of the same service (e.g.
+// VTpass removed the old code). Only a code VTpass currently lists (plan-code
+// watch) is accepted, except when undoing. The customer is told.
+router.patch('/admin/schedules/:id/plan', requireAdminAuth, async (req, res) => {
+  try {
+    const s = await prisma.scheduledPurchase.findUnique({ where: { id: req.params.id } });
+    if (!s) return res.status(404).json({ error: 'Scheduled top-up not found.' });
+    const code = String(req.body?.variationCode || '').trim().slice(0, 80);
+    if (!code) return res.status(400).json({ error: 'Choose the new plan.' });
+    const plan = await prisma.priceSnapshot.findFirst({ where: { serviceID: s.serviceID, variationCode: code, ...(req.body?.force ? {} : { removedAt: null }) } });
+    if (!plan && !req.body?.force) return res.status(400).json({ error: 'That plan is not on the provider’s current list for this service.' });
+    await prisma.scheduledPurchase.update({ where: { id: s.id }, data: { variationCode: code, failCount: 0, lastError: null } });
+    await audit(req, 'SCHEDULE_PLAN_CHANGED', { scheduleId: s.id, customerId: s.customerId, from: s.variationCode, to: code, viaAssistant: Boolean(req.headers['x-admin-assistant']) });
+    if (plan) Promise.resolve(notify(s.customerId, 'Scheduled top-up updated', `Your scheduled ${String(s.service).toLowerCase()} for ${s.billersCode}${s.nickname ? ` (${s.nickname})` : ''} now uses ${plan.name} (₦${Number(plan.amount).toLocaleString('en-NG')}), because the old plan is no longer sold. You can change or pause it in the app.`)).catch(() => {});
+    res.json({ ok: true, variationCode: code });
+  } catch (error) {
+    console.error('PATCH /admin/schedules/:id/plan failed:', error);
+    res.status(500).json({ error: 'Could not change the plan.' });
+  }
+});
+
 router.delete('/admin/schedules/:id', requireAdminAuth, async (req, res) => {
   try {
     const s = await prisma.scheduledPurchase.findUnique({ where: { id: req.params.id } });

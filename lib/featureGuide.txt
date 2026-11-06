@@ -1392,6 +1392,21 @@ WHO: owner only. Support staff can't see these.
 COMPLIANCE SUMMARY: Admin → 💰 Money check → "🧾 Compliance summary" (pick a month, Download CSV), or ask the admin AI "compliance summary for last month". For SCUML / NFIU and partner due-diligence questions. It shows, for the month: funding inflows, purchases (cash paid) and refunds with counts; customers whose single funding is ₦1,000,000 or more, or whose funding in one day is ₦5,000,000 or more (both amounts can be changed on the card) [setting: complianceSingleFunding, default ₦1,000,000] [setting: complianceDailyFunding, default ₦5,000,000]; accounts frozen; risk flags raised and dismissed; scam reports; the same BVN/NIN refused for a second account (recorded from 5 Nov 2026); unmatched payments. Test orders and accounts marked "Test account" are kept out of the real figures and shown separately. Phone numbers are masked. It is a draft for the owner to review: ZAPPI PAY never files or sends a report, and the AI doesn't decide what must be reported.
 PARTNER FOLLOW-UPS: the partner desk (Admin → 🤝 Partners) lists VTpass, Monnify, Nomba, Squad (GTBank), FCMB, GTBank, ClubKonnect and Flutterwave with their open tasks (what is pending, due date, notes; overdue first, reminders when due). Ask the admin AI "what's pending with partners?". It can propose adding or updating a task (partner, what is pending, due date, next step) as an Apply card; nothing is saved until you tap Apply (Undo is there too). Each next step is added as a dated note line. When you paste a partner's email or screenshot into the AI, it drafts the reply and suggests the matching task update.
 
+----------------------------------------------------------------------
+74. AI HELP WITH MONEY CHECKS (OWNER APPROVES EVERY ACTION)
+----------------------------------------------------------------------
+RULE: the AI only reads and proposes. Anything that credits, refunds, releases or changes something shows an Apply card; nothing happens until the owner taps Apply (money cards ask "are you sure?" again). The AI never sends money, emails or messages by itself.
+CUSTOMER HELP CHAT — "I sent money but it's not in my wallet": the customer can send their bank receipt or debit alert. The assistant reads the amount, date, the account number it went to and the session ID. If it went to their own ZAPPI PAY account number, it runs the same check as Wallet → "I've sent money — check now" (asks Monnify, Squad and Nomba; credits only what the partner confirms, never twice; at most once a minute). If nothing is confirmed, it offers a support ticket with the receipt attached.
+OWNER AI ASSISTANT:
+- Receipt from a customer: paste or screenshot it → it finds the customer and proposes "Check funding" with the reference (Apply).
+- Unmatched payments: "who do the unmatched payments belong to?" → likely owner for each (strong = it was their old account number; possible = payer name matches), and a "Credit to …" Apply card for strong matches.
+- Held bank transfers: recommends Release or Cancel (refund) with reasons → Apply card.
+- Stuck orders: "Re-check with the provider" first; "Mark failed and refund" / "Mark delivered" only after the provider confirmed → Apply card.
+- Plans VTpass removed: switch an affected scheduled top-up to the suggested current plan → Apply card; the customer is told.
+- Payout wallet runway: how many days the Send to Bank wallet lasts at the current pace.
+- Monnify check: every morning the app asks Monnify for yesterday's paid transfers and matches them to wallet credits; the owner is alerted if any weren't credited (link: Unmatched payments). Ask "Monnify check for <date>" any time. VTpass has no list API, so VTpass is checked by attaching its statement.
+- Weekly report: every Monday morning a plain email (sales, purchases, funding, refunds, Send to Bank, new customers, tickets, risk flags, partner follow-ups; real customers only). Off when email alerts are off. Ask "show me last week's report" for a preview.
+
 ======================================================================
 SETTINGS THAT CHANGE CUSTOMER-VISIBLE NUMBERS (field: default, meaning)
 ======================================================================

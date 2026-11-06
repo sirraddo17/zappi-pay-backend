@@ -22,8 +22,9 @@ router.get('/admin/unmatched-payments', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Crediting can also come from an AI Apply card: the owner tapped Apply (the
+// AI itself never calls this). Closing stays person-only below.
 router.post('/admin/unmatched-payments/:id/assign', requireAdminAuth, async (req, res) => {
-  if (noAi(req, res)) return;
   try {
     const customerId = String(req.body?.customerId || '').trim();
     if (!customerId) return res.status(400).json({ error: 'Choose the customer to credit.' });

@@ -217,3 +217,9 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - Admin → 🚦 Go-live check → **Reset BVN checks made before Monnify went live** → pick the cutoff date (default today) → type `RESET-KYC`. It clears the BVN/NIN check and removes the account numbers of everyone checked or given numbers on or before that date. Wallet balances, orders and history stay exactly as they are. Old numbers are remembered: a payment that still arrives on one lands in Unmatched payments.
 - Customers then re-enter their BVN/NIN on the Wallet page and the real Monnify check runs. Tell them with a broadcast first (the AI can draft one).
 - Download a backup first (Settings → 💾 Backups).
+
+## AI money helpers (owner approves every action)
+
+- Ask the AI: "who do the unmatched payments belong to?", "Monnify check for yesterday", "how long will the payout wallet last?", "show me last week's report", or paste a customer's bank receipt.
+- Anything that moves money comes as an Apply card with a second "are you sure?". Nothing is sent or credited without your tap.
+- Every morning the app checks Monnify's paid transfers for yesterday and alerts you if any weren't credited. Every Monday a weekly report email arrives (needs email alerts on; set `WEEKLY_REPORT=off` in `.env` to stop it).
