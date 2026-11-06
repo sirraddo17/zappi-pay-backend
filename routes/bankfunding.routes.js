@@ -138,8 +138,11 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       }
       verifiedDob = dob;
     }
+    // A passed check is saved straight away (Monnify charges per check), so
+    // if creating the account number fails, a retry doesn't pay for a new check.
+    const passed = Boolean(verifiedDob) || Boolean(customer.kycVerifiedAt && customer.kycHash === kycHash);
     try {
-      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash } });
+      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash, ...(verifiedDob ? { kycVerifiedAt: new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } : {}) } });
     } catch (error) {
       if (error.code === 'P2002') return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account.`, code: 'IDENTITY_IN_USE' });
       throw error;
@@ -148,13 +151,9 @@ router.post('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
     try {
       updated = await monnify.createReservedAccount(customer, { idType, idNumber });
     } catch (error) {
-      // Not verified after all — free the identity again.
-      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
+      // Not verified → free the identity again. Verified → keep it (no new paid check on retry).
+      if (!passed) await prisma.customer.update({ where: { id: customer.id }, data: { kycHash: null } }).catch(() => {});
       throw error;
-    }
-    if (verifiedDob) {
-      // Name and date of birth now match the ID — lock them.
-      await prisma.customer.update({ where: { id: customer.id }, data: { kycVerifiedAt: new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } }).catch((e) => console.warn('kyc lock failed:', e.message));
     }
     // Invited friend just verified: welcome cashback (lib/referralPlus.js).
     require('../lib/referralPlus').payWelcome(customer.id).catch(() => {});
@@ -322,10 +321,11 @@ async function createNombaAccount(req, res) {
     verifiedDob = dob;
   }
   let claimed = false;
-  if (!customer.kycHash) {
+  if (!customer.kycHash || (verifiedDob && customer.kycHash !== kycHash)) {
     try {
-      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash } });
-      claimed = true;
+      // A passed check is saved now, so a failed account creation doesn't cost a new check.
+      await prisma.customer.update({ where: { id: customer.id }, data: { kycHash, ...(verifiedDob ? { kycVerifiedAt: customer.kycVerifiedAt || new Date(), ...(customer.dateOfBirth ? {} : { dateOfBirth: verifiedDob }) } : {}) } });
+      claimed = !verifiedDob;
     } catch (error) {
       if (error.code === 'P2002') return res.status(409).json({ error: `This ${idType} is already linked to another ZAPPI PAY account.`, code: 'IDENTITY_IN_USE' });
       throw error;
