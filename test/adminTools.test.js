@@ -131,6 +131,10 @@ test('plan watch: removed / added / price changes, uses of removed codes, one al
 
   const last = await planWatch.lastReport();
   assert.ok(last.checkedAt);
+  assert.equal(last.removed.length, 0, 'the latest run removed nothing…');
+  assert.equal(last.stillUsingRemovedCodesNow.length, 1, '…but the code removed earlier is still in use and still listed');
+  assert.equal(last.stillUsingRemovedCodesNow[0].variationCode, 'mtn-15gb');
+  assert.equal(last.stillUsingRemovedCodesNow[0].suggestion.variationCode, 'mtn-15gb-new');
   assert.match(last.rule, /Nothing is changed automatically/);
 });
 
