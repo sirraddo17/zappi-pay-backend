@@ -1369,6 +1369,7 @@ ADMIN: Admin → Settings → Markup → "✅ Safe pricing check". It shows what
 - Admin Orders: Bet Funding, Car insurance and International airtime chips show only while those are on.
 - Admin dashboard: "Total revenue" is now "Sales" (what customers paid for purchases, not profit). The Profit panel is hidden in demo mode.
 - Admin banner lists every partner and its mode (VTpass, Monnify, Squad (GTBank), Nomba: LIVE or SANDBOX, and whether account numbers are on for customers), plus Send to Bank ON/OFF.
+- Squad / Nomba "free from ₦X" (Settings → Wallet funding & payment partners → Squad or Nomba → Funding fee): deposits of at least that amount through that partner pay no funding fee (ZAPPI PAY covers the partner's charge); smaller deposits pay the normal fee. The Wallet shows "free from ₦X" and "Free 🎉" in the "How much do you want in your wallet?" helper. [setting: squadFundingFreeFrom, nombaFundingFreeFrom, empty = off]
 - Monnify funding fee: Monnify charges 1.5% + 7.5% VAT = 1.61% (max ₦2,000 + VAT). Customers see exactly the % set in Settings → Limits → Fees; set 1.61 to match.
 - Nomba account numbers show the account name the bank app shows: SIRRADDO GLOBAL LIMITED. Monnify numbers show "SIRRADDO GLOBAL-" plus the first letters of the customer's name (e.g. SIRRADDO GLOBAL-RID).
 

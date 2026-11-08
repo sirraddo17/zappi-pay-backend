@@ -731,6 +731,11 @@ model Settings {
   squadFundingFeeCap      Decimal? @db.Decimal(14, 2)
   nombaFundingFeePercent  Decimal? @db.Decimal(5, 2)
   nombaFundingFeeCap      Decimal? @db.Decimal(14, 2)
+  // "Free from ₦": deposits of at least this through the partner pay no
+  // funding fee (ZAPPI PAY covers the partner's charge); smaller ones pay
+  // the normal fee. Empty/0 = off.
+  squadFundingFreeFrom    Decimal? @db.Decimal(14, 2)
+  nombaFundingFreeFrom    Decimal? @db.Decimal(14, 2)
   // Nomba (account numbers + Send to Bank, lib/nomba.js). Keys here
   // override the NOMBA_* env vars; never shown back.
   nombaFundingEnabled     Boolean @default(false)
