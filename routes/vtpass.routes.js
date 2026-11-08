@@ -42,6 +42,10 @@ router.get('/vtpass/services', requireCustomerAuth, async (req, res) => {
       return res.json({ ...data, content: list.filter((p) => ckBet.VTPASS_BET_IDS.includes(p.serviceID)) });
     }
     const data = await cachedCatalog('/services', { identifier });
+    // Providers the owner hid (Admin → Partners) don't show on the Buy page.
+    const hp = require('../lib/hiddenProviders');
+    const settings = await require('../lib/vtpass').getSettings();
+    if (Array.isArray(data?.content) && hp.list(settings).length) return res.json({ ...data, content: data.content.filter((p) => !hp.isHidden(settings, p.serviceID)) });
     res.json(data);
   } catch (error) {
     console.error('GET /vtpass/services failed:', error);

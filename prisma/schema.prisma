@@ -920,6 +920,9 @@ model Settings {
   // and run once it's switched back on.
   purchasesPaused          Boolean @default(false)
   pausedServices           Json    @default("[]")
+  // Providers hidden from the Buy page until the owner shows them again
+  // (Admin → Partners), e.g. ones VTpass hasn't enabled for us.
+  hiddenProviders          Json    @default("[\"jamb\",\"spectranet\"]")
   // Auto-pause (lib/partnerHealth.js): a provider (e.g. ikeja-electric)
   // that keeps failing for several customers is paused for a while,
   // tried again quietly, and reopened by itself when it works.

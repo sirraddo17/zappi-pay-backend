@@ -20,7 +20,7 @@ const H = (fn) => async (req, res) => {
     res.json(await fn(req, res));
   } catch (error) {
     if (res.headersSent) return;
-    if (error instanceof desk.DeskError || error instanceof follow.FollowUpError) return res.status(400).json({ error: error.message });
+    if (error instanceof desk.DeskError || error instanceof follow.FollowUpError || error.status === 400) return res.status(400).json({ error: error.message });
     if (/^Use a time/.test(error.message)) return res.status(400).json({ error: error.message });
     console.error(`${req.method} ${req.path} failed:`, error.message);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
@@ -30,7 +30,7 @@ const guard = (fn) => H(async (req, res) => (noAi(req, res) ? undefined : fn(req
 
 router.get('/admin/partners', requireAdminAuth, H(async () => {
   const [o, pause, awayCfg, followUps] = await Promise.all([desk.overview(), health.list(), away.config(), follow.list()]);
-  return { ...o, autoPause: pause, away: awayCfg, followUps };
+  return { ...o, autoPause: pause, away: awayCfg, followUps, hiddenProviders: await require('../lib/hiddenProviders').status() };
 }));
 router.put('/admin/partners/contacts/:key', requireAdminAuth, guard(async (req) => {
   const p = await desk.savePartner(req.params.key, req.body || {});
@@ -67,6 +67,14 @@ router.post('/admin/partners/auto-pause/:provider/resume', requireAdminAuth, gua
   const ok = await health.resume(req.params.provider);
   await audit(req, 'AUTO_PAUSE_RESUMED', { provider: req.params.provider });
   return { ok, ...(await health.list()) };
+}));
+
+// Hide / show a provider on the Buy page (owner; never the AI).
+router.put('/admin/partners/hidden/:provider', requireAdminAuth, guard(async (req) => {
+  const hide = Boolean(req.body?.hidden);
+  const out = await require('../lib/hiddenProviders').setHidden(req.params.provider, hide);
+  await audit(req, hide ? 'PROVIDER_HIDDEN' : 'PROVIDER_SHOWN', { provider: req.params.provider });
+  return out;
 }));
 
 // Away mode
