@@ -191,3 +191,6 @@ Tell the owner. The owner's AI can read the server logs, find the cause and prop
 
 ### Notes for manual credits and debits
 Every manual credit or debit needs a clear reason: what happened, the evidence (order reference, ticket, bank session ID) and who approved. Use "✨ Suggest note" on Adjust wallet, or ask the AI. Never write just "refund" or "adjustment" — the wallet history and audit log must explain every naira.
+
+### Writing replies
+Type the reply in your own words, then tap **✨ Polish** on the ticket. Pick "Customer's language" (or English, Pidgin, Yoruba, Hausa, Igbo). Check the amounts and references are still right, then Send. Use **Undo** to go back to your text.
