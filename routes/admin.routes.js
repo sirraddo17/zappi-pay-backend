@@ -655,6 +655,17 @@ router.get('/admin/audit-log', requireAdminAuth, async (req, res) => {
 // same WalletTransaction ledger as everything else, so the customer's
 // transaction history stays a complete, honest record of every balance
 // change, not just the ones they requested themselves.
+// Suggest a clear note for a manual credit/debit (text only; changes nothing).
+router.post('/admin/money-note', requireAdminAuth, async (req, res) => {
+  try {
+    const admin = await prisma.adminUser.findUnique({ where: { id: req.admin.adminId }, select: { name: true } }).catch(() => null);
+    res.json(await require('../lib/moneyNotes').suggest({ ...(req.body || {}), adminName: admin?.name }));
+  } catch (error) {
+    console.error('POST /admin/money-note failed:', error.message);
+    res.status(500).json({ error: 'Could not suggest a note.' });
+  }
+});
+
 router.post('/admin/customers/:id/adjust-wallet', requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -665,6 +676,11 @@ router.post('/admin/customers/:id/adjust-wallet', requireAdminAuth, async (req, 
     const amountNum = Number(amount);
     if (!amountNum || amountNum <= 0) {
       return res.status(400).json({ error: 'A positive amount is required.' });
+    }
+    // Every manual correction needs a clear reason for the audit log
+    // ("✨ Suggest note" fills one in).
+    if (String(note || '').trim().length < 8) {
+      return res.status(400).json({ error: 'Add a reason (what happened and the order, ticket or bank reference). Tap “✨ Suggest note” for one.' });
     }
     // Kobo are fine (e.g. ₦0.53); more than 2 decimal places is not a real amount.
     if (Math.abs(amountNum * 100 - Math.round(amountNum * 100)) > 1e-6) {

@@ -188,3 +188,6 @@ The help chat reads the receipt and runs the same partner check as "I've sent mo
 
 ### App errors or something "not working"
 Tell the owner. The owner's AI can read the server logs, find the cause and propose a fix (the owner approves and updates the server). Don't promise customers a time; say "our team is fixing it — your money is safe".
+
+### Notes for manual credits and debits
+Every manual credit or debit needs a clear reason: what happened, the evidence (order reference, ticket, bank session ID) and who approved. Use "✨ Suggest note" on Adjust wallet, or ask the AI. Never write just "refund" or "adjustment" — the wallet history and audit log must explain every naira.
