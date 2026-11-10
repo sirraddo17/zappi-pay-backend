@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "test": "node --require ./test/setup.js --test --test-force-exit --test-timeout=30000 test/cashback.test.js test/screens.test.js test/review.test.js test/subscriptions.test.js test/quiet.test.js test/ledger.test.js test/adminTools.test.js test/statementTools.test.js test/complianceTools.test.js test/partnerAccounts.test.js test/kycReset.test.js test/monnifyReserve.test.js test/accountNames.test.js test/payoutBackup.test.js test/aiOps.test.js test/devOps.test.js test/idCheckCost.test.js test/dailySummary.test.js test/hiddenProviders.test.js test/fundingFreeFrom.test.js test/moneyNotes.test.js test/fundsGuard.test.js"
+    "test": "node --require ./test/setup.js --test --test-force-exit --test-timeout=30000 test/cashback.test.js test/screens.test.js test/review.test.js test/subscriptions.test.js test/quiet.test.js test/ledger.test.js test/adminTools.test.js test/statementTools.test.js test/complianceTools.test.js test/partnerAccounts.test.js test/kycReset.test.js test/monnifyReserve.test.js test/accountNames.test.js test/payoutBackup.test.js test/aiOps.test.js test/devOps.test.js test/idCheckCost.test.js test/dailySummary.test.js test/hiddenProviders.test.js test/fundingFreeFrom.test.js test/moneyNotes.test.js test/fundsGuard.test.js test/adminNav.test.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

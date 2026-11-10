@@ -27,7 +27,9 @@ const { buildSummary } = require('../lib/dailySummary');
 
 test('daily email profit = Overview profit (VTpass commission included); test orders left out', async () => {
   db = makeDb();
-  const y = new Date(Date.now() - 20 * 3600 * 1000);
+  // Yesterday at noon, Lagos time (the email covers the previous Lagos day).
+  const todayLagos = new Date(Date.now() + 3600 * 1000).toISOString().slice(0, 10);
+  const y = new Date(new Date(`${todayLagos}T12:00:00+01:00`).getTime() - 24 * 3600 * 1000);
   await db.order.create({ data: { customerId: 'c', service: 'DATA', status: 'SUCCESS', amount: '1485.00', costAmount: '1500.00', cashbackAmount: '4.00', isTest: false, vtpassRequestId: 'R1', createdAt: y } });
   await db.order.create({ data: { customerId: 'c', service: 'DATA', status: 'SUCCESS', amount: '9000.00', costAmount: '9000.00', isTest: true, vtpassRequestId: 'T1', createdAt: y } });
   const s = await buildSummary();
