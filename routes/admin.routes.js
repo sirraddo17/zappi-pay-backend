@@ -14,6 +14,10 @@ function safeSettings(settings) {
   out.aiApiKeySet = Boolean(out.aiApiKey);
   out.aiApiKeyHint = out.aiApiKey ? `…${out.aiApiKey.slice(-4)}` : null;
   delete out.aiApiKey;
+  out.geminiApiKeySet = Boolean(out.geminiApiKey);
+  out.geminiApiKeyHint = out.geminiApiKey ? `…${out.geminiApiKey.slice(-4)}` : null;
+  delete out.geminiApiKey;
+  out.geminiFromEnv = Boolean(process.env.GEMINI_API_KEY);
   out.openaiApiKeySet = Boolean(out.openaiApiKey);
   out.openaiApiKeyHint = out.openaiApiKey ? `…${out.openaiApiKey.slice(-4)}` : null;
   delete out.openaiApiKey;
@@ -55,6 +59,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       monnifyWalletAccount, bankTransferEnabled, bankTransferFee, bankTransferFeeMid, bankTransferFeeHigh, bankTransferMin, bankTransferMax, bankTransferDailyMax,
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, cashbackSeparate, cashbackUseMaxPercent, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, recoveryNoticesEnabled, circlesEnabled, circleMaxAmount, circleMaxMembers, circleBanStrikes, circleServiceFeePercent, circleServiceFeeCap, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualFundingVerifiedOnly, manualFundingMaxAmount, manualFundingWaitMinutes, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
+      geminiApiKey, geminiApiKeyClear, geminiCustomerModel, geminiAdminModel, aiCustomerProvider, aiAdminProvider,
       aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
@@ -353,6 +358,24 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       if (!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(k)) return res.status(400).json({ error: 'That does not look like a Claude API key (it should start with sk-ant-).' });
       data.aiApiKey = k;
     }
+    // Google Gemini (lib/ai.js): key, models and which provider goes first.
+    if (geminiApiKeyClear) data.geminiApiKey = null;
+    else if (geminiApiKey !== undefined && String(geminiApiKey).trim()) {
+      const k = String(geminiApiKey).trim();
+      if (!/^AIza[A-Za-z0-9_-]{30,}$/.test(k)) return res.status(400).json({ error: 'That does not look like a Gemini API key (it should start with AIza).' });
+      data.geminiApiKey = k;
+    }
+    for (const [field, value] of [['geminiCustomerModel', geminiCustomerModel], ['geminiAdminModel', geminiAdminModel]]) {
+      if (value === undefined) continue;
+      const m = String(value).trim();
+      if (!/^gemini-[a-z0-9.-]{3,60}$/.test(m)) return res.status(400).json({ error: 'Gemini model names look like gemini-2.5-flash.' });
+      data[field] = m;
+    }
+    for (const [field, value] of [['aiCustomerProvider', aiCustomerProvider], ['aiAdminProvider', aiAdminProvider]]) {
+      if (value === undefined) continue;
+      if (!['gemini', 'claude'].includes(value)) return res.status(400).json({ error: 'Choose Gemini first or Claude first.' });
+      data[field] = value;
+    }
     // Better voice notes (lib/voice.js) — OpenAI key and limits.
     if (openaiApiKeyClear) data.openaiApiKey = null;
     else if (openaiApiKey !== undefined && String(openaiApiKey).trim()) {
@@ -379,8 +402,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
     if (aiCustomerDailyLimit !== undefined) data.aiCustomerDailyLimit = Math.min(500, Math.max(1, parseInt(aiCustomerDailyLimit, 10) || 20));
     if (aiMonthlyBudgetUsd !== undefined) data.aiMonthlyBudgetUsd = Math.min(10000, Math.max(0, Number(aiMonthlyBudgetUsd) || 0));
-    if ((data.aiCustomerEnabled || data.aiAdminEnabled) && !data.aiApiKey && !existing.aiApiKey && !process.env.ANTHROPIC_API_KEY) {
-      return res.status(400).json({ error: 'Paste your Claude API key before turning the assistant on.' });
+    const anyKey = data.aiApiKey || data.geminiApiKey || (data.aiApiKey !== null && existing.aiApiKey) || (data.geminiApiKey !== null && existing.geminiApiKey) || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY;
+    if ((data.aiCustomerEnabled || data.aiAdminEnabled) && !anyKey) {
+      return res.status(400).json({ error: 'Paste a Gemini or Claude API key before turning the assistant on.' });
     }
     if (supportWhatsapp !== undefined) {
       let n = String(supportWhatsapp).replace(/\D/g, '');

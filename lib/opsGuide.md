@@ -232,3 +232,10 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 4. Ask the AI "is code access on?". From then on it can propose fixes as pull requests. Each one runs **Backend tests** / **Frontend build** on GitHub. Merge only when they pass, then run the commands the AI gives you (also written at the bottom of the pull request).
 - The AI can never merge, deploy, or change `.env`, `package-lock.json` or the GitHub checks themselves.
 - To switch it off: remove `CODE_PR_ENABLED=on` and restart with `--update-env`.
+
+## AI providers: Gemini and Claude
+
+- Admin → Settings → AI Assistant: paste the **Gemini API key** (aistudio.google.com → Get API key, starts with `AIza`) and tap **Test Gemini**. Choose for the customer chat and for the admin/support assistant: **Gemini first, Claude if busy** (default) or **Claude first**.
+- Fallback is automatic: if the first provider is busy, out of credit or failing (before any lookup ran), the other answers. A provider without a key is skipped.
+- Optional: `GEMINI_API_KEY=` in `.env` instead of the screen (then `pm2 restart zappi-pay-api --update-env`).
+- Set spending limits on both sides: Google Cloud billing budget for Gemini, console.anthropic.com for Claude, plus the app's monthly AI budget.

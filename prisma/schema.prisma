@@ -867,6 +867,14 @@ model Settings {
   aiAdminEnabled           Boolean @default(false)
   aiCustomerModel          String  @default("claude-haiku-4-5")
   aiAdminModel             String  @default("claude-sonnet-5")
+  // Google Gemini (lib/ai.js): key, models, and which provider each
+  // assistant tries first ("gemini" = Gemini first, Claude if busy;
+  // "claude" = the other way round).
+  geminiApiKey             String?
+  geminiCustomerModel      String  @default("gemini-2.5-flash")
+  geminiAdminModel         String  @default("gemini-2.5-flash")
+  aiCustomerProvider       String  @default("gemini")
+  aiAdminProvider          String  @default("gemini")
   aiCustomerDailyLimit     Int     @default(20)
   aiMonthlyBudgetUsd       Decimal @default(10) @db.Decimal(10, 2)
   // Voice notes (lib/voice.js). The phone's own speech recognition is
