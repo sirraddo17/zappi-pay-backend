@@ -88,3 +88,14 @@ test('pictures go to Gemini as inline data', async () => {
   await ai.runAssistant({ settings: BOTH, kind: 'ADMIN', actorId: 'a', system: 's', history: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'AAAA' } }, { type: 'text', text: 'what is this?' }] }] });
   assert.deepEqual(calls[0].body.contents[0].parts, [{ inlineData: { mimeType: 'image/jpeg', data: 'AAAA' } }, { text: 'what is this?' }]);
 });
+
+test('retired Gemini model: switches to the one Google names, once', async () => {
+  calls = [];
+  fakeFetch((who, body, n) => (n === 1
+    ? json(404, { error: { message: 'This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.8-flash for the latest features.' } })
+    : json(200, { candidates: [{ content: { parts: [{ text: 'hi' }] }, finishReason: 'STOP' }] })));
+  const r = await ai.runAssistant({ settings: BOTH, kind: 'CUSTOMER', actorId: 'c', system: 's', history: [{ role: 'user', content: 'hi' }] });
+  assert.equal(r.text, 'hi');
+  assert.match(calls[0].url, /gemini-2\.5-flash/);
+  assert.match(calls[1].url, /gemini-3\.8-flash:generateContent/);
+});

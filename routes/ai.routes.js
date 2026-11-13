@@ -1197,7 +1197,7 @@ router.post('/admin/ai/actions/:id/dismiss', requireAdminAuth, async (req, res) 
 router.post('/admin/ai/test', requireAdminAuth, async (req, res) => {
   try {
     const out = await ai.testConnection(req.body?.model, req.body?.provider);
-    res.json({ ok: true, model: out.model, provider: out.provider });
+    res.json({ ok: true, model: out.model, provider: out.provider, note: out.note });
   } catch (error) {
     fail(res, error, 'Could not reach the AI service.');
   }

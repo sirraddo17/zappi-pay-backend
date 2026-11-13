@@ -871,8 +871,8 @@ model Settings {
   // assistant tries first ("gemini" = Gemini first, Claude if busy;
   // "claude" = the other way round).
   geminiApiKey             String?
-  geminiCustomerModel      String  @default("gemini-2.5-flash")
-  geminiAdminModel         String  @default("gemini-2.5-flash")
+  geminiCustomerModel      String  @default("gemini-3.8-flash")
+  geminiAdminModel         String  @default("gemini-3.8-flash")
   aiCustomerProvider       String  @default("gemini")
   aiAdminProvider          String  @default("gemini")
   aiCustomerDailyLimit     Int     @default(20)
