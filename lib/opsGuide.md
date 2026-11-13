@@ -235,7 +235,7 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 
 ## AI providers: Gemini and Claude
 
-- Admin → Settings → AI Assistant: paste the **Gemini API key** (aistudio.google.com → Get API key, starts with `AIza`) and tap **Test Gemini**. Choose for the customer chat and for the admin/support assistant: **Gemini first, Claude if busy** (default) or **Claude first**.
+- Admin → Settings → AI Assistant: paste the **Gemini API key** (aistudio.google.com → Get API key, starts with `AIza` or `AQ.`) and tap **Test Gemini**. Choose for the customer chat and for the admin/support assistant: **Gemini first, Claude if busy** (default) or **Claude first**.
 - Fallback is automatic: if the first provider is busy, out of credit or failing (before any lookup ran), the other answers. A provider without a key is skipped.
 - Optional: `GEMINI_API_KEY=` in `.env` instead of the screen (then `pm2 restart zappi-pay-api --update-env`).
 - Set spending limits on both sides: Google Cloud billing budget for Gemini, console.anthropic.com for Claude, plus the app's monthly AI budget.

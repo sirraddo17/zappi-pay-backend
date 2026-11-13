@@ -362,7 +362,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     if (geminiApiKeyClear) data.geminiApiKey = null;
     else if (geminiApiKey !== undefined && String(geminiApiKey).trim()) {
       const k = String(geminiApiKey).trim();
-      if (!/^AIza[A-Za-z0-9_-]{30,}$/.test(k)) return res.status(400).json({ error: 'That does not look like a Gemini API key (it should start with AIza).' });
+      // Google keys come in more than one format (AIza…, AQ.…): accept any
+      // plausible key; "Test Gemini" checks it really works.
+      if (!/^[A-Za-z0-9._~+/=-]{20,300}$/.test(k)) return res.status(400).json({ error: 'That does not look like a Gemini API key (no spaces, at least 20 characters). Copy it again from Google AI Studio.' });
       data.geminiApiKey = k;
     }
     for (const [field, value] of [['geminiCustomerModel', geminiCustomerModel], ['geminiAdminModel', geminiAdminModel]]) {
