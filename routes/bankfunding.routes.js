@@ -40,10 +40,7 @@ function accountError(message) {
   return ACCOUNT_FAILED;
 }
 
-function identityHash(idType, idNumber) {
-  const secret = process.env.KYC_HASH_SECRET || process.env.JWT_SECRET || 'zappipay';
-  return require('crypto').createHmac('sha256', secret).update(`${idType}:${idNumber}`).digest('hex');
-}
+const { identityHash } = require('../lib/idNumber');
 
 // Admin switch: bank-transfer funding off = no new account numbers shown.
 // Money already sent to an existing account number is still credited.
@@ -81,6 +78,9 @@ router.get('/wallet/bank-account', requireCustomerAuth, async (req, res) => {
       kycType: customer.kycType || null,
       idMatch: await require('../lib/idNumber').mustVerify(await getSettings()),
       hasDob: Boolean(customer.dateOfBirth),
+      // "Verify with BVN" auto-fill (lib/bvnProviders) for this customer?
+      bvnAutofill: Boolean(require('../lib/bvnProviders').activeFor(await getSettings(), customer.id)),
+      bvnVerified: customer.kycSource === 'BVN_AUTOFILL' && Boolean(customer.kycVerifiedAt),
       ...(await feeInfo()),
     });
   } catch (error) {

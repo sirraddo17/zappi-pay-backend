@@ -220,6 +220,9 @@ model Customer {
   dailyLimitOverride  Decimal?  @db.Decimal(14, 2)
   // Name and date of birth confirmed against BVN/NIN (then locked).
   kycVerifiedAt       DateTime?
+  // "BVN_AUTOFILL" when name and date of birth came from the BVN itself
+  // (Verify with BVN, after the OTP) — locked; the BVN is never stored.
+  kycSource           String?
   // App language chosen in Profile (en, pcm, yo, ha, ig) — broadcasts
   // are translated into it when AI translation is on.
   language            String?
@@ -875,6 +878,12 @@ model Settings {
   geminiAdminModel         String  @default("gemini-3.8-flash")
   aiCustomerProvider       String  @default("gemini")
   aiAdminProvider          String  @default("gemini")
+  // "Verify with BVN" auto-fill (lib/bvnProviders): OFF / TESTERS / ON,
+  // which identity provider, and its keys (never sent back to the browser).
+  bvnAutofillMode          String  @default("OFF")
+  bvnProvider              String  @default("test")
+  bvnProviderKey           String?
+  bvnProviderAppId         String?
   aiCustomerDailyLimit     Int     @default(20)
   aiMonthlyBudgetUsd       Decimal @default(10) @db.Decimal(10, 2)
   // Voice notes (lib/voice.js). The phone's own speech recognition is
@@ -2555,4 +2564,24 @@ model PlanFix {
   updatedAt     DateTime @updatedAt
 
   @@unique([serviceID, variationCode])
+}
+
+// "Verify with BVN" sessions: one per consent start (an OTP sent to the
+// BVN phone). Holds only a one-way code of the BVN, never the number.
+model BvnSession {
+  id          String   @id @default(cuid())
+  customerId  String
+  provider    String
+  providerRef String?
+  kycHash     String
+  phoneHint   String?
+  ip          String?
+  status      String   @default("STARTED") // STARTED, CONFIRMED, FAILED_START, FAILED
+  otpTries    Int      @default(0)
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([customerId, createdAt])
+  @@index([ip, createdAt])
+  @@index([createdAt])
 }

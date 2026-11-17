@@ -161,6 +161,7 @@ app.use('/api', extrasRouter);
 app.use('/api', growthRouter);
 app.use('/api', aiRouter);
 app.use('/api', require('./routes/compliance.routes'));
+app.use('/api', require('./routes/bvn.routes'));
 app.use('/api', engageRouter);
 
 app.use((err, req, res, next) => {

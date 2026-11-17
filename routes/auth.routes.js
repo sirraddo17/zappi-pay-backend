@@ -34,6 +34,8 @@ function publicCustomer(customer) {
     agentRequestedAt: customer.agentRequestedAt || null,
     hasDob: Boolean(customer.dateOfBirth),
     idVerified: Boolean(customer.kycVerifiedAt),
+    // Name and date of birth came from the BVN (Verify with BVN) — locked.
+    bvnLocked: customer.kycSource === 'BVN_AUTOFILL',
     hasSecurityQuestion: Boolean(customer.securityAnswerHash),
   };
 }

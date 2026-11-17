@@ -14,6 +14,8 @@ function safeSettings(settings) {
   out.aiApiKeySet = Boolean(out.aiApiKey);
   out.aiApiKeyHint = out.aiApiKey ? `…${out.aiApiKey.slice(-4)}` : null;
   delete out.aiApiKey;
+  delete out.bvnProviderKey;
+  delete out.bvnProviderAppId;
   out.geminiApiKeySet = Boolean(out.geminiApiKey);
   out.geminiApiKeyHint = out.geminiApiKey ? `…${out.geminiApiKey.slice(-4)}` : null;
   delete out.geminiApiKey;
