@@ -37,3 +37,9 @@ test('daily email profit = Overview profit (VTpass commission included); test or
   assert.match(s.text, /Sales\D+1,485 \(1 orders\)/, 'sandbox order not counted');
   assert.ok(ranged && ranged.gte && ranged.lt, 'profit computed for the same day');
 });
+
+test('profit breakdown explains a negative day (deposit fee bigger than purchase profit)', () => {
+  const { profitBreakdown } = require('../lib/dailySummary');
+  const parts = profitBreakdown({ income: { purchaseMarkup: -12, vtpassCommission: 59.4, bankFundingFees: 0 }, costs: { monnifyFundingFees: 55.6, rewards: 0 } });
+  assert.deepEqual(parts, ['markup/discounts −₦12', 'VTpass commission +₦59', 'partner deposit fees −₦56']);
+});
