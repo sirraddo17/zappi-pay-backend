@@ -77,3 +77,11 @@ test('wiring: routes, signup tag, owner-only AI tools, nav link allowed', () => 
   assert.ok(nav.allowed('/admin/ad-studio?tab=quick&tag=video-christmas-data'));
   assert.ok(!nav.allowed('/admin/ad-studio?tab=quick&tag=x"><b'));
 });
+
+test('Bet Funding off: not on the public status page, shop page or service lists', () => {
+  const status = fs.readFileSync(path.join(ROOT, 'routes/status.routes.js'), 'utf8');
+  assert.match(status, /key !== 'BETTING' \|\| settings\.betFundingEnabled === true/);
+  const vt = fs.readFileSync(path.join(ROOT, 'routes/vtpass.routes.js'), 'utf8');
+  assert.match(vt, /if \(!betOn\) return res\.json\(\{ content: \[\] \}\)/);
+  assert.match(vt, /!betOn && BET_IDS\.includes/);
+});

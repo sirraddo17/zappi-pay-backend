@@ -52,7 +52,9 @@ async function buildStatus() {
     if (r.status === 'FAILED' || r.status === 'REFUNDED') s.failed += r._count._all;
   }
 
-  const services = SERVICES.map(([key, label]) => {
+  // Switched-off services are not listed at all (e.g. Bet Funding while
+  // it is off — payment partners must not see it on the public site).
+  const services = SERVICES.filter(([key]) => key !== 'BETTING' || settings.betFundingEnabled === true).map(([key, label]) => {
     let state = 'OPERATIONAL';
     let note = null;
     const paused = maintenance.pauseMessage(settings, key);

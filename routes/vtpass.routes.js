@@ -32,7 +32,10 @@ router.get('/vtpass/services', requireCustomerAuth, async (req, res) => {
     const { identifier } = req.query;
     if (!identifier) return res.status(400).json({ error: 'identifier is required.' });
     // Bet funding companies: from ClubKonnect or VTpass (Settings → ClubKonnect).
+    const betOn = require('../lib/features').isOnFor(await require('../lib/vtpass').getSettings(), 'betFunding', req.customer?.customerId);
     if (identifier === 'betting') {
+      // Switched off: no betting companies are listed anywhere.
+      if (!betOn) return res.json({ content: [] });
       const ckBet = require('../lib/ckBetting');
       const nbBet = require('../lib/nombaBetting');
       if (await nbBet.useNb()) return res.json(await nbBet.servicesForApp());
@@ -45,7 +48,9 @@ router.get('/vtpass/services', requireCustomerAuth, async (req, res) => {
     // Providers the owner hid (Admin → Partners) don't show on the Buy page.
     const hp = require('../lib/hiddenProviders');
     const settings = await require('../lib/vtpass').getSettings();
-    if (Array.isArray(data?.content) && hp.list(settings).length) return res.json({ ...data, content: data.content.filter((p) => !hp.isHidden(settings, p.serviceID)) });
+    const BET_IDS = require('../lib/ckBetting').VTPASS_BET_IDS;
+    const hide = (p) => hp.isHidden(settings, p.serviceID) || (!betOn && BET_IDS.includes(p.serviceID));
+    if (Array.isArray(data?.content)) return res.json({ ...data, content: data.content.filter((p) => !hide(p)) });
     res.json(data);
   } catch (error) {
     console.error('GET /vtpass/services failed:', error);
