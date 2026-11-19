@@ -199,3 +199,7 @@ Type the reply in your own words, then tap **✨ Polish** on the ticket. Pick "C
 - **No code:** the code goes to the phone number linked to the BVN at the bank, often an old line. The customer updates it at their bank, or uses the normal form if Verify with BVN isn't required. Each customer has 3 tries a day.
 - **"My name is locked":** names and date of birth from Verify with BVN can't be changed in the app. If the BVN record itself is right, the name stays. If our copy is wrong, the owner can correct it (Customers → support tools → fix name) with proof.
 - Never ask the customer for the code or their BVN in chat.
+
+
+## Customer came from a video QR code
+- Links like www.zappipay.com.ng/?vt=video-christmas-data come from ZAPPI PAY's own video ads. They just open the app; sign up normally. The tag is only used to count which video brought the customer — it gives no bonus by itself.

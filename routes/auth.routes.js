@@ -86,6 +86,7 @@ router.post('/auth/signup', async (req, res) => {
       referredById = referrer.id;
     }
 
+    const signupTag = req.body.signupTag ? await require('../lib/quickVideo').tagForSignup(req.body.signupTag).catch(() => null) : null;
     const passwordHash = await hashPassword(password);
     const customer = await prisma.customer.create({
       data: {
@@ -96,6 +97,7 @@ router.post('/auth/signup', async (req, res) => {
         passwordHash,
         ...details.data,
         referredById,
+        ...(signupTag ? { signupTag } : {}),
         signupIpHash: require('../lib/clientHints').ipHash(req),
         signupDeviceHash: require('../lib/clientHints').deviceHash(req),
         lastIpHash: require('../lib/clientHints').ipHash(req),

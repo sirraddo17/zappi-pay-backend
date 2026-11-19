@@ -239,3 +239,9 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - Fallback is automatic: if the first provider is busy, out of credit or failing (before any lookup ran), the other answers. A provider without a key is skipped.
 - Optional: `GEMINI_API_KEY=` in `.env` instead of the screen (then `pm2 restart zappi-pay-api --update-env`).
 - Set spending limits on both sides: Google Cloud billing budget for Gemini, console.anthropic.com for Claude, plus the app's monthly AI budget.
+
+
+## ⚡ Quick video (Ad Studio)
+- Admin → 🎨 Ad Studio → ⚡ Quick video: idea → AI lines → the phone/laptop records an ~18-second MP4 with its own QR tag (www.zappipay.com.ng/?vt=<tag>).
+- Results in the same tab ("📊 Which videos worked"): visits, sign-ups, buyers, sales per video. Boost only the videos that bring buyers.
+- No money moves. If the AI is off or over budget, the lines can still be typed by hand from "Write it myself".

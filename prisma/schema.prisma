@@ -223,6 +223,9 @@ model Customer {
   // "BVN_AUTOFILL" when name and date of birth came from the BVN itself
   // (Verify with BVN, after the OTP) — locked; the BVN is never stored.
   kycSource           String?
+  // Ad Studio → ⚡ Quick video: the video QR tag this customer signed up
+  // from (www.zappipay.com.ng/?vt=<tag>), for "which video worked".
+  signupTag           String?
   // App language chosen in Profile (en, pcm, yo, ha, ig) — broadcasts
   // are translated into it when AI translation is on.
   language            String?
@@ -2584,4 +2587,18 @@ model BvnSession {
   @@index([customerId, createdAt])
   @@index([ip, createdAt])
   @@index([createdAt])
+}
+
+// Ad Studio → ⚡ Quick video: one row per video (its QR tag), with the
+// AI-written lines and how many people opened the app from it.
+model VideoTag {
+  tag         String    @id
+  label       String?
+  language    String?
+  draft       Json?
+  createdById String?
+  madeAt      DateTime?
+  visits      Int       @default(0)
+  lastVisitAt DateTime?
+  createdAt   DateTime  @default(now())
 }

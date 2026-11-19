@@ -114,4 +114,58 @@ router.post('/admin/ai/story-scenes', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Ad Studio → ⚡ Quick video (lib/quickVideo.js).
+router.post('/admin/ai/quick-video', requireAdminAuth, async (req, res) => {
+  const vs = require('../lib/videoScript');
+  try {
+    const r = await require('../lib/quickVideo').write(req.admin.adminId, req.body || {});
+    audit(req, 'QUICK_VIDEO_WRITTEN', { tag: r.tag });
+    res.json(r);
+  } catch (error) {
+    if (error instanceof vs.ScriptError || error.code?.startsWith?.('AI_')) return res.status(400).json({ error: error.message, code: error.code });
+    console.error('POST /admin/ai/quick-video failed:', error.message);
+    res.status(502).json({ error: 'The AI could not write the video right now. Please try again.' });
+  }
+});
+
+router.get('/admin/video-tags', requireAdminAuth, async (req, res) => {
+  try {
+    res.json({ videos: await require('../lib/quickVideo').report() });
+  } catch (error) {
+    console.error('GET /admin/video-tags failed:', error.message);
+    res.status(500).json({ error: 'Could not load video results.' });
+  }
+});
+
+router.post('/admin/video-tags', requireAdminAuth, async (req, res) => {
+  try {
+    const r = await require('../lib/quickVideo').create(req.admin.adminId, req.body || {});
+    audit(req, 'QUICK_VIDEO_WRITTEN', { tag: r.tag, manual: true });
+    res.json(r);
+  } catch (error) {
+    console.error('POST /admin/video-tags failed:', error.message);
+    res.status(500).json({ error: 'Could not start the video.' });
+  }
+});
+
+router.get('/admin/video-tags/:tag', requireAdminAuth, async (req, res) => {
+  const v = await require('../lib/quickVideo').get(req.params.tag).catch(() => null);
+  if (!v) return res.status(404).json({ error: 'That video was not found.' });
+  res.json(v);
+});
+
+router.post('/admin/video-tags/:tag/made', requireAdminAuth, async (req, res) => {
+  const r = await require('../lib/quickVideo').markMade(req.params.tag, req.body?.script).catch(() => null);
+  if (!r) return res.status(404).json({ error: 'That video was not found.' });
+  audit(req, 'QUICK_VIDEO_MADE', { tag: r.tag });
+  res.json(r);
+});
+
+// Public: the app was opened from a video QR (?vt=<tag>).
+router.post('/app/video-visit', async (req, res) => {
+  const ipKey = require('../lib/clientHints').ipHash(req) || '';
+  await require('../lib/quickVideo').visit(req.body?.tag, ipKey).catch(() => false);
+  res.json({ ok: true });
+});
+
 module.exports = router;
