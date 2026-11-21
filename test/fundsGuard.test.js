@@ -46,3 +46,24 @@ test('without real Monnify cover it is SHORT', async () => {
   assert.equal(c.shortBy, 4000);
   assert.equal(c.safeToWithdraw, 0);
 });
+
+test('live VTpass counts towards customer money; only partner money is withdrawable', async () => {
+  // Owed ₦50,000: Monnify ₦20,000 + VTpass ₦40,000 = ₦60,000 → covered.
+  check = { at: new Date(), owed: { total: 50000, pendingTransfers: 0 }, real: { owed: 50000, testAccounts: { total: 0 } }, have: { monnify: 20000, vtpass: 40000, modes: { monnify: 'live', vtpass: 'live' } } };
+  let c = await guard.coverage({ fresh: true });
+  assert.equal(c.status, 'OK');
+  assert.equal(c.held, 60000);
+  assert.equal(c.vtpass, 40000);
+  assert.equal(c.safeToWithdraw, 10000, 'the ₦10,000 extra');
+  // Extra sits in VTpass: nothing can go to a bank beyond what Monnify holds.
+  check = { at: new Date(), owed: { total: 10000, pendingTransfers: 0 }, real: { owed: 10000, testAccounts: { total: 0 } }, have: { monnify: 3000, vtpass: 40000, modes: { monnify: 'live', vtpass: 'live' } } };
+  c = await guard.coverage({ fresh: true });
+  assert.equal(c.safeToWithdraw, 3000, 'capped by the Monnify balance');
+  // Sandbox VTpass never counts; unreadable live VTpass pauses (INCOMPLETE).
+  check = { at: new Date(), owed: { total: 50000, pendingTransfers: 0 }, real: { owed: 50000, testAccounts: { total: 0 } }, have: { monnify: 20000, vtpass: 9e6, modes: { monnify: 'live', vtpass: 'sandbox' } } };
+  assert.equal((await guard.coverage({ fresh: true })).status, 'SHORT');
+  check = { at: new Date(), owed: { total: 50000, pendingTransfers: 0 }, real: { owed: 50000, testAccounts: { total: 0 } }, have: { monnify: 20000, vtpass: null, vtpassError: 'timeout', modes: { monnify: 'live', vtpass: 'live' } } };
+  c = await guard.coverage({ fresh: true });
+  assert.equal(c.status, 'INCOMPLETE');
+  assert.match(c.errors.join(' '), /timeout/);
+});

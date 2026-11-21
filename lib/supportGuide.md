@@ -105,7 +105,7 @@ Send to Bank transfers live in **Admin → Bank Transfers**. The wallet is debit
 | --- | --- | --- |
 | "My transfer is still processing" | Tap **Check** on the transfer. Banks can take a few hours on busy days. | Bank Transfers |
 | "My transfer is held" | Held transfers are waiting for an OTP or a safety review (big amount, new device). Owner: confirm it's them, then **Release** or **Cancel** (refunds). | Bank Transfers → Held |
-| "Bank transfers are paused" | The funds guard paused all transfers because a partner wallet holds less than customers are owed. Their money is safe. Owner tops up the partner wallet; transfers resume. | Money check |
+| "Bank transfers are paused" | The funds guard paused all transfers because Monnify + VTpass together hold less than customers are owed. Their money is safe. Owner tops up Monnify or VTpass; transfers resume. | Money check |
 | "I sent to the wrong bank account" | Open a wrong-transfer case and request a recall from the partner. Record what was recovered. Recalls are not guaranteed. | ↩️ Wrong transfers |
 | "I sent to the wrong ZAPPI PAY user" | The customer reports it in the app, which holds the money in the receiver's wallet for 14 days. The owner decides in Wrong transfers. | ↩️ Wrong transfers |
 | "I sent airtime for Airtime to Cash but wasn't paid" | Check the request. Approve with the amount actually received, or reject with a reason. | Airtime to Cash |
