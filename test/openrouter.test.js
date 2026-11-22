@@ -83,3 +83,17 @@ test('"high demand" is busy (falls back), not a model problem', async () => {
   const r = await ai.runAssistant({ settings: { geminiApiKey: 'AIzaX', openrouterApiKey: 'sk-or-x' }, kind: 'CUSTOMER', actorId: 'c', system: 's', history: [{ role: 'user', content: 'hi' }] });
   assert.equal(r.provider, 'openrouter');
 });
+
+test('a tool defined twice is sent once (providers reject duplicates); customer tool lists have no repeats', async () => {
+  let sent = null;
+  global.fetch = async (url, opts) => { sent = JSON.parse(opts.body); return json(200, { choices: [{ message: { content: 'ok' } }], usage: {} }); };
+  const t = { name: 'check_my_funding', description: 'x', input_schema: { type: 'object', properties: {} } };
+  await ai.runAssistant({ settings: { openrouterApiKey: 'sk-or-x' }, kind: 'CUSTOMER', actorId: 'c', system: 's', history: [{ role: 'user', content: 'hi' }], tools: [t, { ...t, description: 'y' }] });
+  assert.equal(sent.tools.length, 1);
+  assert.equal(sent.tools[0].function.description, 'y', 'the last one, like the handlers');
+  const names = (f) => { const s = fs.readFileSync(path.join(ROOT, f), 'utf8'); const i = s.indexOf('const TOOLS'); return [...s.slice(i, s.indexOf('\n];', i)).matchAll(/name: '([a-z_]+)'/g)].map((m) => m[1]); };
+  const src = fs.readFileSync(path.join(ROOT, 'routes/ai.routes.js'), 'utf8');
+  const ci = src.indexOf('const CUSTOMER_TOOLS');
+  const all = [...[...src.slice(ci, src.indexOf('\n];', ci)).matchAll(/name: '([a-z_]+)'/g)].map((m) => m[1]), ...names('lib/chatHelp.js'), ...names('lib/aiExtras.js'), ...names('lib/chatBuy.js')];
+  assert.deepEqual(all.filter((n, i) => all.indexOf(n) !== i), [], 'no tool name twice in the customer chat');
+});

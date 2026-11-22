@@ -154,9 +154,11 @@ test('weekly report: real customers only; daily jobs run once and alert on missi
 test('customer chat: check_my_funding runs the safe partner check, at most once a minute', async () => {
   const { ada } = await seed();
   fundingCalls = [];
-  const h = chatHelp.handlers(ada.id, {}, { cards: [], notes: [] });
+  // One check_my_funding tool (lib/aiExtras.js) — a duplicate name once broke the whole chat.
+  assert.ok(!chatHelp.TOOLS.some((t) => t.name === 'check_my_funding'));
+  const h = require('../lib/aiExtras').handlers(ada.id);
   const r = await h.check_my_funding({ reference: '100004261105165544' });
-  assert.equal(r.result, 'CREDITED');
+  assert.equal(r.newlyCredited, 1);
   assert.deepEqual(fundingCalls, [{ id: ada.id, ref: '100004261105165544' }], 'only their own account is checked');
   assert.match((await h.check_my_funding({})).error, /less than a minute/);
 });
