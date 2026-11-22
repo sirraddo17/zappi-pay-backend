@@ -303,6 +303,20 @@ router.get('/admin/voice/status', requireAdminAuth, async (req, res) => {
   }
 });
 
+// Help chat: a plain airtime request is prepared without the AI
+// (lib/quickBuy.js) — works even when the AI is off or over budget.
+router.post('/chat/quick-buy', requireCustomerAuth, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    if (settings.aiChatBuyEnabled === false) return res.json({ handled: false });
+    const r = await require('../lib/quickBuy').prepare(req.customer.customerId, settings, String(req.body?.text || '').slice(0, 200));
+    res.json(r ? { handled: true, ...r } : { handled: false });
+  } catch (error) {
+    console.error('POST /chat/quick-buy failed:', error.message);
+    res.json({ handled: false });
+  }
+});
+
 router.post('/ai/chat', requireCustomerAuth, async (req, res) => {
   try {
     const settings = await ai.ensureAvailable('CUSTOMER');
