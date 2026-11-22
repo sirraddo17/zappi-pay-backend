@@ -881,6 +881,11 @@ model Settings {
   geminiAdminModel         String  @default("gemini-3.8-flash")
   aiCustomerProvider       String  @default("gemini")
   aiAdminProvider          String  @default("gemini")
+  // OpenRouter (openrouter.ai): one key for many models — the last backup
+  // when Gemini and Claude are unavailable (or first, if chosen above).
+  openrouterApiKey         String?
+  openrouterCustomerModel  String  @default("anthropic/claude-haiku-4.5")
+  openrouterAdminModel     String  @default("anthropic/claude-sonnet-4.5")
   // "Verify with BVN" auto-fill (lib/bvnProviders): OFF / TESTERS / ON,
   // which identity provider, and its keys (never sent back to the browser).
   bvnAutofillMode          String  @default("OFF")

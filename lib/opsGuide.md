@@ -233,7 +233,9 @@ Server IP for every whitelist: **107.173.6.63**. Webhook base: **https://api.zap
 - The AI can never merge, deploy, or change `.env`, `package-lock.json` or the GitHub checks themselves.
 - To switch it off: remove `CODE_PR_ENABLED=on` and restart with `--update-env`.
 
-## AI providers: Gemini and Claude
+## AI providers: Gemini, Claude and OpenRouter
+
+- **OpenRouter (backup):** Admin → Settings → AI Assistant → OpenRouter: paste the key (openrouter.ai → Keys, starts with `sk-or-`), set the two models (from openrouter.ai/models, one that supports tools), tap **Test OpenRouter**. Order by default: Gemini → Claude → OpenRouter. Add credits and a key credit limit on openrouter.ai. Optional: `OPENROUTER_API_KEY=` in `.env`.
 
 - Admin → Settings → AI Assistant: paste the **Gemini API key** (aistudio.google.com → Get API key, starts with `AIza` or `AQ.`) and tap **Test Gemini**. Choose for the customer chat and for the admin/support assistant: **Gemini first, Claude if busy** (default) or **Claude first**.
 - Fallback is automatic: if the first provider is busy, out of credit or failing (before any lookup ran), the other answers. A provider without a key is skipped.

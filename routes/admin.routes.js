@@ -19,6 +19,10 @@ function safeSettings(settings) {
   out.geminiApiKeySet = Boolean(out.geminiApiKey);
   out.geminiApiKeyHint = out.geminiApiKey ? `…${out.geminiApiKey.slice(-4)}` : null;
   delete out.geminiApiKey;
+  out.openrouterApiKeySet = Boolean(out.openrouterApiKey);
+  out.openrouterApiKeyHint = out.openrouterApiKey ? `…${out.openrouterApiKey.slice(-4)}` : null;
+  delete out.openrouterApiKey;
+  out.openrouterFromEnv = Boolean(process.env.OPENROUTER_API_KEY);
   out.geminiFromEnv = Boolean(process.env.GEMINI_API_KEY);
   out.openaiApiKeySet = Boolean(out.openaiApiKey);
   out.openaiApiKeyHint = out.openaiApiKey ? `…${out.openaiApiKey.slice(-4)}` : null;
@@ -62,6 +66,7 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       emailAlertsEnabled, kycLimitsEnabled, dailyLimitUnverified, dailyLimitVerified, cashbackEnabled, cashbackPercentByService, cashbackMaxPerOrder, cashbackSeparate, cashbackUseMaxPercent, supportWhatsapp, fraudHoldEnabled, fraudHoldAmount, fraudHoldHours, adminTwoFactorEnabled, idMatchEnabled, attackWatchEnabled, intlAirtimeEnabled, festivalGreetingsEnabled, festivalAlertDays, recoveryNoticesEnabled, circlesEnabled, circleMaxAmount, circleMaxMembers, circleBanStrikes, circleServiceFeePercent, circleServiceFeeCap, dailySummaryEnabled, loyaltyEnabled, loyaltyPointsPer100, loyaltyPointValue, loyaltyMinRedeem, manualFundingEnabled, manualFundingVerifiedOnly, manualFundingMaxAmount, manualFundingWaitMinutes, manualBankName, manualAccountNumber, manualAccountName, manualAccounts, hiddenFundingBanks,
       agentPricingEnabled, agentDiscountPercentByService,
       geminiApiKey, geminiApiKeyClear, geminiCustomerModel, geminiAdminModel, aiCustomerProvider, aiAdminProvider,
+      openrouterApiKey, openrouterApiKeyClear, openrouterCustomerModel, openrouterAdminModel,
       aiApiKey, aiApiKeyClear, openaiApiKey, openaiApiKeyClear, voiceAiEnabled, voiceMonthlyBudgetUsd, voiceDailyLimit, aiCustomerEnabled, aiChatBuyEnabled, aiBriefingEnabled, aiTranslateBroadcasts, adminAlertPush, adminAlertEmail, feedbackPromptEnabled, problemSpotterEnabled, monthlySummaryEnabled, agentWeeklyEnabled, rewardGuardEnabled, rewardGuardPercent, escalationHours, vtpassSupportEmail, savingsEnabled, savingsRatePct, savingsMinBalance, savingsMaxBalance, savingsDailyBudget, savingsPartnerNote, purchasesPaused, pausedServices, maintenanceMessage, errorAlertsEnabled, aiAdminEnabled, aiCustomerModel, aiAdminModel, aiCustomerDailyLimit, aiMonthlyBudgetUsd } = req.body;
     if (vtpassMode !== undefined && !['sandbox', 'live'].includes(vtpassMode)) {
       return res.status(400).json({ error: 'vtpassMode must be "sandbox" or "live".' });
@@ -375,9 +380,22 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
       if (!/^gemini-[a-z0-9.-]{3,60}$/.test(m)) return res.status(400).json({ error: 'Gemini model names look like gemini-2.5-flash.' });
       data[field] = m;
     }
+    // OpenRouter (lib/ai.js): key and models (e.g. anthropic/claude-haiku-4.5).
+    if (openrouterApiKeyClear) data.openrouterApiKey = null;
+    else if (openrouterApiKey !== undefined && String(openrouterApiKey).trim()) {
+      const k = String(openrouterApiKey).trim();
+      if (!/^sk-or-[A-Za-z0-9_-]{20,}$/.test(k)) return res.status(400).json({ error: 'That does not look like an OpenRouter API key (it should start with sk-or-).' });
+      data.openrouterApiKey = k;
+    }
+    for (const [field, value] of [['openrouterCustomerModel', openrouterCustomerModel], ['openrouterAdminModel', openrouterAdminModel]]) {
+      if (value === undefined) continue;
+      const m = String(value).trim();
+      if (!/^[a-z0-9._-]{2,40}\/[a-z0-9._:-]{2,80}$/i.test(m)) return res.status(400).json({ error: 'OpenRouter model names look like anthropic/claude-haiku-4.5 (copy it from openrouter.ai/models).' });
+      data[field] = m;
+    }
     for (const [field, value] of [['aiCustomerProvider', aiCustomerProvider], ['aiAdminProvider', aiAdminProvider]]) {
       if (value === undefined) continue;
-      if (!['gemini', 'claude'].includes(value)) return res.status(400).json({ error: 'Choose Gemini first or Claude first.' });
+      if (!['gemini', 'claude', 'openrouter'].includes(value)) return res.status(400).json({ error: 'Choose Gemini, Claude or OpenRouter first.' });
       data[field] = value;
     }
     // Better voice notes (lib/voice.js) — OpenAI key and limits.
@@ -406,9 +424,9 @@ router.patch('/admin/settings', requireAdminAuth, async (req, res) => {
     }
     if (aiCustomerDailyLimit !== undefined) data.aiCustomerDailyLimit = Math.min(500, Math.max(1, parseInt(aiCustomerDailyLimit, 10) || 20));
     if (aiMonthlyBudgetUsd !== undefined) data.aiMonthlyBudgetUsd = Math.min(10000, Math.max(0, Number(aiMonthlyBudgetUsd) || 0));
-    const anyKey = data.aiApiKey || data.geminiApiKey || (data.aiApiKey !== null && existing.aiApiKey) || (data.geminiApiKey !== null && existing.geminiApiKey) || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY;
+    const anyKey = data.aiApiKey || data.geminiApiKey || data.openrouterApiKey || (data.aiApiKey !== null && existing.aiApiKey) || (data.geminiApiKey !== null && existing.geminiApiKey) || (data.openrouterApiKey !== null && existing.openrouterApiKey) || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY;
     if ((data.aiCustomerEnabled || data.aiAdminEnabled) && !anyKey) {
-      return res.status(400).json({ error: 'Paste a Gemini or Claude API key before turning the assistant on.' });
+      return res.status(400).json({ error: 'Paste a Gemini, Claude or OpenRouter API key before turning the assistant on.' });
     }
     if (supportWhatsapp !== undefined) {
       let n = String(supportWhatsapp).replace(/\D/g, '');
