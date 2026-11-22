@@ -74,3 +74,12 @@ test('wiring: key masked in settings, validated, and counted as an AI key', () =
   assert.match(src, /\^sk-or-/);
   assert.match(src, /\['gemini', 'claude', 'openrouter'\]/);
 });
+
+test('"high demand" is busy (falls back), not a model problem', async () => {
+  global.fetch = async (url) => (/googleapis/.test(url)
+    ? json(503, { error: { message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.' } })
+    : json(200, { choices: [{ message: { content: 'Hello from the backup.' } }], usage: { prompt_tokens: 5, completion_tokens: 3 } }));
+  await assert.rejects(ai.runAssistant({ settings: { geminiApiKey: 'AIzaX' }, kind: 'ADMIN', actorId: 'a', system: 's', history: [{ role: 'user', content: 'hi' }] }), (e) => e.code === 'AI_BUSY' && /busy/.test(e.message));
+  const r = await ai.runAssistant({ settings: { geminiApiKey: 'AIzaX', openrouterApiKey: 'sk-or-x' }, kind: 'CUSTOMER', actorId: 'c', system: 's', history: [{ role: 'user', content: 'hi' }] });
+  assert.equal(r.provider, 'openrouter');
+});
