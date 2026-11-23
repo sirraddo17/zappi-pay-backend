@@ -9,6 +9,7 @@ const UNIQUE = {
   order: [['vtpassRequestId']],
   customer: [['phone']],
   rewardPool: [['key']],
+  waitlistEntry: [['phone']],
 };
 
 const k = (v) => {
