@@ -97,6 +97,15 @@ app.use(express.json({ limit: '6mb', verify: (req, res, buf) => { req.rawBody = 
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'zappi-pay-backend' }));
 
+// Owner dashboard (owner-hub on the VPS): today's numbers, key-protected, off unless OWNER_KEY is set.
+app.get('/api/owner/summary', async (req, res) => {
+  const { ownerKeyOk, buildOwnerSummary } = require('./lib/ownerSummary');
+  if (!process.env.OWNER_KEY) return res.status(404).json({ error: 'Not found' });
+  if (!ownerKeyOk(req)) return res.status(401).json({ error: 'Wrong key' });
+  try { res.set('Cache-Control', 'no-store'); res.json(await buildOwnerSummary()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Support staff (role SUPPORT) may only reach customer-care admin routes;
 // everything sensitive needs an owner (lib/staffAccess.js).
 app.use('/api', require('./lib/staffAccess').staffGate);
