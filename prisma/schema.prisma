@@ -2607,3 +2607,17 @@ model VideoTag {
   lastVisitAt DateTime?
   createdAt   DateTime  @default(now())
 }
+
+// People who asked to be told when ZAPPI PAY launches (form on the welcome page).
+model WaitlistEntry {
+  id         String    @id @default(cuid())
+  name       String
+  phone      String    @unique // 11 digits, e.g. 08012345678
+  email      String?
+  interests  String[]  @default([])
+  source     String?
+  createdAt  DateTime  @default(now())
+  notifiedAt DateTime?
+
+  @@index([createdAt])
+}

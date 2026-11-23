@@ -106,6 +106,7 @@ app.use('/api', require('./routes/disputes.routes'));
 app.use('/api', escalationsRouter);
 app.use('/api', savingsRouter);
 app.use('/api', challengesRouter);
+app.use('/api', require('./routes/waitlist.routes'));
 app.use('/api', moneyRouter);
 app.use('/api', statusRouter);
 app.use('/api', require('./routes/unmatched.routes'));
