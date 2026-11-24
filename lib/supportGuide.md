@@ -203,3 +203,9 @@ Type the reply in your own words, then tap **✨ Polish** on the ticket. Pick "C
 
 ## Customer came from a video QR code
 - Links like www.zappipay.com.ng/?vt=video-christmas-data come from ZAPPI PAY's own video ads. They just open the app; sign up normally. The tag is only used to count which video brought the customer — it gives no bonus by itself.
+
+
+## Customer asks about a feature that is switched off
+- Say only: "<Feature> isn’t available on ZAPPI PAY yet. You can buy airtime, data, electricity, cable TV and exam PINs from your wallet." No "coming soon", no launch date, no other app or vendor.
+- Airtime to Cash (off): add "We don’t work with outside vendors for this, so we can’t recommend one. Be careful with anyone who asks you to send airtime first or shows ‘payment successful’ screenshots — that’s a common scam."
+- Tip: paste or screenshot the customer's message into the AI Assistant — it drafts the reply (WhatsApp or email) with these rules.
