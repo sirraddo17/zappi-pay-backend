@@ -207,5 +207,5 @@ Type the reply in your own words, then tap **✨ Polish** on the ticket. Pick "C
 
 ## Customer asks about a feature that is switched off
 - Say only: "<Feature> isn’t available on ZAPPI PAY yet. You can buy airtime, data, electricity, cable TV and exam PINs from your wallet." No "coming soon", no launch date, no other app or vendor.
-- Airtime to Cash (off): add "We don’t work with outside vendors for this, so we can’t recommend one. Be careful with anyone who asks you to send airtime first or shows ‘payment successful’ screenshots — that’s a common scam."
+- Only if they ask you to recommend a vendor / app / person for something we don't offer, say: "We don’t work with outside vendors for this, so we can’t recommend one. Be careful with anyone who asks you to send airtime first or shows ‘payment successful’ screenshots — that’s a common scam."
 - Tip: paste or screenshot the customer's message into the AI Assistant — it drafts the reply (WhatsApp or email) with these rules.

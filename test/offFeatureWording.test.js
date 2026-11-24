@@ -8,17 +8,15 @@ const f = require('../lib/features');
 
 const ROOT = path.resolve(__dirname, '..');
 
-test('off reply: plain, no launch hint; Airtime to Cash adds the scam warning', () => {
-  const a = f.offReply('Family wallet', 'family');
-  assert.equal(a, 'Family wallet isn’t available on ZAPPI PAY yet. You can buy airtime, data, electricity, cable TV and exam PINs from your wallet.');
-  const b = f.offReply('Airtime to Cash', 'airtimeToCash');
-  assert.match(b, /We don’t work with outside vendors for this, so we can’t recommend one\./);
-  assert.match(b, /send airtime first or shows “payment successful” screenshots — that’s a common scam\./);
-  for (const t of [a, b]) assert.ok(!/announce it|when it.s ready|almost ready/i.test(t), t);
+test('off reply: plain, no launch hint; vendor warning only when they ask for a vendor', () => {
+  const a = f.offReply('Airtime to Cash');
+  assert.equal(a, 'Airtime to Cash isn’t available on ZAPPI PAY yet. You can buy airtime, data, electricity, cable TV and exam PINs from your wallet.');
+  assert.ok(!/vendor|scam|announce|when it.s ready|almost ready/i.test(a), 'no extra lines');
   const note = f.offNote({}, 'x');
   assert.match(note, /Never say "coming soon"/);
-  assert.match(note, /For Airtime to Cash also add/);
-  assert.ok(!f.offNote({ airtimeToCashEnabled: true }, 'x').includes('For Airtime to Cash'), 'no A2C line when it is on');
+  assert.match(note, /ONLY if the customer asks you to recommend or name a vendor, app, website or person for a service ZAPPI PAY doesn't offer/);
+  assert.ok(note.includes(f.VENDOR_REPLY));
+  assert.match(f.VENDOR_REPLY, /^We don’t work with outside vendors for this, so we can’t recommend one\. Be careful with anyone who asks you to send airtime first/);
 });
 
 test('customer AI: prompt, A2C tool and bet funding follow the rule', () => {
@@ -27,7 +25,7 @@ test('customer AI: prompt, A2C tool and bet funding follow the rule', () => {
   assert.ok(!/bet funding|airtime-to-cash/i.test(cust.split('\n')[1]), 'intro lists only core services');
   assert.match(cust, /Never say "coming soon"/);
   const help = fs.readFileSync(path.join(ROOT, 'lib/chatHelp.js'), 'utf8');
-  assert.match(help, /enabled: false, replyExactly: require\('\.\/features'\)\.offReply\('Airtime to Cash', 'airtimeToCash'\)/);
+  assert.match(help, /enabled: false, replyExactly: require\('\.\/features'\)\.offReply\('Airtime to Cash'\)/);
   assert.ok(!/coming soon/i.test(fs.readFileSync(path.join(ROOT, 'lib/chatBuy.js'), 'utf8')));
 });
 
